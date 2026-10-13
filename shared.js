@@ -72,7 +72,9 @@
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(tr => (tr.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    banner.href = "absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    banner.href = "/absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    banner.target = "_blank";
+    banner.rel = "noopener noreferrer";
   }
 
   // الزر موجود أصلًا في index.html؛ نحدّث الرابط فقط ولا ننشئ الزر أو نراقب الصفحة كاملة.
