@@ -1,4 +1,5 @@
 (() => {
+  if (location.pathname.replace(/\/+$/, "") === "/absence.html") return;
   const ENDPOINT = "https://script.google.com/macros/s/AKfycbznAVdLw5KVYmESB6Dx4av84-UQi3lewoK2Si59UNf_03y9keQf3CNxtXu0KhGbudX7Ng/exec";
   let lastVersion = "";
   let busy = false;
