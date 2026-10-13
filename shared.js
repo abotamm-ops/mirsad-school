@@ -35,7 +35,7 @@
     });
 
     tableBody.innerHTML = teacherNames.map((teacher, rowIndex) => {
-      const cells = byTeacher.get(teacher).map(items => {
+      const cells = byTeacher.get(teacher).map((items, periodIndex) => {
         const inner = items.length ? items.map(item => {
           const title = item.title || item.subject || item.lessonTitle || "حصة";
           const classroom = item.class || item.lesson || item.className || "";
@@ -47,7 +47,7 @@
             (teams ? '<a class="teams" href="' + esc(teams) + '" target="_blank" rel="noopener noreferrer">🎥 Teams</a>' : '<span class="no-link">لا يوجد رابط Teams</span>') +
             '</div>';
         }).join("") : '<span class="empty">—</span>';
-        return '<td data-period="' + (indexes[byTeacher.get(teacher).indexOf(items)] || "") + '">' + inner + '</td>';
+        return '<td data-period="' + indexes[periodIndex] + '">' + inner + '</td>';
       }).join("");
       return '<tr data-teacher="' + esc(teacher) + '"><th class="teacher"><span class="num">' + (rowIndex+1) +
         '</span><span class="teacher-name">' + esc(teacher) + '</span></th>' + cells + '</tr>';
