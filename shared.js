@@ -1,5 +1,5 @@
 (() => {
-  if (location.pathname.replace(/\/+$/, "") === "/absence.html") return;
+  if (location.pathname.replace(/\/+$/, "") === "/absence.html" || new URLSearchParams(location.search).get("view") === "absence") return;
   const ENDPOINT = "https://script.google.com/macros/s/AKfycbznAVdLw5KVYmESB6Dx4av84-UQi3lewoK2Si59UNf_03y9keQf3CNxtXu0KhGbudX7Ng/exec";
   let lastVersion = "";
   let busy = false;
@@ -73,7 +73,7 @@
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(tr => (tr.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    banner.href = "/absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    banner.href = "/?view=absence&teachers=" + encodeURIComponent([...new Set(names)].join("|"));
     banner.target = "_blank";
     banner.rel = "noopener noreferrer";
   }
