@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مرصاد | رصد الغياب</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6f9;color:#18212b;font-family:Tahoma,Arial,sans-serif}
+header{background:#155e75;color:#fff;padding:18px}header h1{margin:0 0 6px;font-size:23px}header p{margin:0;font-size:13px;line-height:1.8}
+main{max-width:900px;margin:18px auto;padding:0 12px}.card{background:#fff;border:1px solid #dce5eb;border-radius:12px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-radius:8px;width:100%}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.type{display:flex;align-items:center;justify-content:center;min-height:48px;background:#f8fafc;cursor:pointer}.type input{width:auto;margin-left:7px}.type:has(input:checked){background:#e0f2fe;border-color:#0284c7;color:#075985}
+.primary{background:#0e7490;color:#fff;border:0;font-weight:bold;cursor:pointer}.primary:disabled{opacity:.45;cursor:not-allowed}.muted{color:#64748b;font-size:12px;line-height:1.8}.warning{background:#fff7df;border:1px solid #f1d68a;color:#854d0e;padding:11px;border-radius:9px;font-size:13px;line-height:1.8}.record{padding:11px 0;border-bottom:1px solid #e5eaf0}.record:last-child{border:0}.record strong{display:block;margin-bottom:4px}.empty{color:#64748b;text-align:center;padding:16px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.types{grid-template-columns:repeat(2,minmax(0,1fr))}header h1{font-size:20px}}
+</style>
+</head>
+<body>
+<header><h1>رصد غياب حصة أو يوم لمعلم</h1><p>صفحة مستقلة لرصد الغياب وأرشفته، منفصلة عن جدول الحصص ومزامنته.</p></header>
+<main>
+<section class="card">
+<div class="grid">
+<div><label for="teacher">اسم المعلم</label><select id="teacher"><option value="">جارٍ تحميل أسماء المعلمين…</option></select></div>
+<div><label for="date">تاريخ الرصد</label><input id="date" type="date" readonly></div>
+</div>
+<div style="margin-top:16px"><label>نوع الغياب</label>
+<div class="types">
+<label class="type"><input type="radio" name="absenceType" value="يوم كامل" checked>يوم كامل</label>
+<label class="type"><input type="radio" name="absenceType" value="حصة واحدة">حصة واحدة</label>
+<label class="type"><input type="radio" name="absenceType" value="حصتان">حصتان</label>
+<label class="type"><input type="radio" name="absenceType" value="3 حصص">3 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="4 حصص">4 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="5 حصص">5 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="6 حصص">6 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="7 حصص">7 حصص</label>
+</div></div>
+<div style="margin-top:14px"><label for="notes">ملاحظة (اختياري)</label><input id="notes" maxlength="250" placeholder="ملاحظة مختصرة إن وجدت"></div>
+<div class="warning" id="storageNotice" style="margin-top:14px">الحفظ المركزي للأرشيف يحتاج ربط قاعدة بيانات مستقلة. لن نسجل بيانات على هذا الجهاز فقط ثم نوهمك أنها تظهر في كل الأجهزة.</div>
+<div style="margin-top:12px"><button id="save" class="primary" disabled>اعتماد الغياب وحفظه في الأرشيف</button></div>
+<p class="muted">التاريخ يقتصر على اليوم الحالي. يجب منع تكرار تسجيل الغياب للمعلم نفسه في اليوم نفسه دون تنبيه.</p>
+</section>
+<section class="card"><h2 style="font-size:18px;margin-top:0">أرشيف الغياب</h2><div class="empty">سيظهر الأرشيف هنا بعد ربط التخزين المركزي.</div></section>
+</main>
+<script>
+(function(){
+ const today=new Date(); const local=new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
+ document.getElementById('date').value=local;
+ const params=new URLSearchParams(location.search);
+ const raw=params.get('teachers')||'';
+ const names=[...new Set(raw.split('|').map(x=>x.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+ const select=document.getElementById('teacher');
+ select.innerHTML='<option value="">اختر المعلم</option>'+names.map(n=>'<option value="'+n.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'">'+n.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</option>').join('');
+ if(!names.length){select.innerHTML='<option value="">لم تصل أسماء المعلمين من مرصاد</option>'}
+})();
+</script>
+</body></html>
