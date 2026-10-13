@@ -30,7 +30,7 @@ footer{font-size:12px;color:#64748b;text-align:center;padding:12px}
 </style></head>
 <body>
 <header><h1>مرصاد | جدول متابعة المعلمين</h1><p>كل معلم في صف، والحصص السبع في أعمدة واضحة. داخل كل خانة يظهر عنوان الدرس والفصل ورابط Teams.</p></header>
-<a id="absence-banner" href="https://mirsad-school.onrender.com/absence.html" target="_self" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;background:#b91c1c;color:white;padding:13px 16px;border-radius:10px;margin:12px auto;max-width:1776px;width:calc(100% - 24px);font:bold 15px Tahoma,Arial,sans-serif;box-shadow:0 2px 6px #00000012;position:relative;z-index:10;opacity:1;visibility:visible"><span>📋 رصد غياب حصة أو يوم لمعلم</span><span style="font-size:22px">←</span></a>
+<a id="absence-banner" href="https://mirsad-school.onrender.com/?view=absence" target="_self" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;background:#b91c1c;color:white;padding:13px 16px;border-radius:10px;margin:12px auto;max-width:1776px;width:calc(100% - 24px);font:bold 15px Tahoma,Arial,sans-serif;box-shadow:0 2px 6px #00000012;position:relative;z-index:10;opacity:1;visibility:visible"><span>📋 رصد غياب حصة أو يوم لمعلم</span><span style="font-size:22px">←</span></a>
 <main>
 <div class="notice">تنبيه: أوقات الحصص مرتبة حسب أوقات البداية المستخرجة من نقار. وجود رابط Teams لا يعني أن المعلم حاضر فعليًا داخل القاعة. هذه البيانات تخص المدرسة الحالية؛ لا تنشر روابطها للعامة قبل ضبط فصل بيانات كل مدرسة.</div>
 <div class="tools"><input id="search" placeholder="ابحث باسم المعلم أو عنوان الدرس أو الفصل"><span class="count" id="count">20 معلمًا</span></div>
@@ -41,7 +41,7 @@ const q=document.getElementById('search'), body=document.getElementById('body'),
 q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar');let n=0;for(const tr of body.rows){const hit=tr.innerText.toLocaleLowerCase('ar').includes(term);tr.hidden=!hit;if(hit)n++;}count.textContent=n+' معلم';});
 </script><script src="shared.js"></script><script>
 (() => {
-  if (location.pathname.replace(/\/+$/, "") === "/absence.html") return;
+  if (location.pathname.replace(/\/+$/, "") === "/absence.html" || new URLSearchParams(location.search).get("view") === "absence") return;
   const requiredStyles = {
     display: "flex",
     visibility: "visible",
@@ -81,7 +81,7 @@ q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar'
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(row => (row.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    const destination = "https://mirsad-school.onrender.com/absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    const destination = "https://mirsad-school.onrender.com/?view=absence&teachers=" + encodeURIComponent([...new Set(names)].join("|"));
     banner.href = destination;
     banner.target = "_self";
     banner.rel = "noopener noreferrer";
@@ -105,7 +105,7 @@ q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar'
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(row => (row.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    const destination = "https://mirsad-school.onrender.com/absence.html?teachers=" +
+    const destination = "https://mirsad-school.onrender.com/?view=absence&teachers=" +
       encodeURIComponent([...new Set(names)].join("|"));
     window.location.assign(destination);
   }, true);
@@ -209,7 +209,7 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
 <script>
 (() => {
   const path = location.pathname.replace(/\/+$/, "") || "/";
-  if (path !== "/absence.html") return;
+  if (path !== "/absence.html" && new URLSearchParams(location.search).get("view") !== "absence") return;
   const template = document.getElementById("absence-page-template");
   const codeElement = document.getElementById("absence-page-code");
   if (!template || !codeElement) {
