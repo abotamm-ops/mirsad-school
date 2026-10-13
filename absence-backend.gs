@@ -77,7 +77,7 @@ function parseRecordPayload_(p) {
   if (type === "حصص محددة" && lessons.length === 0) {
     return {ok:false,error:"حدد حصة واحدة على الأقل، أو اختر غياب يوم كامل"};
   }
-  return {ok:true,record:{teacher:teacher,date:date,type:type,notes:notes,lessons:lessons}};
+  return {ok:true,record:{teacher:teacher,date:date,type:type,notes:notes,lateTime:lateTime,lessons:lessons}};
 }
 
 function addRecord_(p) {
