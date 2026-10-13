@@ -30,7 +30,7 @@ footer{font-size:12px;color:#64748b;text-align:center;padding:12px}
 </style></head>
 <body>
 <header><h1>مرصاد | جدول متابعة المعلمين</h1><p>كل معلم في صف، والحصص السبع في أعمدة واضحة. داخل كل خانة يظهر عنوان الدرس والفصل ورابط Teams.</p></header>
-<a id="absence-banner" href="/absence.html" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;background:#b91c1c;color:white;padding:13px 16px;border-radius:10px;margin:12px auto;max-width:1776px;width:calc(100% - 24px);font:bold 15px Tahoma,Arial,sans-serif;box-shadow:0 2px 6px #00000012;position:relative;z-index:10;opacity:1;visibility:visible"><span>📋 رصد غياب حصة أو يوم لمعلم</span><span style="font-size:22px">←</span></a>
+<a id="absence-banner" href="https://mirsad-school.onrender.com/absence.html" target="_self" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;background:#b91c1c;color:white;padding:13px 16px;border-radius:10px;margin:12px auto;max-width:1776px;width:calc(100% - 24px);font:bold 15px Tahoma,Arial,sans-serif;box-shadow:0 2px 6px #00000012;position:relative;z-index:10;opacity:1;visibility:visible"><span>📋 رصد غياب حصة أو يوم لمعلم</span><span style="font-size:22px">←</span></a>
 <main>
 <div class="notice">تنبيه: أوقات الحصص مرتبة حسب أوقات البداية المستخرجة من نقار. وجود رابط Teams لا يعني أن المعلم حاضر فعليًا داخل القاعة. هذه البيانات تخص المدرسة الحالية؛ لا تنشر روابطها للعامة قبل ضبط فصل بيانات كل مدرسة.</div>
 <div class="tools"><input id="search" placeholder="ابحث باسم المعلم أو عنوان الدرس أو الفصل"><span class="count" id="count">20 معلمًا</span></div>
@@ -80,7 +80,10 @@ q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar'
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(row => (row.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    banner.href = "/absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    const destination = "https://mirsad-school.onrender.com/absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    banner.href = destination;
+    banner.target = "_self";
+    banner.rel = "noopener noreferrer";
     keepVisible(banner);
 
     if (observedBanner !== banner) {
@@ -92,6 +95,20 @@ q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar'
   }
 
   ensureAbsenceBanner();
+
+  // فتح صفحة رصد الغياب في نفس التبويب لتجنب حظر فتح نوافذ جديدة.
+  document.addEventListener("click", event => {
+    const banner = event.target.closest && event.target.closest("#absence-banner");
+    if (!banner) return;
+    event.preventDefault();
+    const names = [...document.querySelectorAll("#body tr[data-teacher]")]
+      .map(row => (row.getAttribute("data-teacher") || "").trim())
+      .filter(Boolean);
+    const destination = "https://mirsad-school.onrender.com/absence.html?teachers=" +
+      encodeURIComponent([...new Set(names)].join("|"));
+    window.location.assign(destination);
+  }, true);
+
   new MutationObserver(ensureAbsenceBanner).observe(document.body, { childList: true, subtree: true });
 })();
 </script></body></html>
