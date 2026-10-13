@@ -27,10 +27,18 @@ function addRecord_(p) {
 
   // تفاصيل الحصص القادمة من جدول مرصاد، مع إبقاء توافق السجلات القديمة.
   let lessons = [];
-  const hasLessonsField = Object.prototype.hasOwnProperty.call(p, "lessons") && String(p.lessons || "").trim() !== "";
+  let lessonsRaw = String(p.lessons || "");
+  if (p.lessons64) {
+    try {
+      lessonsRaw = Utilities.newBlob(Utilities.base64Decode(String(p.lessons64))).getDataAsString("UTF-8");
+    } catch (_) {
+      return {ok:false,error:"تعذر فك ترميز تفاصيل الحصص"};
+    }
+  }
+  const hasLessonsField = lessonsRaw.trim() !== "";
   if (hasLessonsField) {
     try {
-      const parsed = JSON.parse(String(p.lessons));
+      const parsed = JSON.parse(lessonsRaw);
       if (!Array.isArray(parsed)) return {ok:false,error:"تفاصيل الحصص غير صالحة"};
       lessons = parsed.slice(0,50).map(item => {
         const period = Number(item && item.period);
