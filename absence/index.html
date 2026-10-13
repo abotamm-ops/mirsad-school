@@ -356,6 +356,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
     teacherSelect.value=record.teacher;
     dateInput.value=record.date || localDate;
     notesInput.value=record.notes || "";
+    lateTimeInput.value=record.lateTime || "";
     const typeValue=["يوم كامل","حصص محددة","تأخر"].includes(record.type) ? record.type : "حصص محددة";
     document.querySelector('input[name="absenceType"][value="'+typeValue+'"]').checked=true;
     $("editingNote").classList.add("visible");
@@ -418,7 +419,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
       }
       render(data.records||[]);
       resetForm();
-      setStatus(wasEditing ? "تم تحديث سجل الغياب." : "تم حفظ الغياب وربطه بحصص المواد.","ok");
+      setStatus(wasEditing ? "تم تحديث السجل." : (type==="تأخر" ? "تم حفظ سجل التأخر." : "تم حفظ الغياب وربطه بحصص المواد."),"ok");
       refreshSaveEnabled();
     });
   }
