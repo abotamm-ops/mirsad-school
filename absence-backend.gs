@@ -29,6 +29,7 @@ function parseRecordPayload_(p) {
   const date = String(p.date || "").trim();
   const type = String(p.type || "").trim();
   const notes = String(p.notes || "").trim().slice(0,250);
+  const lateTime = String(p.lateTime || "").trim().slice(0,20);
 
   if (!teacher || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !ALLOWED_TYPES.includes(type)) {
     return {ok:false,error:"بيانات المعلم أو التاريخ أو نوع الغياب غير صحيحة"};
