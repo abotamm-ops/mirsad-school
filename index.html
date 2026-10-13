@@ -220,10 +220,26 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
   document.title = "مرصاد | رصد الغياب";
   document.documentElement.lang = "ar";
   document.documentElement.dir = "rtl";
-  document.body.replaceChildren(template.content.cloneNode(true));
+  // لا نستبدل body بالكامل؛ نخفي واجهة الجدول فقط ونعرض نموذج الغياب داخل حاوية مستقلة.
+  const homeNodes = [
+    document.querySelector("body > header"),
+    document.querySelector("body > a#absence-banner"),
+    document.querySelector("body > main"),
+    document.querySelector("body > footer")
+  ].filter(Boolean);
+  homeNodes.forEach(node => node.style.setProperty("display", "none", "important"));
+
+  let absenceApp = document.getElementById("absence-app");
+  if (absenceApp) absenceApp.remove();
+  absenceApp = document.createElement("div");
+  absenceApp.id = "absence-app";
+  absenceApp.dir = "rtl";
+  absenceApp.appendChild(template.content.cloneNode(true));
+  document.body.appendChild(absenceApp);
+
   const script = document.createElement("script");
   script.textContent = archiveCode;
-  document.body.appendChild(script);
+  absenceApp.appendChild(script);
 })();
 </script>
 </body></html>
