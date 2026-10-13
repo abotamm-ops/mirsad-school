@@ -157,6 +157,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
   function renderTeacherLessons() {
     const teacher = teacherSelect.value;
     const panel = $("lessonPicker"), options = $("lessonOptions"), hint = $("lessonHint"), count = $("lessonCount");
+    if(mode() === "تأخر") { panel.hidden = true; options.innerHTML = ""; count.textContent = ""; refreshSaveEnabled(); return; }
     if(!teacher) {
       panel.hidden = true; options.innerHTML = ""; count.textContent = "";
       refreshSaveEnabled();
@@ -213,7 +214,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
 
   function setTeacherNames(list) {
     const current = teacherSelect.value;
-    names = [...new Set((list || []).map(x => normalizeName(x)).filter(Boolean))]
+    names = [...new Set([...(names || []), ...(list || [])].map(x => normalizeName(x)).filter(Boolean))]
       .sort((a,b)=>a.localeCompare(b,"ar"));
     teacherSelect.innerHTML = '<option value="">اختر المعلم</option>' +
       names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join("");
@@ -224,6 +225,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
       teacherSelect.value = current;
     }
     renderTeacherLessons();
+    if (archiveAccessGranted) render(archiveRecords);
     refreshSaveEnabled();
   }
 
@@ -342,7 +344,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
     teacherSelect.value=record.teacher;
     dateInput.value=record.date || localDate;
     notesInput.value=record.notes || "";
-    const typeValue=record.type==="يوم كامل" ? "يوم كامل" : "حصص محددة";
+    const typeValue=["يوم كامل","حصص محددة","تأخر"].includes(record.type) ? record.type : "حصص محددة";
     document.querySelector('input[name="absenceType"][value="'+typeValue+'"]').checked=true;
     $("editingNote").classList.add("visible");
     save.textContent="حفظ التعديلات";
@@ -373,9 +375,9 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
     if(!accessKey){setStatus("أدخل رمز الدخول أولًا.","error");return;}
     if(!teacher){setStatus("اختر اسم المعلم أولًا.","error");return;}
     if(!date){setStatus("اختر تاريخ الغياب.","error");return;}
-    if(!scheduleLoaded){setStatus("انتظر تحميل جدول المواد قبل الحفظ.","error");return;}
+    if(type!=="تأخر" && !scheduleLoaded){setStatus("انتظر تحميل جدول المواد قبل الحفظ.","error");return;}
     const teacherLessons=getTeacherLessons(teacher);
-    const selectedLessons=type==="يوم كامل" ? teacherLessons : getSelectedLessons();
+    const selectedLessons=type==="يوم كامل" ? teacherLessons : (type==="حصص محددة" ? getSelectedLessons() : []);
     if(type==="حصص محددة" && !selectedLessons.length) {
       setStatus("حدد حصة واحدة على الأقل، أو اختر غياب يوم كامل.","error");
       return;
@@ -389,6 +391,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
       date:date,
       type:type,
       notes:notesInput.value.trim(),
+      lateTime:lateTimeInput.value,
       lessons64:lessonsPayload(storedLessons)
     };
     if(wasEditing) payload.id=editingRecord.id;
