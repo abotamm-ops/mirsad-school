@@ -49,10 +49,46 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
   const today = new Date(), localDate = new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
   $("date").value = localDate;
   const params = new URLSearchParams(location.search);
-  const names = [...new Set((params.get("teachers")||"").split("|").map(x=>x.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
+  let names = [...new Set((params.get("teachers")||"").split("|").map(x=>x.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
   const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  teacherSelect.innerHTML = '<option value="">اختر المعلم</option>' + names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join("");
-  if (!names.length) teacherSelect.innerHTML = '<option value="">لم تصل أسماء المعلمين من مرصاد</option>';
+  function setTeacherNames(list) {
+    names = [...new Set((list || []).map(x => String(x || "").trim()).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"ar"));
+    teacherSelect.innerHTML = '<option value="">اختر المعلم</option>' +
+      names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join("");
+    if (!names.length) {
+      teacherSelect.innerHTML = '<option value="">تعذر تحميل أسماء المعلمين</option>';
+      setStatus("لم تصل أسماء المعلمين من جدول مرصاد. أعد تحميل الصفحة أو افتحها من زر رصد الغياب داخل الجدول.", "error");
+      save.disabled = true;
+    } else if (!$("accessCode").value.trim()) {
+      setStatus("تم تحميل " + names.length + " اسمًا من جدول مرصاد. أدخل رمز الأرشيف لعرض السجلات وتفعيل الحفظ.", "");
+    }
+  }
+  function loadTeacherNamesFromSchedule() {
+    if (names.length) { setTeacherNames(names); return; }
+    teacherSelect.innerHTML = '<option value="">جارٍ جلب أسماء المعلمين من مرصاد…</option>';
+    const endpoint = "https://script.google.com/macros/s/AKfycbznAVdLw5KVYmESB6Dx4av84-UQi3lewoK2Si59UNf_03y9keQf3CNxtXu0KhGbudX7Ng/exec";
+    const callbackName = "__mirsadAbsenceTeachers_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    let finished = false;
+    const timeout = setTimeout(() => finish(null), 10000);
+    function finish(response) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+      script.remove();
+      if (response && response.ok && response.payload && Array.isArray(response.payload.lessons)) {
+        setTeacherNames(response.payload.lessons.map(item => item && item.teacher));
+      } else {
+        setTeacherNames([]);
+      }
+    }
+    window[callbackName] = finish;
+    script.onerror = () => finish(null);
+    script.src = endpoint + "?callback=" + encodeURIComponent(callbackName) + "&_=" + Date.now();
+    document.head.appendChild(script);
+  }
   function setStatus(message, kind) { status.textContent=message; status.className="status"+(kind?" "+kind:""); }
   function jsonp(params, callback) {
     const cb="__absence_"+Date.now()+"_"+Math.random().toString(36).slice(2);
@@ -94,6 +130,7 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
   $("accessCode").addEventListener("keydown",e=>{if(e.key==="Enter")loadArchive()});
 
   loadArchive();
+  loadTeacherNamesFromSchedule();
 })();
 </script>
 </body></html>
