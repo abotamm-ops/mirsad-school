@@ -14,7 +14,7 @@ main{max-width:950px;margin:18px auto;padding:0 12px}
 label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}
 select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-radius:8px;width:100%}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .type{display:flex;align-items:center;justify-content:center;min-height:48px;background:#f8fafc;cursor:pointer;border:1px solid #dce5eb;border-radius:8px}
 .type input{width:auto;margin-left:7px;flex:0 0 auto}
 .type:has(input:checked){background:#e0f2fe;border-color:#0284c7;color:#075985}
@@ -23,6 +23,18 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
 .secondary{background:#eef2f6;color:#334155;border:1px solid #cbd5df;font-weight:bold;cursor:pointer}
 .danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-weight:bold;cursor:pointer}
 .record-actions{display:flex;gap:8px;margin-top:10px}
+.teacher-summary{border:1px solid #dce5eb;border-radius:10px;margin:9px 0;background:#fff;overflow:hidden}
+.teacher-summary>summary{cursor:pointer;list-style:none;padding:12px;display:flex;align-items:center;gap:10px;background:#f8fafc}
+.teacher-summary>summary::-webkit-details-marker{display:none}
+.teacher-summary>summary:after{content:"＋";margin-right:auto;color:#0e7490;font-size:18px;font-weight:bold}
+.teacher-summary[open]>summary:after{content:"−"}
+.teacher-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%}
+.teacher-line strong{font-size:14px}
+.teacher-stats{display:flex;flex-wrap:wrap;gap:6px}
+.stat-chip{display:inline-block;background:#e0f2fe;color:#075985;padding:4px 8px;border-radius:20px;font-size:11px;white-space:nowrap}
+.stat-chip.late{background:#fef3c7;color:#92400e}
+.teacher-records{padding:0 12px 8px}
+.teacher-records .record{padding:12px 0}
 .record-actions button{width:auto;padding:8px 12px;font-size:12px}
 .muted{color:#64748b;font-size:12px;line-height:1.8}
 .status{padding:11px;border-radius:9px;font-size:13px;line-height:1.8;margin-top:14px;background:#e0f2fe;color:#075985}
@@ -43,14 +55,14 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
 .lesson-option.readonly{cursor:default;background:#f8fafc}
 .editing-note{display:none;background:#fff7df;color:#854d0e;border:1px solid #f1d68a;padding:9px;border-radius:8px;margin-bottom:12px;font-size:13px}
 .editing-note.visible{display:block}
-@media(max-width:600px){.grid{grid-template-columns:1fr}header h1{font-size:20px}.record-actions button{flex:1}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.types{grid-template-columns:1fr}header h1{font-size:20px}.record-actions button{flex:1}.teacher-line{align-items:flex-start}.teacher-summary>summary{padding:10px}}
 </style>
 </head>
 <body>
 <header>
 <a href="https://mirsad-school.onrender.com/" style="display:inline-block;color:#fff;text-decoration:none;background:#0e7490;padding:8px 11px;border-radius:7px;font:bold 12px Tahoma;margin-bottom:12px">← العودة إلى الجدول</a>
 <h1>رصد غياب حصة أو يوم لمعلم</h1>
-<p>تحديد اليوم كاملًا أو اختيار الحصص الغائبة من جدول المواد، مع أرشفة قابلة للتعديل والحذف.</p>
+<p>سجّل غياب اليوم أو حصص محددة أو التأخر، وتابع إحصائية كل معلم من القائمة أسفل الصفحة.</p>
 </header>
 <main>
 <section class="card">
@@ -62,7 +74,8 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
 </div>
 <div style="margin-top:16px"><label>نوع الغياب</label><div class="types">
 <label class="type"><input type="radio" name="absenceType" value="يوم كامل" checked>غياب يوم كامل</label>
-<label class="type"><input type="radio" name="absenceType" value="حصص محددة">تحديد الحصص الغائبة</label>
+<label class="type"><input type="radio" name="absenceType" value="حصص محددة">غياب حصص محددة</label>
+<label class="type"><input type="radio" name="absenceType" value="تأخر">تأخر</label>
 </div></div>
 <section id="lessonPicker" class="lesson-picker" hidden>
 <label>حصص المعلم حسب جدول المواد في آخر تقرير نقار</label>
@@ -70,15 +83,15 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
 <div id="lessonOptions" class="lesson-options"></div>
 <div id="lessonCount" class="muted" style="margin-top:8px"></div>
 </section>
-<div style="margin-top:14px"><label for="notes">ملاحظة (اختياري)</label><input id="notes" maxlength="250" placeholder="ملاحظة مختصرة إن وجدت"></div>
+<div class="grid" style="margin-top:14px"><div><label for="lateTime">وقت الوصول عند التأخر (اختياري)</label><input id="lateTime" type="time"></div><div><label for="notes">ملاحظة (اختياري)</label><input id="notes" maxlength="250" placeholder="ملاحظة مختصرة إن وجدت"></div></div>
 <div id="status" class="status">أدخل رمز الأرشيف لتحميل السجلات، ثم اختر المعلم.</div>
 <div class="grid" style="margin-top:12px">
 <button id="save" class="primary" disabled>اعتماد الغياب وحفظه في الأرشيف</button>
 <button id="cancelEdit" class="secondary" type="button" hidden>إلغاء التعديل</button>
 </div>
-<p class="muted">عند تحديد الحصص، اختر أي عدد تريده من قائمة حصص المعلم. ويمكن تعديل السجل أو حذفه من الأرشيف بعد حفظه.</p>
+<p class="muted">أسفل النموذج تظهر أسماء المعلمين مع عدد سجلات الغياب والتأخر. اضغط اسم المعلم لعرض سجلاته وتعديلها أو حذفها.</p>
 </section>
-<section class="card"><h2 style="font-size:18px;margin-top:0">أرشيف الغياب</h2><div id="archive" class="empty">أدخل رمز الدخول لعرض الأرشيف.</div></section>
+<section class="card"><h2 style="font-size:18px;margin-top:0">المعلمون وإحصائيات الغياب والتأخر</h2><p class="muted">اضغط على اسم أي معلم لعرض جميع سجلاته. تظهر هنا أسماء جميع المعلمين حتى لو لم يُسجّل عليهم شيء.</p><div id="archive" class="empty">أدخل رمز الدخول لعرض الإحصائيات.</div></section>
 </main>
 <script>
 (function(){
@@ -86,7 +99,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
   const configured = /^https:\/\/script\.google\.com\/macros\/s\//.test(API_URL);
   const $ = id => document.getElementById(id);
   const status = $("status"), save = $("save"), teacherSelect = $("teacher"), archiveBox = $("archive");
-  const dateInput = $("date"), notesInput = $("notes"), cancelEdit = $("cancelEdit");
+  const dateInput = $("date"), notesInput = $("notes"), lateTimeInput = $("lateTime"), cancelEdit = $("cancelEdit");
   const today = new Date(), localDate = new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
   dateInput.value = localDate;
   const params = new URLSearchParams(location.search);
