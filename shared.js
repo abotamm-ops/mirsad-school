@@ -66,36 +66,19 @@
   syncOnce();
   setInterval(syncOnce, 15000);
 
-  function installAbsenceBanner() {
-    const root = document.querySelector("main");
-    if (!root) return;
-    let banner = document.getElementById("absence-banner");
-    if (!banner) {
-      banner = document.createElement("a");
-      banner.id = "absence-banner";
-      banner.href = "absence.html";
-      banner.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;background:#b91c1c;color:white;padding:13px 16px;border-radius:10px;margin:0 0 10px;font:bold 15px Tahoma,Arial,sans-serif;box-shadow:0 2px 6px #00000012";
-      banner.innerHTML = '<span>📋 رصد غياب حصة أو يوم لمعلم</span><span style="font-size:22px">←</span>';
-      const place = root.querySelector(".tools") || root.querySelector(".table-wrap") || root.firstChild;
-      root.insertBefore(banner, place);
-    }
-    function updateLink() {
-      const names = [...document.querySelectorAll("#body tr[data-teacher]")].map(tr => tr.getAttribute("data-teacher")).filter(Boolean);
-      banner.href = "absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
-    }
-    updateLink();
-    const body = document.getElementById("body");
-    if (body && window.MutationObserver && !banner._mirsadNamesObserver) {
-      banner._mirsadNamesObserver = new MutationObserver(updateLink);
-      banner._mirsadNamesObserver.observe(body, {childList:true,subtree:true});
-    }
+  function updateAbsenceLink() {
+    const banner = document.getElementById("absence-banner");
+    if (!banner) return;
+    const names = [...document.querySelectorAll("#body tr[data-teacher]")]
+      .map(tr => (tr.getAttribute("data-teacher") || "").trim())
+      .filter(Boolean);
+    banner.href = "absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", installAbsenceBanner, {once:true});
-  else installAbsenceBanner();
-  const mainRoot = document.querySelector("main");
-  if (mainRoot && window.MutationObserver) {
-    new MutationObserver(() => {
-      if (!document.getElementById("absence-banner")) installAbsenceBanner();
-    }).observe(mainRoot, {childList:true, subtree:true});
+
+  // الزر موجود أصلًا في index.html؛ نحدّث الرابط فقط ولا ننشئ الزر أو نراقب الصفحة كاملة.
+  updateAbsenceLink();
+  const tableBody = document.getElementById("body");
+  if (tableBody && window.MutationObserver) {
+    new MutationObserver(updateAbsenceLink).observe(tableBody, { childList: true, subtree: true });
   }
 })();
