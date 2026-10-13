@@ -98,19 +98,7 @@ q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar'
   ensureAbsenceBanner();
 
   // فتح صفحة رصد الغياب في نفس التبويب لتجنب حظر فتح نوافذ جديدة.
-  document.addEventListener("click", event => {
-    const banner = event.target.closest && event.target.closest("#absence-banner");
-    if (!banner) return;
-    event.preventDefault();
-    const names = [...document.querySelectorAll("#body tr[data-teacher]")]
-      .map(row => (row.getAttribute("data-teacher") || "").trim())
-      .filter(Boolean);
-    const query = new URLSearchParams();
-    query.set("view", "absence");
-    if (names.length) query.set("teachers", [...new Set(names)].join("|"));
-    window.location.assign("https://mirsad-school.onrender.com/?" + query.toString());
-  }, true);
-
+  // اترك للمتصفح تنفيذ href الطبيعي؛ لا نمنع الضغط ولا نعيد التوجيه برمجيًا.
   new MutationObserver(ensureAbsenceBanner).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
