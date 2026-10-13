@@ -207,8 +207,8 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
   }
 
   function refreshSaveEnabled() {
-    if(!archiveAccessGranted || !teacherSelect.value || !scheduleLoaded) { save.disabled=true; return; }
-    if(mode()!=="يوم كامل" && getSelectedLessons().length===0) { save.disabled=true; return; }
+    if(!archiveAccessGranted || !teacherSelect.value || (mode() !== "تأخر" && !scheduleLoaded)) { save.disabled=true; return; }
+    if(mode()==="حصص محددة" && getSelectedLessons().length===0) { save.disabled=true; return; }
     save.disabled=false;
   }
 
@@ -288,28 +288,40 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
 
   function render(records) {
     archiveRecords = Array.isArray(records) ? records : [];
-    if(!archiveRecords.length) {
+    const allTeachers = [...new Set([...(names || []), ...archiveRecords.map(r=>normalizeName(r.teacher))].map(normalizeName).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"ar"));
+    if(!allTeachers.length) {
       archiveBox.className="empty";
-      archiveBox.textContent="لا توجد سجلات غياب في الأرشيف.";
+      archiveBox.textContent=archiveAccessGranted ? "لم تصل أسماء المعلمين بعد." : "أدخل رمز الدخول لعرض الإحصائيات.";
       return;
     }
     archiveBox.className="";
-    archiveBox.innerHTML=archiveRecords.map(r=>{
-      const lessonRows = Array.isArray(r.lessons) && r.lessons.length ? r.lessons.map(l=>
-        '<div class="record-meta">الحصة '+esc(l.period)+': '+esc(l.subject)+
-        (l.classroom?' — الفصل: '+esc(l.classroom):'')+
-        (l.time?' — '+esc(l.time):'')+'</div>'
-      ).join("") : '<div class="record-meta">لا توجد تفاصيل حصص محفوظة لهذا السجل القديم.</div>';
-      return '<article class="record" data-record-id="'+esc(r.id)+'">'+
-        '<strong>'+esc(r.teacher)+' — '+esc(r.type)+'</strong>'+
-        '<div class="record-meta">التاريخ: '+esc(r.date)+
-        (r.notes?'<br>ملاحظة: '+esc(r.notes):'')+
-        '<br>وقت التسجيل: '+esc(r.createdAt?new Date(r.createdAt).toLocaleString("ar-SA"):"غير محدد")+'</div>'+
-        lessonRows+
-        '<div class="record-actions">'+
-        '<button type="button" class="secondary" data-action="edit" data-id="'+esc(r.id)+'">تعديل</button>'+
-        '<button type="button" class="danger" data-action="delete" data-id="'+esc(r.id)+'">حذف</button>'+
-        '</div></article>';
+    archiveBox.innerHTML=allTeachers.map(teacher=>{
+      const rows = archiveRecords.filter(r=>normalizeName(r.teacher)===teacher);
+      const absences = rows.filter(r=>r.type!=="تأخر");
+      const latenesses = rows.filter(r=>r.type==="تأخر");
+      const details = rows.length ? rows.map(r=>{
+        const lessonRows = Array.isArray(r.lessons) && r.lessons.length ? r.lessons.map(l=>
+          '<div class="record-meta">الحصة '+esc(l.period)+': '+esc(l.subject)+
+          (l.classroom?' — الفصل: '+esc(l.classroom):'')+
+          (l.time?' — '+esc(l.time):'')+'</div>'
+        ).join("") : (r.type==="تأخر" ? "" : '<div class="record-meta">لا توجد تفاصيل حصص محفوظة لهذا السجل القديم.</div>');
+        return '<article class="record" data-record-id="'+esc(r.id)+'">'+
+          '<strong>'+esc(r.type==="تأخر" ? "تأخر" : "غياب — "+r.type)+'</strong>'+
+          '<div class="record-meta">التاريخ: '+esc(r.date)+
+          (r.lateTime?'<br>وقت الوصول: '+esc(r.lateTime):'')+
+          (r.notes?'<br>ملاحظة: '+esc(r.notes):'')+
+          '<br>وقت التسجيل: '+esc(r.createdAt?new Date(r.createdAt).toLocaleString("ar-SA"):"غير محدد")+'</div>'+
+          lessonRows+
+          '<div class="record-actions">'+
+          '<button type="button" class="secondary" data-action="edit" data-id="'+esc(r.id)+'">تعديل</button>'+
+          '<button type="button" class="danger" data-action="delete" data-id="'+esc(r.id)+'">حذف</button>'+
+          '</div></article>';
+      }).join("") : '<div class="empty">لا توجد سجلات غياب أو تأخر لهذا المعلم.</div>';
+      return '<details class="teacher-summary"><summary><div class="teacher-line"><strong>'+esc(teacher)+'</strong>'+
+        '<span class="teacher-stats"><span class="stat-chip">سجلات الغياب: '+absences.length+'</span>'+
+        '<span class="stat-chip late">مرات التأخر: '+latenesses.length+'</span></span></div></summary>'+
+        '<div class="teacher-records">'+details+'</div></details>';
     }).join("");
   }
 
@@ -359,6 +371,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
     teacherSelect.value="";
     dateInput.value=localDate;
     notesInput.value="";
+    lateTimeInput.value="";
     document.querySelector('input[name="absenceType"][value="يوم كامل"]').checked=true;
     $("editingNote").classList.remove("visible");
     save.textContent="اعتماد الغياب وحفظه في الأرشيف";
