@@ -68,7 +68,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
 <section class="card">
 <div id="editingNote" class="editing-note">أنت تعدّل سجلًا محفوظًا. احفظ التغييرات أو ألغِ التعديل للعودة إلى التسجيل الجديد.</div>
 <div class="grid">
-<div><label for="accessCode">رمز دخول الأرشيف</label><input id="accessCode" type="password" autocomplete="current-password" placeholder="أدخل الرمز المتفق عليه"></div>
+<div><label for="accessCode">رمز دخول الأرشيف</label><input id="accessCode" type="password" autocomplete="current-password" placeholder="أدخل الرمز المتفق عليه"><div class="muted">سيُحفظ الرمز في هذا المتصفح بعد نجاح التحقق حتى لا يطلب عند تحديث الصفحة. لا تستخدم ذلك على جهاز مشترك.</div></div>
 <div><label for="teacher">اسم المعلم</label><select id="teacher"><option value="">جارٍ تحميل أسماء المعلمين…</option></select></div>
 <div><label for="date">تاريخ الرصد</label><input id="date" type="date"></div>
 </div>
@@ -113,6 +113,11 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
   const normalizeName = s => String(s || "").trim().replace(/\s+/g," ");
   const mode = () => document.querySelector('input[name="absenceType"]:checked').value;
   const key = () => $("accessCode").value.trim();
+  const REMEMBER_KEY = "mirsad_archive_password_v1";
+  try {
+    const rememberedKey = localStorage.getItem(REMEMBER_KEY);
+    if (rememberedKey) $("accessCode").value = rememberedKey;
+  } catch (_) {}
 
   function setStatus(message, kind) {
     status.textContent=message;
@@ -337,11 +342,16 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
     jsonp({action:"list",key:key()},data=>{
       if(!data.ok) {
         archiveAccessGranted=false;
+        if (String(data.error || "").includes("رمز الدخول غير صحيح")) {
+          try { localStorage.removeItem(REMEMBER_KEY); } catch (_) {}
+          $("accessCode").value = "";
+        }
         setStatus(data.error||"تعذر تحميل الأرشيف","error");
         refreshSaveEnabled();
         return;
       }
       archiveAccessGranted=true;
+      try { localStorage.setItem(REMEMBER_KEY, key()); } catch (_) {}
       render(data.records||[]);
       setStatus("تم الاتصال بالأرشيف المشترك.","ok");
       refreshSaveEnabled();
