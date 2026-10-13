@@ -105,9 +105,15 @@ q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar'
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(row => (row.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    const destination = "https://mirsad-school.onrender.com/?view=absence&teachers=" +
-      encodeURIComponent([...new Set(names)].join("|"));
-    window.location.assign(destination);
+    if (typeof window.__mirsadShowAbsence === "function") {
+      window.__mirsadShowAbsence(names);
+    } else {
+      const query = new URLSearchParams();
+      query.set("view", "absence");
+      if (names.length) query.set("teachers", [...new Set(names)].join("|"));
+      history.pushState(null, "", "/?" + query.toString());
+      window.location.reload();
+    }
   }, true);
 
   new MutationObserver(ensureAbsenceBanner).observe(document.body, { childList: true, subtree: true });
@@ -208,38 +214,90 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
 </script>
 <script>
 (() => {
-  const path = location.pathname.replace(/\/+$/, "") || "/";
-  if (path !== "/absence.html" && new URLSearchParams(location.search).get("view") !== "absence") return;
+  const cleanPath = () => location.pathname.replace(/\/+$/, "") || "/";
+  const params = new URLSearchParams(location.search);
+  const shouldOpenAtStart = cleanPath() === "/absence.html" || params.get("view") === "absence";
   const template = document.getElementById("absence-page-template");
   const codeElement = document.getElementById("absence-page-code");
-  if (!template || !codeElement) {
-    document.body.innerHTML = '<main style="font-family:Tahoma;direction:rtl;padding:24px"><h2>تعذر فتح نموذج الغياب</h2><p>لم يتم تحميل مكونات الصفحة المضمّنة.</p></main>';
-    return;
+  let absenceApp = null;
+  let hiddenNodes = [];
+
+  function tableTeacherNames() {
+    return [...new Set([...document.querySelectorAll("#body tr[data-teacher]")]
+      .map(row => (row.getAttribute("data-teacher") || "").trim())
+      .filter(Boolean))];
   }
-  const archiveCode = codeElement.textContent;
-  document.title = "مرصاد | رصد الغياب";
-  document.documentElement.lang = "ar";
-  document.documentElement.dir = "rtl";
-  // لا نستبدل body بالكامل؛ نخفي واجهة الجدول فقط ونعرض نموذج الغياب داخل حاوية مستقلة.
-  const homeNodes = [
-    document.querySelector("body > header"),
-    document.querySelector("body > a#absence-banner"),
-    document.querySelector("body > main"),
-    document.querySelector("body > footer")
-  ].filter(Boolean);
-  homeNodes.forEach(node => node.style.setProperty("display", "none", "important"));
 
-  let absenceApp = document.getElementById("absence-app");
-  if (absenceApp) absenceApp.remove();
-  absenceApp = document.createElement("div");
-  absenceApp.id = "absence-app";
-  absenceApp.dir = "rtl";
-  absenceApp.appendChild(template.content.cloneNode(true));
-  document.body.appendChild(absenceApp);
+  function saveUrl(names, mode) {
+    const query = new URLSearchParams();
+    query.set("view", "absence");
+    if (names.length) query.set("teachers", names.join("|"));
+    history[mode + "State"](null, "", "/?" + query.toString());
+  }
 
-  const script = document.createElement("script");
-  script.textContent = archiveCode;
-  absenceApp.appendChild(script);
+  function restoreTable() {
+    if (absenceApp) absenceApp.remove();
+    absenceApp = null;
+    hiddenNodes.forEach(({node, display, priority}) => {
+      if (display) node.style.setProperty("display", display, priority);
+      else node.style.removeProperty("display");
+    });
+    hiddenNodes = [];
+    history.replaceState(null, "", "/");
+    document.title = "مرصاد | جدول المعلمين والحصص";
+  }
+
+  function showAbsence(names, fromClick) {
+    if (absenceApp) return;
+    if (!template || !codeElement) {
+      alert("تعذر تحميل نموذج الغياب. حدّث الصفحة وحاول مرة أخرى.");
+      return;
+    }
+    const uniqueNames = [...new Set((names || tableTeacherNames()).map(n => String(n).trim()).filter(Boolean))];
+    if (fromClick || cleanPath() === "/absence.html") saveUrl(uniqueNames, fromClick ? "push" : "replace");
+    else if (params.get("view") !== "absence") saveUrl(uniqueNames, "push");
+
+    document.title = "مرصاد | رصد الغياب";
+    document.documentElement.lang = "ar";
+    document.documentElement.dir = "rtl";
+
+    const homeNodes = [
+      document.querySelector("body > header"),
+      document.querySelector("body > a#absence-banner"),
+      document.querySelector("body > main"),
+      document.querySelector("body > footer")
+    ].filter(Boolean);
+    hiddenNodes = homeNodes.map(node => ({
+      node,
+      display: node.style.getPropertyValue("display"),
+      priority: node.style.getPropertyPriority("display")
+    }));
+    homeNodes.forEach(node => node.style.setProperty("display", "none", "important"));
+
+    absenceApp = document.createElement("div");
+    absenceApp.id = "absence-app";
+    absenceApp.dir = "rtl";
+    absenceApp.style.cssText = "display:block;min-height:100vh;background:#f3f6f9;padding:12px;position:relative;z-index:1";
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.textContent = "← العودة إلى جدول الحصص";
+    back.style.cssText = "display:block;width:100%;max-width:900px;margin:0 auto 12px;padding:12px;border:0;border-radius:8px;background:#155e75;color:white;font:bold 14px Tahoma,Arial,sans-serif;cursor:pointer";
+    back.addEventListener("click", restoreTable);
+    absenceApp.appendChild(back);
+    absenceApp.appendChild(template.content.cloneNode(true));
+    document.body.appendChild(absenceApp);
+
+    const script = document.createElement("script");
+    script.textContent = codeElement.textContent;
+    absenceApp.appendChild(script);
+  }
+
+  window.__mirsadShowAbsence = names => showAbsence(names, true);
+  if (shouldOpenAtStart) {
+    const existingNames = (params.get("teachers") || "").split("|").map(n => n.trim()).filter(Boolean);
+    showAbsence(existingNames.length ? existingNames : tableTeacherNames(), false);
+  }
 })();
 </script>
 </body></html>
