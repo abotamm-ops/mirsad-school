@@ -1,5 +1,5 @@
 const ARCHIVE_KEY = "MIRSAD_ABSENCE_ARCHIVE_V1";
-const ALLOWED_TYPES = ["يوم كامل", "حصص محددة"];
+const ALLOWED_TYPES = ["يوم كامل", "حصص محددة", "تأخر"];
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
