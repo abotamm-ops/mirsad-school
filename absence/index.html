@@ -25,7 +25,7 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
 </style>
 </head>
 <body>
-<header><a href="/" style="display:inline-block;color:#fff;text-decoration:none;background:#0e7490;padding:8px 11px;border-radius:7px;font:bold 12px Tahoma;margin-bottom:12px">← العودة إلى الجدول</a><h1>رصد غياب حصة أو يوم لمعلم</h1><p>صفحة مستقلة لرصد الغياب وأرشفته، منفصلة عن جدول الحصص ومزامنته.</p></header>
+<header><a href="https://mirsad-school.onrender.com/" style="display:inline-block;color:#fff;text-decoration:none;background:#0e7490;padding:8px 11px;border-radius:7px;font:bold 12px Tahoma;margin-bottom:12px">← العودة إلى الجدول</a><h1>رصد غياب حصة أو يوم لمعلم</h1><p>صفحة مستقلة لرصد الغياب وأرشفته، منفصلة عن جدول الحصص ومزامنته.</p></header>
 <main>
 <section class="card">
 <div class="grid">
@@ -202,12 +202,12 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
       return;
     }
 
-    const lessonSummary = selectedLessons.map(l=>"ح"+l.period+" "+l.subject+(l.classroom?" / "+l.classroom:"")).join("؛ ");
     const userNotes = $("notes").value.trim();
-    const combinedNotes = [userNotes, lessonSummary ? "الحصص: "+lessonSummary : ""].filter(Boolean).join(" | ").slice(0,250);
     const storedLessons = selectedLessons.map(l=>({period:l.period,subject:l.subject,classroom:l.classroom,time:l.time}));
+    const lessonBytes = new TextEncoder().encode(JSON.stringify(storedLessons));
+    const lessons64 = btoa(Array.from(lessonBytes, byte => String.fromCharCode(byte)).join(""));
     save.disabled=true;setStatus("جارٍ حفظ سجل الغياب مع بيانات المواد…");
-    jsonp({action:"add",key,teacher,date:localDate,type,notes:combinedNotes,lessons:JSON.stringify(storedLessons)},data=>{
+    jsonp({action:"add",key,teacher,date:localDate,type,notes:userNotes,lessons64},data=>{
       if(!data.ok){setStatus(data.error||"لم يتم الحفظ","error");refreshSaveEnabled();return;}
       render(data.records||[]);$("notes").value="";
       setStatus("تم حفظ الغياب وربطه بحصص المواد المختارة في الأرشيف.","ok");
