@@ -2,6 +2,9 @@ const ARCHIVE_KEY = "MIRSAD_ABSENCE_ARCHIVE_V1";
 function doGet(e) {
   const p = (e && e.parameter) || {};
   const action = String(p.action || "list");
+  const expectedKey = PropertiesService.getScriptProperties().getProperty("ARCHIVE_PASSWORD") || "";
+  if (!expectedKey) return output_({ok:false,error:"لم يُضبط رمز الأرشيف بعد"}, p.callback);
+  if (String(p.key || "") !== expectedKey) return output_({ok:false,error:"رمز الدخول غير صحيح"}, p.callback);
   let result;
   if (action === "list") {
     result = {ok:true,records:readRecords_()};
