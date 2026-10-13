@@ -105,15 +105,10 @@ q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar'
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(row => (row.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    if (typeof window.__mirsadShowAbsence === "function") {
-      window.__mirsadShowAbsence(names);
-    } else {
-      const query = new URLSearchParams();
-      query.set("view", "absence");
-      if (names.length) query.set("teachers", [...new Set(names)].join("|"));
-      history.pushState(null, "", "/?" + query.toString());
-      window.location.reload();
-    }
+    const query = new URLSearchParams();
+    query.set("view", "absence");
+    if (names.length) query.set("teachers", [...new Set(names)].join("|"));
+    window.location.assign("https://mirsad-school.onrender.com/?" + query.toString());
   }, true);
 
   new MutationObserver(ensureAbsenceBanner).observe(document.body, { childList: true, subtree: true });
