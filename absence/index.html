@@ -368,8 +368,9 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
       return;
     }
     const storedLessons=selectedLessons.map(l=>({period:l.period,subject:l.subject,classroom:l.classroom,time:l.time}));
+    const wasEditing=Boolean(editingRecord);
     const payload={
-      action:editingRecord ? "update" : "add",
+      action:wasEditing ? "update" : "add",
       key:accessKey,
       teacher:teacher,
       date:date,
@@ -377,7 +378,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
       notes:notesInput.value.trim(),
       lessons64:lessonsPayload(storedLessons)
     };
-    if(editingRecord) payload.id=editingRecord.id;
+    if(wasEditing) payload.id=editingRecord.id;
     save.disabled=true;
     setStatus(editingRecord?"جارٍ حفظ تعديلات السجل…":"جارٍ حفظ سجل الغياب مع تفاصيل المواد…");
     jsonp(payload,data=>{
@@ -388,7 +389,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
       }
       render(data.records||[]);
       resetForm();
-      setStatus(editingRecord ? "تم تحديث سجل الغياب." : "تم حفظ الغياب وربطه بحصص المواد.","ok");
+      setStatus(wasEditing ? "تم تحديث سجل الغياب." : "تم حفظ الغياب وربطه بحصص المواد.","ok");
       refreshSaveEnabled();
     });
   }
