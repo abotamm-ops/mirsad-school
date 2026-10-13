@@ -11,6 +11,16 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.type{display:flex;align-items:center;justify-content:center;min-height:48px;background:#f8fafc;cursor:pointer}.type input{width:auto;margin-left:7px}.type:has(input:checked){background:#e0f2fe;border-color:#0284c7;color:#075985}
 .primary{background:#0e7490;color:#fff;border:0;font-weight:bold;cursor:pointer}.primary:disabled{opacity:.45;cursor:not-allowed}.muted{color:#64748b;font-size:12px;line-height:1.8}.status{padding:11px;border-radius:9px;font-size:13px;line-height:1.8;margin-top:14px;background:#e0f2fe;color:#075985}.status.error{background:#fee2e2;color:#991b1b}.status.ok{background:#dcfce7;color:#166534}
 .record{padding:11px 0;border-bottom:1px solid #e5eaf0}.record:last-child{border:0}.record strong{display:block;margin-bottom:4px}.empty{color:#64748b;text-align:center;padding:16px}.record-meta{color:#64748b;font-size:12px;line-height:1.8}
+.lesson-picker{margin-top:16px;padding:12px;border:1px solid #cbdde7;border-radius:10px;background:#f8fbfd}
+.lesson-picker[hidden]{display:none!important}
+.lesson-options{display:grid;gap:8px;margin-top:8px}
+.lesson-option{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid #dce5eb;border-radius:8px;background:#fff;margin:0;cursor:pointer}
+.lesson-option input{width:auto;flex:0 0 auto;margin:3px 0 0}
+.lesson-option strong{display:block;font-size:13px;line-height:1.7}
+.lesson-option .lesson-meta{display:block;color:#64748b;font-size:12px;line-height:1.8;font-weight:normal}
+.lesson-option.readonly{cursor:default;background:#f8fafc}
+.lesson-option.readonly input{display:none}
+
 @media(max-width:600px){.grid{grid-template-columns:1fr}.types{grid-template-columns:repeat(2,minmax(0,1fr))}header h1{font-size:20px}}
 </style>
 </head>
@@ -33,6 +43,12 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
 <label class="type"><input type="radio" name="absenceType" value="6 حصص">6 حصص</label>
 <label class="type"><input type="radio" name="absenceType" value="7 حصص">7 حصص</label>
 </div></div>
+<section id="lessonPicker" class="lesson-picker" hidden>
+<label>حصص المعلم حسب جدول المواد في آخر تقرير نقار</label>
+<p id="lessonHint" class="muted">اختر المعلم ونوع الغياب لتظهر الحصص المطابقة من جدول مرصاد.</p>
+<div id="lessonOptions" class="lesson-options"></div>
+<div id="lessonCount" class="muted" style="margin-top:8px"></div>
+</section>
 <div style="margin-top:14px"><label for="notes">ملاحظة (اختياري)</label><input id="notes" maxlength="250" placeholder="ملاحظة مختصرة إن وجدت"></div>
 <div id="status" class="status">صفحة التطوير جاهزة. يلزم ربط عنوان خدمة الأرشيف قبل تفعيل التسجيل.</div>
 <div style="margin-top:12px"><button id="save" class="primary" disabled>اعتماد الغياب وحفظه في الأرشيف</button></div>
@@ -50,28 +66,35 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
   $("date").value = localDate;
   const params = new URLSearchParams(location.search);
   let names = [...new Set((params.get("teachers")||"").split("|").map(x=>x.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
+  let scheduleLessons = [];
+  let scheduleLoaded = false;
+  let archiveAccessGranted = false;
   const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const normalizeName = s => String(s || "").trim().replace(/\s+/g," ");
+
   function setTeacherNames(list) {
-    names = [...new Set((list || []).map(x => String(x || "").trim()).filter(Boolean))]
+    const current = teacherSelect.value;
+    names = [...new Set((list || []).map(x => normalizeName(x)).filter(Boolean))]
       .sort((a,b)=>a.localeCompare(b,"ar"));
     teacherSelect.innerHTML = '<option value="">اختر المعلم</option>' +
       names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join("");
     if (!names.length) {
       teacherSelect.innerHTML = '<option value="">تعذر تحميل أسماء المعلمين</option>';
-      setStatus("لم تصل أسماء المعلمين من جدول مرصاد. أعد تحميل الصفحة أو افتحها من زر رصد الغياب داخل الجدول.", "error");
-      save.disabled = true;
-    } else if (!$("accessCode").value.trim()) {
-      setStatus("تم تحميل " + names.length + " اسمًا من جدول مرصاد. أدخل رمز الأرشيف لعرض السجلات وتفعيل الحفظ.", "");
+      if (!scheduleLoaded) setStatus("تعذر تحميل أسماء المعلمين من جدول مرصاد.", "error");
+    } else if (names.includes(current)) {
+      teacherSelect.value = current;
     }
+    renderTeacherLessons();
+    refreshSaveEnabled();
   }
-  function loadTeacherNamesFromSchedule() {
-    if (names.length) { setTeacherNames(names); return; }
-    teacherSelect.innerHTML = '<option value="">جارٍ جلب أسماء المعلمين من مرصاد…</option>';
+
+  function loadScheduleData() {
+    if (!names.length) teacherSelect.innerHTML = '<option value="">جارٍ جلب أسماء المعلمين والمواد…</option>';
     const endpoint = "https://script.google.com/macros/s/AKfycbznAVdLw5KVYmESB6Dx4av84-UQi3lewoK2Si59UNf_03y9keQf3CNxtXu0KhGbudX7Ng/exec";
-    const callbackName = "__mirsadAbsenceTeachers_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const callbackName = "__mirsadAbsenceSchedule_" + Date.now() + "_" + Math.random().toString(36).slice(2);
     const script = document.createElement("script");
     let finished = false;
-    const timeout = setTimeout(() => finish(null), 10000);
+    const timeout = setTimeout(() => finish(null), 12000);
     function finish(response) {
       if (finished) return;
       finished = true;
@@ -79,9 +102,36 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
       try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
       script.remove();
       if (response && response.ok && response.payload && Array.isArray(response.payload.lessons)) {
-        setTeacherNames(response.payload.lessons.map(item => item && item.teacher));
+        scheduleLessons = response.payload.lessons.map((item, sourceIndex) => {
+          const cellIndex = Number(item.cellIndex);
+          const period = cellIndex >= 2 && cellIndex <= 8 ? cellIndex - 1 : null;
+          return {
+            sourceIndex,
+            teacher: normalizeName(item.teacher),
+            period,
+            subject: String(item.title || item.subject || item.lessonTitle || "حصة").trim(),
+            classroom: String(item.class || item.lesson || item.className || "").trim(),
+            time: String(item.time || "").trim()
+          };
+        }).filter(item => item.teacher && item.period);
+        scheduleLoaded = true;
+        const fetchedNames = [...new Set(scheduleLessons.map(item => item.teacher))];
+        setTeacherNames(fetchedNames.length ? fetchedNames : names);
+        if (scheduleLessons.length) {
+          const reportDate = response.payload.selectedDate || response.payload.scheduleDate || response.payload.date || response.payload.dayDate || "";
+          setStatus("تم ربط الغياب بجدول المواد في مرصاد (" + scheduleLessons.length + " إسنادًا)." + (reportDate ? " تاريخ تقرير الجدول: " + reportDate : ""), "");
+        } else {
+          setStatus("وصل اتصال مرصاد، لكن التقرير الحالي لا يحتوي على حصص قابلة للربط.", "error");
+        }
       } else {
-        setTeacherNames([]);
+        scheduleLoaded = false;
+        if (names.length) {
+          setTeacherNames(names);
+          setStatus("وصلت أسماء المعلمين، لكن تعذر تحميل تفاصيل المواد والحصص من جدول مرصاد.", "error");
+        } else {
+          setTeacherNames([]);
+          setStatus("تعذر الاتصال بجدول المواد في مرصاد. أعد تحميل الصفحة أو افتحها من جديد.", "error");
+        }
       }
     }
     window[callbackName] = finish;
@@ -104,33 +154,144 @@ label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,
     const box=$("archive");
     if(!records || !records.length){box.className="empty";box.textContent="لا توجد سجلات غياب في الأرشيف.";return;}
     box.className="";
-    box.innerHTML=records.map(r=>'<div class="record"><strong>'+esc(r.teacher)+' — '+esc(r.type)+'</strong><div class="record-meta">التاريخ: '+esc(r.date)+(r.notes?'<br>ملاحظة: '+esc(r.notes):'')+'<br>وقت التسجيل: '+esc(r.createdAt?new Date(r.createdAt).toLocaleString("ar-SA"):"غير محدد")+'</div></div>').join("");
+    box.innerHTML=records.map(r=>{
+      const lessonRows = Array.isArray(r.lessons) ? r.lessons.map(l =>
+        '<div class="record-meta">الحصة ' + esc(l.period) + ': ' + esc(l.subject) +
+        (l.classroom ? ' — الفصل: ' + esc(l.classroom) : '') +
+        (l.time ? ' — ' + esc(l.time) : '') + '</div>'
+      ).join("") : "";
+      return '<div class="record"><strong>' + esc(r.teacher) + ' — ' + esc(r.type) +
+        '</strong><div class="record-meta">التاريخ: ' + esc(r.date) +
+        (r.notes ? '<br>ملاحظة: ' + esc(r.notes) : '') +
+        '<br>وقت التسجيل: ' + esc(r.createdAt ? new Date(r.createdAt).toLocaleString("ar-SA") : "غير محدد") +
+        '</div>' + lessonRows + '</div>';
+    }).join("");
   }
   function loadArchive(){
-    if(!configured){save.disabled=true;setStatus("يلزم نشر خدمة الأرشيف المستقلة ثم وضع رابطها في هذا الملف. لم يتم حفظ أي بيانات محليًا.", "error");return;}
+    archiveAccessGranted = false;
+    refreshSaveEnabled();
+    if(!configured){setStatus("يلزم نشر خدمة الأرشيف المستقلة.", "error");return;}
     const key=$("accessCode").value.trim();
-    if(!key){save.disabled=true;$("archive").className="empty";$("archive").textContent="أدخل رمز الدخول لعرض الأرشيف.";setStatus("الأرشيف محمي برمز دخول مشترك.","");return;}
-    save.disabled=true;
+    if(!key){$("archive").className="empty";$("archive").textContent="أدخل رمز الدخول لعرض الأرشيف.";setStatus("الأرشيف محمي برمز دخول مشترك.","");return;}
     jsonp({action:"list",key}, data=>{
-      if(!data.ok){setStatus(data.error||"تعذر تحميل الأرشيف","error");return;}
-      render(data.records||[]);save.disabled=names.length===0;setStatus("تم الاتصال بالأرشيف المشترك.","ok");
+      if(!data.ok){setStatus(data.error||"تعذر تحميل الأرشيف","error");archiveAccessGranted=false;refreshSaveEnabled();return;}
+      archiveAccessGranted=true;
+      render(data.records||[]);
+      setStatus("تم الاتصال بالأرشيف المشترك.","ok");
+      refreshSaveEnabled();
     });
   }
   save.addEventListener("click",()=>{
-    const teacher=teacherSelect.value, type=document.querySelector('input[name="absenceType"]:checked').value, key=$("accessCode").value.trim();
+    const teacher=teacherSelect.value;
+    const type=document.querySelector('input[name="absenceType"]:checked').value;
+    const key=$("accessCode").value.trim();
     if(!key){setStatus("أدخل رمز الدخول أولًا.","error");return;}
     if(!teacher){setStatus("اختر اسم المعلم أولًا.","error");return;}
-    save.disabled=true;setStatus("جارٍ حفظ سجل الغياب…");
-    jsonp({action:"add",key,teacher,date:localDate,type,notes:$("notes").value.trim()},data=>{
-      if(!data.ok){setStatus(data.error||"لم يتم الحفظ","error");save.disabled=false;return;}
-      render(data.records||[]);$("notes").value="";setStatus("تم حفظ سجل الغياب في الأرشيف المشترك.","ok");save.disabled=false;
+    const teacherLessons = getTeacherLessons(teacher);
+    let selectedLessons = type === "يوم كامل" ? teacherLessons : getSelectedLessons();
+    const requiredCount = expectedLessonCount(type);
+    if(type !== "يوم كامل") {
+      if(!scheduleLoaded){setStatus("لا يمكن ربط الغياب بالمواد قبل تحميل جدول مرصاد.","error");return;}
+      if(selectedLessons.length !== requiredCount) {
+        setStatus("اختر " + requiredCount + " من حصص المعلم الظاهرة في الجدول قبل الحفظ.","error");
+        return;
+      }
+    }
+    if(type === "يوم كامل" && !scheduleLoaded) {
+      setStatus("تعذر تحميل جدول المواد؛ لا أسجل غيابًا كاملًا دون التحقق من الحصص.","error");
+      return;
+    }
+
+    const lessonSummary = selectedLessons.map(l=>"ح"+l.period+" "+l.subject+(l.classroom?" / "+l.classroom:"")).join("؛ ");
+    const userNotes = $("notes").value.trim();
+    const combinedNotes = [userNotes, lessonSummary ? "الحصص: "+lessonSummary : ""].filter(Boolean).join(" | ").slice(0,250);
+    const storedLessons = selectedLessons.map(l=>({period:l.period,subject:l.subject,classroom:l.classroom,time:l.time}));
+    save.disabled=true;setStatus("جارٍ حفظ سجل الغياب مع بيانات المواد…");
+    jsonp({action:"add",key,teacher,date:localDate,type,notes:combinedNotes,lessons:JSON.stringify(storedLessons)},data=>{
+      if(!data.ok){setStatus(data.error||"لم يتم الحفظ","error");refreshSaveEnabled();return;}
+      render(data.records||[]);$("notes").value="";
+      setStatus("تم حفظ الغياب وربطه بحصص المواد المختارة في الأرشيف.","ok");
+      refreshSaveEnabled();
     });
   });
+
+  function expectedLessonCount(type) {
+    const counts = {"حصة واحدة":1,"حصتان":2,"3 حصص":3,"4 حصص":4,"5 حصص":5,"6 حصص":6,"7 حصص":7};
+    return counts[type] || 0;
+  }
+
+  function getTeacherLessons(teacher) {
+    return scheduleLessons.filter(l=>normalizeName(l.teacher)===normalizeName(teacher));
+  }
+
+  function getSelectedLessons() {
+    const teacher = teacherSelect.value;
+    const lessons = getTeacherLessons(teacher);
+    return [...$("lessonOptions").querySelectorAll("input.schedule-lesson:checked")]
+      .map(input=>lessons[Number(input.value)]).filter(Boolean);
+  }
+
+  function renderTeacherLessons() {
+    const teacher = teacherSelect.value;
+    const panel = $("lessonPicker"), options = $("lessonOptions"), hint = $("lessonHint"), count = $("lessonCount");
+    const type = document.querySelector('input[name="absenceType"]:checked').value;
+    if(!teacher) {
+      panel.hidden = true; options.innerHTML = ""; count.textContent = "";
+      refreshSaveEnabled();
+      return;
+    }
+    const lessons = getTeacherLessons(teacher);
+    panel.hidden = false;
+    if(!scheduleLoaded) {
+      options.innerHTML = '<div class="empty">جارٍ جلب جدول المواد…</div>';
+      hint.textContent = "يتم الاتصال بجدول مرصاد لجلب المادة والفصل ورقم الحصة.";
+      count.textContent = "";
+      refreshSaveEnabled();
+      return;
+    }
+    if(!lessons.length) {
+      options.innerHTML = '<div class="empty">لا توجد حصص لهذا المعلم في التقرير الحالي.</div>';
+      hint.textContent = "قد يكون المعلم بلا حصص في التقرير الذي رفعته من نقار.";
+      count.textContent = "";
+      refreshSaveEnabled();
+      return;
+    }
+    const fullDay = type === "يوم كامل";
+    hint.textContent = fullDay
+      ? "سيُسجَّل غياب اليوم كاملًا وتُرفق جميع حصص المعلم الظاهرة أدناه."
+      : "اختر " + expectedLessonCount(type) + " من حصص المعلم. ستُحفظ المادة والفصل ورقم الحصة مع سجل الغياب.";
+    options.innerHTML = lessons.map((l,i)=>{
+      const meta = (l.classroom ? "الفصل: "+esc(l.classroom) : "الفصل غير محدد") + (l.time ? " — "+esc(l.time) : "");
+      const text = '<strong>الحصة '+l.period+' — '+esc(l.subject)+'</strong><span class="lesson-meta">'+meta+'</span>';
+      return fullDay
+        ? '<div class="lesson-option readonly"><span>'+text+'</span></div>'
+        : '<label class="lesson-option"><input type="checkbox" class="schedule-lesson" value="'+i+'"><span>'+text+'</span></label>';
+    }).join("");
+    if(!fullDay) options.querySelectorAll("input.schedule-lesson").forEach(input=>input.addEventListener("change",()=>{
+      const chosen = getSelectedLessons().length;
+      const required = expectedLessonCount(type);
+      count.textContent = "تم اختيار " + chosen + " من " + required + " حصص.";
+      refreshSaveEnabled();
+    }));
+    count.textContent = fullDay
+      ? "عدد الحصص المرتبطة بسجل اليوم: "+lessons.length
+      : "لم تختر أي حصة بعد. عدد الحصص المطلوب: "+expectedLessonCount(type)+".";
+    refreshSaveEnabled();
+  }
+
+  function refreshSaveEnabled() {
+    if(!archiveAccessGranted || !teacherSelect.value || !scheduleLoaded) { save.disabled=true; return; }
+    const type = document.querySelector('input[name="absenceType"]:checked').value;
+    save.disabled = type === "يوم كامل" ? false : getSelectedLessons().length !== expectedLessonCount(type);
+  }
+
+  teacherSelect.addEventListener("change",renderTeacherLessons);
+  document.querySelectorAll('input[name="absenceType"]').forEach(input=>input.addEventListener("change",renderTeacherLessons));
   $("accessCode").addEventListener("change",loadArchive);
   $("accessCode").addEventListener("keydown",e=>{if(e.key==="Enter")loadArchive()});
 
   loadArchive();
-  loadTeacherNamesFromSchedule();
+  loadScheduleData();
 })();
 </script>
 </body></html>
