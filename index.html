@@ -39,4 +39,66 @@ footer{font-size:12px;color:#64748b;text-align:center;padding:12px}
 <script>
 const q=document.getElementById('search'), body=document.getElementById('body'), count=document.getElementById('count');
 q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar');let n=0;for(const tr of body.rows){const hit=tr.innerText.toLocaleLowerCase('ar').includes(term);tr.hidden=!hit;if(hit)n++;}count.textContent=n+' معلم';});
-</script><script src="shared.js"></script></body></html>
+</script><script src="shared.js?v=20261013-bannerfix1"></script><script>
+(() => {
+  const bannerId = "absence-banner";
+  const absenceBase = "https://mirsad-school-absence.onrender.com/";
+  let styleObserver = null;
+
+  function updateBanner() {
+    if (!document.body) return;
+    let banner = document.getElementById(bannerId);
+    if (!banner) {
+      banner = document.createElement("a");
+      banner.id = bannerId;
+      banner.innerHTML = '<span>📋 رصد غياب حصة أو يوم لمعلم</span><span style="font-size:22px">←</span>';
+      const header = document.querySelector("body > header");
+      if (header) header.insertAdjacentElement("afterend", banner);
+      else document.body.prepend(banner);
+    }
+
+    const names = [...new Set([...document.querySelectorAll("#body tr[data-teacher]")]
+      .map(row => (row.getAttribute("data-teacher") || "").trim())
+      .filter(Boolean))];
+    const destination = absenceBase + (names.length ? "?teachers=" + encodeURIComponent(names.join("|")) : "");
+    if (banner.href !== destination) banner.href = destination;
+    if (banner.target !== "_self") banner.target = "_self";
+    if (banner.rel !== "noopener noreferrer") banner.rel = "noopener noreferrer";
+    if (banner.hidden) banner.hidden = false;
+    if (banner.hasAttribute("hidden")) banner.removeAttribute("hidden");
+
+    const styles = {
+      display: "flex", visibility: "visible", opacity: "1",
+      "align-items": "center", "justify-content": "space-between", gap: "12px",
+      "text-decoration": "none", background: "#b91c1c", color: "white",
+      padding: "13px 16px", "border-radius": "10px", margin: "12px auto",
+      "max-width": "1776px", width: "calc(100% - 24px)",
+      "font-weight": "bold", "font-family": "Tahoma, Arial, sans-serif", "z-index": "9999"
+    };
+    for (const [property, value] of Object.entries(styles)) {
+      if (banner.style.getPropertyValue(property) !== value ||
+          banner.style.getPropertyPriority(property) !== "important") {
+        banner.style.setProperty(property, value, "important");
+      }
+    }
+
+    if (!styleObserver && window.MutationObserver) {
+      styleObserver = new MutationObserver(() => {
+        if (!banner.isConnected || banner.hidden ||
+            banner.style.getPropertyValue("display") !== "flex" ||
+            banner.style.getPropertyValue("visibility") !== "visible" ||
+            banner.style.getPropertyValue("opacity") !== "1") {
+          updateBanner();
+        }
+      });
+      styleObserver.observe(banner, {attributes:true, attributeFilter:["style","class","hidden"]});
+    }
+  }
+
+  updateBanner();
+  if (window.MutationObserver && document.body) {
+    new MutationObserver(updateBanner).observe(document.body, {childList:true, subtree:true});
+  }
+})();
+</script>
+</body></html>
