@@ -65,7 +65,7 @@
   }
   syncOnce();
   setInterval(syncOnce, 15000);
-}
+
   function installAbsenceBanner() {
     if (document.getElementById("absence-banner")) return;
     const search = document.getElementById("search");
