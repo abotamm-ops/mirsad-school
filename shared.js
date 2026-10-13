@@ -50,7 +50,7 @@
       try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
       script.remove();
       if (payload) {
-        const version = String(payload.updatedAt || "") + "|" + String(payload.lessons.length);
+        const version = String(payload.updatedAt || "") + "|" + JSON.stringify(payload.lessons);
         if (version !== lastVersion) { try { applyPayload(payload); lastVersion = version; } catch (_) { showStatus("تعذر تطبيق التقرير المشترك؛ بقي تصميم الجدول كما هو.", true); } }
       } else if (firstLoad || error) showStatus(error || "لا توجد بيانات مشتركة صالحة؛ بقي الجدول الحالي دون تغيير.", true);
       firstLoad = false;
