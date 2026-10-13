@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مرصاد | رصد الغياب</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6f9;color:#18212b;font-family:Tahoma,Arial,sans-serif}
+header{background:#155e75;color:#fff;padding:18px}header h1{margin:0 0 6px;font-size:23px}header p{margin:0;font-size:13px;line-height:1.8}
+main{max-width:900px;margin:18px auto;padding:0 12px}.card{background:#fff;border:1px solid #dce5eb;border-radius:12px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-radius:8px;width:100%}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.type{display:flex;align-items:center;justify-content:center;min-height:48px;background:#f8fafc;cursor:pointer}.type input{width:auto;margin-left:7px}.type:has(input:checked){background:#e0f2fe;border-color:#0284c7;color:#075985}
+.primary{background:#0e7490;color:#fff;border:0;font-weight:bold;cursor:pointer}.primary:disabled{opacity:.45;cursor:not-allowed}.muted{color:#64748b;font-size:12px;line-height:1.8}.status{padding:11px;border-radius:9px;font-size:13px;line-height:1.8;margin-top:14px;background:#e0f2fe;color:#075985}.status.error{background:#fee2e2;color:#991b1b}.status.ok{background:#dcfce7;color:#166534}
+.record{padding:11px 0;border-bottom:1px solid #e5eaf0}.record:last-child{border:0}.record strong{display:block;margin-bottom:4px}.empty{color:#64748b;text-align:center;padding:16px}.record-meta{color:#64748b;font-size:12px;line-height:1.8}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.types{grid-template-columns:repeat(2,minmax(0,1fr))}header h1{font-size:20px}}
+</style>
+</head>
+<body>
+<header><a href="/" style="display:inline-block;color:#fff;text-decoration:none;background:#0e7490;padding:8px 11px;border-radius:7px;font:bold 12px Tahoma;margin-bottom:12px">← العودة إلى الجدول</a><h1>رصد غياب حصة أو يوم لمعلم</h1><p>صفحة مستقلة لرصد الغياب وأرشفته، منفصلة عن جدول الحصص ومزامنته.</p></header>
+<main>
+<section class="card">
+<div class="grid">
+<div><label for="accessCode">رمز دخول الأرشيف</label><input id="accessCode" type="password" autocomplete="current-password" placeholder="أدخل الرمز المتفق عليه"></div>
+<div><label for="teacher">اسم المعلم</label><select id="teacher"><option value="">جارٍ تحميل أسماء المعلمين…</option></select></div>
+<div><label for="date">تاريخ الرصد</label><input id="date" type="date" readonly></div>
+</div>
+<div style="margin-top:16px"><label>نوع الغياب</label><div class="types">
+<label class="type"><input type="radio" name="absenceType" value="يوم كامل" checked>يوم كامل</label>
+<label class="type"><input type="radio" name="absenceType" value="حصة واحدة">حصة واحدة</label>
+<label class="type"><input type="radio" name="absenceType" value="حصتان">حصتان</label>
+<label class="type"><input type="radio" name="absenceType" value="3 حصص">3 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="4 حصص">4 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="5 حصص">5 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="6 حصص">6 حصص</label>
+<label class="type"><input type="radio" name="absenceType" value="7 حصص">7 حصص</label>
+</div></div>
+<div style="margin-top:14px"><label for="notes">ملاحظة (اختياري)</label><input id="notes" maxlength="250" placeholder="ملاحظة مختصرة إن وجدت"></div>
+<div id="status" class="status">صفحة التطوير جاهزة. يلزم ربط عنوان خدمة الأرشيف قبل تفعيل التسجيل.</div>
+<div style="margin-top:12px"><button id="save" class="primary" disabled>اعتماد الغياب وحفظه في الأرشيف</button></div>
+<p class="muted">يُمنع تكرار تسجيل الغياب للمعلم نفسه في اليوم نفسه. هذا الموقع لا يغيّر بيانات الجدول أو مزامنته.</p>
+</section>
+<section class="card"><h2 style="font-size:18px;margin-top:0">أرشيف الغياب</h2><div id="archive" class="empty">بانتظار الاتصال بخدمة الأرشيف.</div></section>
+</main>
+<script>
+(function(){
+  const API_URL = "https://script.google.com/macros/s/AKfycbwdpujgUk72vZzZrVWZMjQfbfgXVV_82TNd88vpCTju13J7lMKkwIicTC2bnBgECu3m9g/exec";
+  const configured = /^https:\/\/script\.google\.com\/macros\/s\//.test(API_URL);
+  const $ = id => document.getElementById(id);
+  const status = $("status"), save = $("save"), teacherSelect = $("teacher");
+  const today = new Date(), localDate = new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  $("date").value = localDate;
+  const params = new URLSearchParams(location.search);
+  const names = [...new Set((params.get("teachers")||"").split("|").map(x=>x.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
+  const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  teacherSelect.innerHTML = '<option value="">اختر المعلم</option>' + names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join("");
+  if (!names.length) teacherSelect.innerHTML = '<option value="">لم تصل أسماء المعلمين من مرصاد</option>';
+  function setStatus(message, kind) { status.textContent=message; status.className="status"+(kind?" "+kind:""); }
+  function jsonp(params, callback) {
+    const cb="__absence_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const script=document.createElement("script"); let finished=false;
+    const timer=setTimeout(()=>finish({ok:false,error:"انتهت مهلة الاتصال بخدمة الأرشيف"}),12000);
+    function finish(data){if(finished)return;finished=true;clearTimeout(timer);try{delete window[cb]}catch(_){window[cb]=undefined}script.remove();callback(data||{ok:false,error:"لم تصل استجابة من خدمة الأرشيف"});}
+    window[cb]=finish;
+    script.onerror=()=>finish({ok:false,error:"تعذر الاتصال بخدمة الأرشيف"});
+    script.src=API_URL+"?"+new URLSearchParams({...params,callback:cb,_:Date.now()}).toString();
+    document.head.appendChild(script);
+  }
+  function render(records) {
+    const box=$("archive");
+    if(!records || !records.length){box.className="empty";box.textContent="لا توجد سجلات غياب في الأرشيف.";return;}
+    box.className="";
+    box.innerHTML=records.map(r=>'<div class="record"><strong>'+esc(r.teacher)+' — '+esc(r.type)+'</strong><div class="record-meta">التاريخ: '+esc(r.date)+(r.notes?'<br>ملاحظة: '+esc(r.notes):'')+'<br>وقت التسجيل: '+esc(r.createdAt?new Date(r.createdAt).toLocaleString("ar-SA"):"غير محدد")+'</div></div>').join("");
+  }
+  function loadArchive(){
+    if(!configured){save.disabled=true;setStatus("يلزم نشر خدمة الأرشيف المستقلة ثم وضع رابطها في هذا الملف. لم يتم حفظ أي بيانات محليًا.", "error");return;}
+    const key=$("accessCode").value.trim();
+    if(!key){save.disabled=true;$("archive").className="empty";$("archive").textContent="أدخل رمز الدخول لعرض الأرشيف.";setStatus("الأرشيف محمي برمز دخول مشترك.","");return;}
+    save.disabled=true;
+    jsonp({action:"list",key}, data=>{
+      if(!data.ok){setStatus(data.error||"تعذر تحميل الأرشيف","error");return;}
+      render(data.records||[]);save.disabled=names.length===0;setStatus("تم الاتصال بالأرشيف المشترك.","ok");
+    });
+  }
+  save.addEventListener("click",()=>{
+    const teacher=teacherSelect.value, type=document.querySelector('input[name="absenceType"]:checked').value, key=$("accessCode").value.trim();
+    if(!key){setStatus("أدخل رمز الدخول أولًا.","error");return;}
+    if(!teacher){setStatus("اختر اسم المعلم أولًا.","error");return;}
+    save.disabled=true;setStatus("جارٍ حفظ سجل الغياب…");
+    jsonp({action:"add",key,teacher,date:localDate,type,notes:$("notes").value.trim()},data=>{
+      if(!data.ok){setStatus(data.error||"لم يتم الحفظ","error");save.disabled=false;return;}
+      render(data.records||[]);$("notes").value="";setStatus("تم حفظ سجل الغياب في الأرشيف المشترك.","ok");save.disabled=false;
+    });
+  });
+  $("accessCode").addEventListener("change",loadArchive);
+  $("accessCode").addEventListener("keydown",e=>{if(e.key==="Enter")loadArchive()});
+
+  loadArchive();
+})();
+</script>
+</body></html>
