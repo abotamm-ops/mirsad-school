@@ -39,4 +39,57 @@ footer{font-size:12px;color:#64748b;text-align:center;padding:12px}
 <script>
 const q=document.getElementById('search'), body=document.getElementById('body'), count=document.getElementById('count');
 q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar');let n=0;for(const tr of body.rows){const hit=tr.innerText.toLocaleLowerCase('ar').includes(term);tr.hidden=!hit;if(hit)n++;}count.textContent=n+' معلم';});
-</script><script src="shared.js"></script></body></html>
+</script><script src="shared.js"></script><script>
+(() => {
+  const requiredStyles = {
+    display: "flex",
+    visibility: "visible",
+    opacity: "1",
+    position: "relative",
+    "z-index": "2147483647"
+  };
+  let observedBanner = null;
+  let styleObserver = null;
+
+  function keepVisible(banner) {
+    if (banner.hidden) banner.hidden = false;
+    if (banner.hasAttribute("hidden")) banner.removeAttribute("hidden");
+    for (const [property, value] of Object.entries(requiredStyles)) {
+      if (banner.style.getPropertyValue(property) !== value ||
+          banner.style.getPropertyPriority(property) !== "important") {
+        banner.style.setProperty(property, value, "important");
+      }
+    }
+  }
+
+  function ensureAbsenceBanner() {
+    if (!document.body) return;
+    let banner = document.getElementById("absence-banner");
+    if (!banner) {
+      banner = document.createElement("a");
+      banner.id = "absence-banner";
+      banner.innerHTML = '<span>📋 رصد غياب حصة أو يوم لمعلم</span><span style="font-size:22px">←</span>';
+      banner.style.cssText = "align-items:center;justify-content:space-between;gap:12px;text-decoration:none;background:#b91c1c;color:white;padding:13px 16px;border-radius:10px;margin:12px auto;max-width:1776px;width:calc(100% - 24px);font:bold 15px Tahoma,Arial,sans-serif;box-shadow:0 2px 6px #00000012";
+      const header = document.querySelector("header");
+      if (header) header.insertAdjacentElement("afterend", banner);
+      else document.body.prepend(banner);
+    }
+
+    const names = [...document.querySelectorAll("#body tr[data-teacher]")]
+      .map(row => (row.getAttribute("data-teacher") || "").trim())
+      .filter(Boolean);
+    banner.href = "absence.html?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    keepVisible(banner);
+
+    if (observedBanner !== banner) {
+      if (styleObserver) styleObserver.disconnect();
+      observedBanner = banner;
+      styleObserver = new MutationObserver(() => keepVisible(banner));
+      styleObserver.observe(banner, { attributes: true, attributeFilter: ["style", "class", "hidden"] });
+    }
+  }
+
+  ensureAbsenceBanner();
+  new MutationObserver(ensureAbsenceBanner).observe(document.body, { childList: true, subtree: true });
+})();
+</script></body></html>
