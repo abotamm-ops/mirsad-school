@@ -41,7 +41,7 @@ const q=document.getElementById('search'), body=document.getElementById('body'),
 q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar');let n=0;for(const tr of body.rows){const hit=tr.innerText.toLocaleLowerCase('ar').includes(term);tr.hidden=!hit;if(hit)n++;}count.textContent=n+' معلم';});
 </script><script src="shared.js"></script><script>
 (() => {
-  if (location.pathname.replace(/\\/+$/, "") === "/absence.html") return;
+  if (location.pathname.replace(/\/+$/, "") === "/absence.html") return;
   const requiredStyles = {
     display: "flex",
     visibility: "visible",
