@@ -25,6 +25,12 @@ function nextPeriod(now=new Date()){
 }
 async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https://mirsad-school.onrender.com/*"});return tabs.find(t=>t.url&&!t.url.includes("/absence.html"))||null}
 async function startMonitoring(){
+ const existing=await getRun();
+ if(existing?.running){
+  await setStatus("المراقبة تعمل بالفعل؛ لن تُفتح دورة ثانية.",{period:existing.period,waiting:!existing.period});
+  return;
+ }
+ await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
  const scheduleTab=await getScheduleTab();
  if(!scheduleTab){await setStatus("افتح صفحة جدول مرصاد في Chrome أولًا، ثم شغّل المراقبة.");return}
  let response;
