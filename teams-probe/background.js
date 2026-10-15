@@ -47,10 +47,10 @@ async function navigateCurrent(run) {
   }
   const item=run.queue[run.index];
   run.phase="opening";run.current=item;await saveRun(run);
-  await setStatus("يفتح الحصة "+(item.period-1)+" — "+item.teacher+" ("+(run.index+1)+"/"+run.queue.length+")",{done:run.index,total:run.queue.length,teacher:item.teacher,period:item.period-1});
+  await setStatus("يفتح الحصة "+(item.period)+" — "+item.teacher+" ("+(run.index+1)+"/"+run.queue.length+")",{done:run.index,total:run.queue.length,teacher:item.teacher,period:item.period});
   try { await chrome.tabs.update(run.tabId,{url:item.url,active:false}); }
   catch(_){
-    run.results.push({teacher:item.teacher,period:item.period-1,url:item.url,status:"unresolved",detail:"تعذر فتح الرابط",scannedAt:Date.now()});
+    run.results.push({teacher:item.teacher,period:item.period,url:item.url,status:"unresolved",detail:"تعذر فتح الرابط",scannedAt:Date.now()});
     run.index++;run.current=null;await saveRun(run);await navigateCurrent(run);
   }
 }
@@ -58,7 +58,7 @@ async function receiveResult(message) {
   const run=await getRun();
   if(!run?.running||!run.current)return;
   const item=run.current;
-  run.results.push({teacher:item.teacher,period:item.period-1,url:item.url,status:message.result?.status||"unresolved",detail:message.result?.detail||"لم تُرجع واجهة Teams نتيجة واضحة",scannedAt:Date.now()});
+  run.results.push({teacher:item.teacher,period:item.period,url:item.url,status:message.result?.status||"unresolved",detail:message.result?.detail||"لم تُرجع واجهة Teams نتيجة واضحة",scannedAt:Date.now()});
   run.index++;run.current=null;await saveRun(run);
   await setStatus("تم فحص "+run.index+" من "+run.queue.length+". الحالة التالية تُفتح تلقائيًا.",{done:run.index,total:run.queue.length,last:run.results[run.results.length-1]});
   await navigateCurrent(run);
@@ -73,7 +73,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   }
   if(message?.type==="MIRSAD_PAGE_READY"){
     getRun().then(run=>{
-      if(run?.running&&run.current)sendResponse({active:true,teacher:run.current.teacher,period:run.current.period-1,index:run.index});
+      if(run?.running&&run.current)sendResponse({active:true,teacher:run.current.teacher,period:run.current.period,index:run.index});
       else sendResponse({active:false});
     });return true;
   }
