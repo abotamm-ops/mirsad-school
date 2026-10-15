@@ -13,9 +13,20 @@ async function setStatus(text,extra={}){await chrome.storage.local.set({[STATUS_
 async function getRun(){const x=await chrome.storage.local.get(KEY);return x[KEY]||null}
 async function saveRun(run){await chrome.storage.local.set({[KEY]:run})}
 async function closeProbeTab(run){
- if(run?.tabId!=null){try{await chrome.tabs.remove(run.tabId)}catch(_){}}
- if(run){run.tabId=null;await saveRun(run)}
+ if(!run)return;
+ const ids=new Set([...(run.probeTabIds||[]),run.tabId].filter(id=>Number.isInteger(id)));
+ for(const id of ids){try{await chrome.tabs.remove(id)}catch(_){}}
+ run.tabId=null;run.probeTabIds=[];await saveRun(run);
 }
+async function trackProbeTab(tab){
+ if(!Number.isInteger(tab?.id)||!Number.isInteger(tab?.openerTabId))return;
+ const run=await getRun();
+ if(!run?.running||!Number.isInteger(run.tabId)||tab.openerTabId!==run.tabId)return;
+ run.probeTabIds=Array.isArray(run.probeTabIds)?run.probeTabIds:[];
+ if(!run.probeTabIds.includes(tab.id))run.probeTabIds.push(tab.id);
+ await saveRun(run);
+}
+chrome.tabs.onCreated.addListener(tab=>{trackProbeTab(tab).catch(()=>{});});
 async function ensureProbeTab(run){
  if(run?.tabId!=null){try{await chrome.tabs.get(run.tabId);return run.tabId}catch(_){run.tabId=null}}
  const tab=await chrome.tabs.create({url:"about:blank",active:false});
@@ -45,7 +56,7 @@ async function startOneOffTest(){
  if(!items.length){await setStatus("لم أجد روابط Teams صالحة في الجدول الحالي.");return}
  const item=items[0];
  const scanId="test-"+Date.now();
- const run={running:true,testMode:true,schedule:items,tabId:null,startedAt:Date.now(),results:[],period:item.period,periodItems:[item],index:0,cycle:0,current:{...item,scanId}};
+ const run={running:true,testMode:true,schedule:items,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:item.period,periodItems:[item],index:0,cycle:0,current:{...item,scanId}};
  await saveRun(run);
  await setStatus("اختبار مباشر: فتح رابط حصة واحدة للمعلم "+item.teacher+". هذه نتيجة تشخيصية وليست تسجيل حضور رسمي.",{testMode:true,teacher:item.teacher,period:item.period});
  await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+45000});
@@ -66,7 +77,7 @@ async function startMonitoring(){
  try{response=await chrome.tabs.sendMessage(scheduleTab.id,{type:"MIRSAD_GET_SCHEDULE"})}catch(_){await setStatus("تعذرت قراءة الجدول. حدّث صفحة مرصاد وانتظر تحميل الروابط ثم أعد التشغيل.");return}
  const schedule=(response?.items||[]).filter(x=>x.url&&x.teacher&&Number.isFinite(x.period)&&x.period>=1&&x.period<=7);
  if(!schedule.length){await setStatus("لم أجد روابط Teams صالحة في الجدول الحالي.");return}
- const run={running:true,schedule,tabId:null,startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null};
+ const run={running:true,schedule,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null};
  await saveRun(run);
  const current=periodNow();
  if(current){await beginPeriod(run,current.n)}
