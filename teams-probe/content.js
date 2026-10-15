@@ -132,5 +132,48 @@
       target.appendChild(debug);
     });
   }
+  async function automaticScan(teacher) {
+    const clickParticipants = () => {
+      const labels = ["المشاركون","المشاركين","عرض المشاركين","participants","people","show participants"];
+      const controls = [...document.querySelectorAll("button,[role=button]")];
+      const control = controls.find(el => {
+        const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.innerText].filter(Boolean).join(" "));
+        return labels.some(x => label.toLocaleLowerCase().includes(normalize(x).toLocaleLowerCase()));
+      });
+      if (control) { control.click(); return true; }
+      return false;
+    };
+    let sections = findSections();
+    if (!sections.present.length && !sections.invited.length) {
+      clickParticipants();
+      await new Promise(resolve => setTimeout(resolve, 1800));
+      sections = findSections();
+    }
+    if (!sections.present.length && !sections.invited.length) {
+      return {status:"unresolved",detail:"لم يمكن تحديد أقسام الحضور والمدعوين تلقائيًا."};
+    }
+    const presentText = sections.present.map(s=>s.text).join("\n");
+    const invitedText = sections.invited.map(s=>s.text).join("\n");
+    const presentMatch = nameMatch(teacher,presentText);
+    const invitedMatch = nameMatch(teacher,invitedText);
+    if (presentMatch.match && !invitedMatch.match) {
+      return {status:"present",detail:"ظهر الاسم في قسم الحضور؛ يلزم التحقق الواقعي من دقة استخراج صفوف المشاركين."};
+    }
+    if (presentMatch.match && invitedMatch.match) {
+      return {status:"unresolved",detail:"ظهر الاسم في أكثر من قسم؛ النتيجة ملتبسة."};
+    }
+    if (invitedMatch.match) {
+      return {status:"invited",detail:"ظهر الاسم في قسم المدعوين، لكن ارتباط صفة المنظّم بسجل الاسم لم يُثبت؛ لا يُسجّل غياب."};
+    }
+    return {status:"unresolved",detail:"لم يظهر تطابق كافٍ في القائمتين؛ لا يُسجّل غياب."};
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type === "MIRSAD_AUTO_SCAN") {
+      automaticScan(message.teacher || "").then(sendResponse).catch(() => sendResponse({status:"unresolved",detail:"تعذر فحص واجهة Teams."}));
+      return true;
+    }
+  });
+
   setTimeout(mount, 1200);
 })();
