@@ -155,21 +155,35 @@
     const teacherTokens = tokenizeName(teacher);
     const scanRows = (sectionList) => {
       const matches = [];
+      const seenRows = new Set();
+      if (teacherTokens.length < 2) return matches;
+      const selector = '[role="listitem"],[role="option"],[role="treeitem"],li,[data-tid*="roster"],[data-tid*="participant"]';
       for (const section of sectionList) {
         const root = section.root;
         if (!root?.querySelectorAll) continue;
-        const candidates = [...root.querySelectorAll('[role="listitem"],[role="option"],[role="treeitem"],li,[data-tid*="roster"],[data-tid*="participant"]')];
-        const seen = new Set();
-        for (const row of candidates) {
+        const candidates = [...root.querySelectorAll(selector)];
+        // Prefer the smallest matching participant record. Broad ancestor
+        // containers may contain several people and must not lend the
+        // organizer label of one person to another.
+        const matching = candidates.filter(row => {
+          const text = normalize(row.innerText || row.textContent);
+          if (!text || text.length > 300 || text.length < 2) return false;
+          const tokens = new Set(tokenizeName(text));
+          return tokens.has(teacherTokens[0]) && tokens.has(teacherTokens[teacherTokens.length - 1]);
+        });
+        const leafMatches = matching.filter(row => ![...row.querySelectorAll(selector)].some(child => {
+          const text = normalize(child.innerText || child.textContent);
+          const tokens = new Set(tokenizeName(text));
+          return text.length >= 2 && text.length <= 300 && tokens.has(teacherTokens[0]) && tokens.has(teacherTokens[teacherTokens.length - 1]);
+        }));
+        for (const row of (leafMatches.length ? leafMatches : matching)) {
           const rowText = normalize(row.innerText || row.textContent);
-          if (!rowText || rowText.length > 300 || rowText.length < 2 || seen.has(rowText)) continue;
-          seen.add(rowText);
-          const rowTokens = new Set(tokenizeName(rowText));
-          const required = teacherTokens.length >= 2 ? 2 : 0;
-          const matched = required ? [teacherTokens[0], teacherTokens[teacherTokens.length - 1]].filter(token => rowTokens.has(token)) : [];
-          if (required === 2 && matched.length === 2) {
-            matches.push({text:rowText, organizer:/\borganizer\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم")});
-          }
+          if (seenRows.has(rowText)) continue;
+          seenRows.add(rowText);
+          matches.push({
+            text:rowText,
+            organizer:/\\borganizer\\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم")
+          });
         }
       }
       return matches;
