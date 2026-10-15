@@ -212,6 +212,39 @@
     }
   });
 
+  function clickExactButton(labels) {
+    const controls = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")];
+    const el = controls.find(node => {
+      const label = normalize([node.innerText,node.getAttribute("aria-label"),node.getAttribute("title"),node.value].filter(Boolean).join(" ")).toLocaleLowerCase();
+      return visible(node) && labels.some(x => label === normalize(x).toLocaleLowerCase());
+    });
+    if (!el || el.disabled || el.getAttribute("aria-disabled") === "true") return false;
+    el.click();
+    return true;
+  }
+
+  async function attemptJoinIfReady() {
+    const joinedHints = ["participants","people","المشاركون","المشاركين","leave","مغادرة"];
+    const bodyText = normalize(document.body?.innerText || "").toLocaleLowerCase();
+    if (joinedHints.some(x => bodyText.includes(normalize(x).toLocaleLowerCase())) &&
+        document.querySelector('[data-tid*="roster"],[data-tid*="participant"],[aria-label*="participants" i]')) return "already-in";
+    const clicked = clickExactButton([
+      "join now","join","انضمام الآن","الانضمام الآن","انضم الآن","الانضمام"
+    ]);
+    if (clicked) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      return "clicked-join";
+    }
+    return "join-not-available";
+  }
+
+  async function leaveMeetingIfJoined() {
+    // Leave only via an explicit Teams leave control; never end the meeting.
+    const clicked = clickExactButton(["leave","leave meeting","مغادرة","مغادرة الاجتماع"]);
+    if (clicked) await new Promise(resolve => setTimeout(resolve, 1200));
+    return clicked;
+  }
+
   // Prefer staying in the browser when Teams offers an explicit web fallback.
   // This deliberately does NOT click Join/Admit buttons or bypass sign-in.
   function chooseBrowserFallback() {
@@ -257,16 +290,23 @@
       if (!target?.active || !target.teacher) return;
       await new Promise(resolve => setTimeout(resolve, 1500));
       await preferBrowserForLandingPage();
-      // Give the user time to complete sign-in/join manually. Never click Join/Admit.
-      let result = {status:"unresolved",detail:"لم يتم الانضمام للاجتماع أو لم تظهر قائمة المشاركين بعد؛ لم يُسجّل غياب."};
-      for (let attempt = 0; attempt < 10; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 2500 : 3000));
-        result = await automaticScan(target.teacher);
-        if (result.status !== "unresolved" ||
-            !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام/i.test(result.detail || "")) {
-          break;
+      const joinState = await attemptJoinIfReady();
+      // The extension only clicks a clearly labelled Join button; it does not bypass
+      // sign-in, name entry, lobby admission, or permissions.
+      let result = {status:"unresolved",detail:"لم يتأكد الدخول إلى الاجتماع أو لم تظهر قائمة المشاركين؛ لم يُسجّل غياب."};
+      if (joinState === "join-not-available") {
+        result = {status:"unresolved",detail:"لم يظهر زر انضمام جاهز. قد تتطلب الصفحة تسجيل الدخول أو إدخال اسم أو موافقة المنظّم؛ لم يُسجّل غياب."};
+      } else {
+        for (let attempt = 0; attempt < 10; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 2500 : 3000));
+          result = await automaticScan(target.teacher);
+          if (result.status !== "unresolved" ||
+              !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام/i.test(result.detail || "")) {
+            break;
+          }
         }
       }
+      await leaveMeetingIfJoined();
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
     }).catch(() => {});
   }
