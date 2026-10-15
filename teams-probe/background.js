@@ -1,4 +1,4 @@
-const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction";
+const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const PERIODS=[
  {n:1,start:"06:30",end:"07:15"},
  {n:2,start:"07:16",end:"08:01"},
@@ -71,6 +71,7 @@ async function navigateCurrent(run){
    return;
  }
  const item=run.periodItems[run.index];run.current=item;await saveRun(run);
+ await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+45000});
  await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle,{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
  try{await chrome.tabs.update(run.tabId,{url:item.url,active:false})}
  catch(_){run.results.push({teacher:item.teacher,period:p.n,status:"unresolved",detail:"تعذر فتح الرابط",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run)}
@@ -88,6 +89,7 @@ async function advancePeriod(run,after){
 }
 async function receiveResult(message){
  const run=await getRun();if(!run?.running||!run.current)return;
+ await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
  const item=run.current;
  run.results.push({teacher:item.teacher,period:run.period,url:item.url,status:message.result?.status||"unresolved",detail:message.result?.detail||"لم تُرجع واجهة Teams نتيجة واضحة",scannedAt:Date.now(),cycle:run.cycle});
  run.index++;run.current=null;await saveRun(run);
@@ -95,14 +97,22 @@ async function receiveResult(message){
  await navigateCurrent(run)
 }
 chrome.alarms.onAlarm.addListener(async alarm=>{
- if(alarm.name!==NEXT_ALARM)return;
  const run=await getRun();if(!run?.running)return;
+ if(alarm.name===SCAN_TIMEOUT_ALARM){
+  if(!run.current)return;
+  const item=run.current;
+  run.results.push({teacher:item.teacher,period:run.period,url:item.url,status:"unresolved",detail:"انتهت مهلة انتظار Teams دون نتيجة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle});
+  run.index++;run.current=null;await saveRun(run);
+  await setStatus("انتهت مهلة فحص "+item.teacher+"؛ سُجلت غير محسومة وانتقل الرصد تلقائيًا.",{period:run.period,teacher:item.teacher,cycle:run.cycle});
+  await navigateCurrent(run);return;
+ }
+ if(alarm.name!==NEXT_ALARM)return;
  if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<=atToday(p.end).getTime()){await navigateCurrent(run);return}await advancePeriod(run,run.period);return}
  const p=periodNow();if(p)await beginPeriod(run,p.n);else{const next=nextPeriod();await setStatus("ينتظر الحصة "+next.period.n+" عند "+next.period.start,{waiting:true,period:next.period.n});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 });
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_START"){startMonitoring().then(()=>sendResponse({ok:true})).catch(()=>sendResponse({ok:false}));return true}
- if(message?.type==="MIRSAD_STOP"){getRun().then(async run=>{if(run){run.running=false;await saveRun(run)}await chrome.alarms.clear(NEXT_ALARM);await setStatus("تم إيقاف المراقبة بناءً على طلبك.");sendResponse({ok:true})});return true}
+ if(message?.type==="MIRSAD_STOP"){getRun().then(async run=>{if(run){run.running=false;await saveRun(run)}await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await setStatus("تم إيقاف المراقبة بناءً على طلبك.");sendResponse({ok:true})});return true}
  if(message?.type==="MIRSAD_STATUS"){Promise.all([chrome.storage.local.get(STATUS_KEY),getRun()]).then(([s,r])=>sendResponse({status:s[STATUS_KEY]||{text:"لا توجد حالة"},run:r}));return true}
  if(message?.type==="MIRSAD_PAGE_READY"){getRun().then(run=>sendResponse(run?.running&&run.current?{active:true,teacher:run.current.teacher,period:run.period,index:run.index}:{active:false}));return true}
  if(message?.type==="MIRSAD_SCAN_RESULT"){receiveResult(message).catch(()=>{});sendResponse({ok:true});return false}
