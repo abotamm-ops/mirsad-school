@@ -13,8 +13,9 @@ async function setStatus(text,extra={}){await chrome.storage.local.set({[STATUS_
 async function getRun(){const x=await chrome.storage.local.get(KEY);return x[KEY]||null}
 async function saveRun(run){await chrome.storage.local.set({[KEY]:run})}
 function atToday(hhmm){const [h,m]=hhmm.split(":").map(Number);const d=new Date();d.setHours(h,m,0,0);return d}
-function periodNow(now=new Date()){const mins=now.getHours()*60+now.getMinutes();return PERIODS.find(p=>{const [sh,sm]=p.start.split(":").map(Number),[eh,em]=p.end.split(":").map(Number);return mins>=sh*60+sm&&mins<=eh*60+em})||null}
+function periodNow(now=new Date()){if(now.getDay()===5||now.getDay()===6)return null;const mins=now.getHours()*60+now.getMinutes();return PERIODS.find(p=>{const [sh,sm]=p.start.split(":").map(Number),[eh,em]=p.end.split(":").map(Number);return mins>=sh*60+sm&&mins<=eh*60+em})||null}
 function nextPeriod(now=new Date()){
+ if(now.getDay()===5||now.getDay()===6){const d=new Date(now);while(d.getDay()===5||d.getDay()===6)d.setDate(d.getDate()+1);const first=PERIODS[0],[h,m]=first.start.split(":").map(Number);d.setHours(h,m,0,0);return {period:first,when:d.getTime()}}
  for(const p of PERIODS){const d=atToday(p.start);if(d>now)return {period:p,when:d.getTime()}}
  // Saudi school week: Sunday through Thursday. Skip Friday and Saturday.
  const d=new Date(now);d.setDate(d.getDate()+1);
