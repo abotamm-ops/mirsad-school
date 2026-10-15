@@ -175,5 +175,14 @@
     }
   });
 
-  setTimeout(mount, 1200);
+  // Automatic mode: the extension popup controls the run; no manual teacher-name panel.
+  if (!window.__mirsadAutoPageHandshake) {
+    window.__mirsadAutoPageHandshake = true;
+    chrome.runtime.sendMessage({type:"MIRSAD_PAGE_READY"}).then(async target => {
+      if (!target?.active || !target.teacher) return;
+      await new Promise(resolve => setTimeout(resolve, 6500));
+      const result = await automaticScan(target.teacher);
+      chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", result});
+    }).catch(() => {});
+  }
 })();
