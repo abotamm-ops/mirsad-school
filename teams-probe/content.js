@@ -152,20 +152,42 @@
     if (!sections.present.length && !sections.invited.length) {
       return {status:"unresolved",detail:"لم يمكن تحديد أقسام الحضور والمدعوين تلقائيًا."};
     }
-    const presentText = sections.present.map(s=>s.text).join("\n");
-    const invitedText = sections.invited.map(s=>s.text).join("\n");
-    const presentMatch = nameMatch(teacher,presentText);
-    const invitedMatch = nameMatch(teacher,invitedText);
-    if (presentMatch.match && !invitedMatch.match) {
-      return {status:"present",detail:"ظهر الاسم في قسم الحضور؛ يلزم التحقق الواقعي من دقة استخراج صفوف المشاركين."};
+    const teacherTokens = tokenizeName(teacher);
+    const scanRows = (sectionList) => {
+      const matches = [];
+      for (const section of sectionList) {
+        const root = section.root;
+        if (!root?.querySelectorAll) continue;
+        const candidates = [...root.querySelectorAll('[role="listitem"],[role="option"],[role="treeitem"],li,[data-tid*="roster"],[data-tid*="participant"]')];
+        const seen = new Set();
+        for (const row of candidates) {
+          const rowText = normalize(row.innerText || row.textContent);
+          if (!rowText || rowText.length > 300 || rowText.length < 2 || seen.has(rowText)) continue;
+          seen.add(rowText);
+          const matched = teacherTokens.filter(token => rowText.includes(token));
+          const required = Math.min(2, teacherTokens.length);
+          if (required > 0 && matched.length >= required) {
+            matches.push({text:rowText, organizer:/\borganizer\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم")});
+          }
+        }
+      }
+      return matches;
+    };
+    const presentRows = scanRows(sections.present);
+    const invitedRows = scanRows(sections.invited);
+    if (presentRows.length === 1 && invitedRows.length === 0) {
+      return {status:"present",detail:"تطابق الاسم داخل سجل مشارك واحد في قسم الحضور."};
     }
-    if (presentMatch.match && invitedMatch.match) {
-      return {status:"unresolved",detail:"ظهر الاسم في أكثر من قسم؛ النتيجة ملتبسة."};
+    if (presentRows.length > 0 || invitedRows.length > 1) {
+      return {status:"unresolved",detail:"تطابق الاسم في أكثر من سجل أو في أكثر من قسم؛ لا يُسجّل حكم."};
     }
-    if (invitedMatch.match) {
-      return {status:"invited",detail:"ظهر الاسم في قسم المدعوين، لكن ارتباط صفة المنظّم بسجل الاسم لم يُثبت؛ لا يُسجّل غياب."};
+    if (invitedRows.length === 1) {
+      if (invitedRows[0].organizer) {
+        return {status:"absent",detail:"ظهر الاسم في سجل واحد بقسم المدعوين، ووسم المنظّم في السجل نفسه."};
+      }
+      return {status:"invited",detail:"ظهر الاسم في سجل المدعوين لكن لم يثبت وسم المنظّم في السجل نفسه؛ لا يُسجّل غياب."};
     }
-    return {status:"unresolved",detail:"لم يظهر تطابق كافٍ في القائمتين؛ لا يُسجّل غياب."};
+    return {status:"unresolved",detail:"لم يُعثر على سجل مشارك يطابق الاسم بصورة كافية؛ لا يُسجّل غياب."};
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
