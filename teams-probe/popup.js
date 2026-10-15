@@ -6,7 +6,7 @@ async function refresh(){
     const run=r?.run;
     if(run?.running) statusNode.textContent += "\nالتقدم: "+run.index+" / "+run.queue.length;
     if(run?.results?.length){
-      const recent=run.results.slice(-5).map(x=>x.teacher+" — الحصة "+x.period+": "+(x.status==="present"?"حاضر":x.status==="invited"?"ضمن المدعوين":x.status==="unresolved"?"غير محسوم":"نتيجة غير معروفة"));
+      const recent=run.results.slice(-5).map(x=>x.teacher+" — الحصة "+x.period+": "+(x.status==="present"?"حاضر":x.status==="absent"?"غياب مبدئي":x.status==="invited"?"ضمن المدعوين":x.status==="unresolved"?"غير محسوم":"نتيجة غير معروفة"));
       statusNode.textContent += "\n\nآخر النتائج:\n"+recent.join("\n");
     }
   }catch(_){statusNode.textContent="تعذر قراءة حالة الإضافة."}
