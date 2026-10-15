@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "تشغيل دورة رصد تجريبية لروابط حصص Teams من جدول مرصاد.",
-  "permissions": ["activeTab", "tabs", "storage", "alarms"],
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "alarms"
+  ],
   "host_permissions": [
     "https://teams.microsoft.com/*",
     "https://teams.live.com/*",
@@ -13,16 +18,27 @@
     "default_title": "مرصاد - تشغيل الرصد",
     "default_popup": "popup.html"
   },
-  "background": { "service_worker": "background.js" },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://teams.microsoft.com/*", "https://teams.live.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://mirsad-school.onrender.com/*"],
-      "js": ["schedule.js"],
+      "matches": [
+        "https://mirsad-school.onrender.com/*"
+      ],
+      "js": [
+        "schedule.js"
+      ],
       "run_at": "document_idle"
     }
   ]
