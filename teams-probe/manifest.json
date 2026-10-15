@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "مرصاد - فاحص قائمة Teams",
+  "version": "0.1.0",
+  "description": "أداة اختبار محلية لقراءة أقسام المشاركين في اجتماع Teams من المتصفح فقط.",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://teams.microsoft.com/*",
+    "https://teams.live.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
