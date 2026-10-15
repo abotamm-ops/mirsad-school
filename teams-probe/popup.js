@@ -26,6 +26,11 @@ async function refresh(){
     }
   }catch(_){statusNode.textContent="تعذر قراءة حالة الإضافة."}
 }
+document.getElementById("test").addEventListener("click",async()=>{
+  statusNode.textContent="جارٍ تجهيز اختبار مباشر لرابط واحد…";
+  await chrome.runtime.sendMessage({type:"MIRSAD_TEST_ONE"});
+  setTimeout(refresh,500);
+});
 document.getElementById("start").addEventListener("click",async()=>{
   statusNode.textContent="جارٍ بدء المراقبة…";
   await chrome.runtime.sendMessage({type:"MIRSAD_START"});
