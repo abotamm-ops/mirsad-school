@@ -204,7 +204,7 @@
       if (!target?.active || !target.teacher) return;
       await new Promise(resolve => setTimeout(resolve, 6500));
       const result = await automaticScan(target.teacher);
-      chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", result});
+      chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
     }).catch(() => {});
   }
 })();
