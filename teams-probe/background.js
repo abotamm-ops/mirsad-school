@@ -27,6 +27,12 @@ async function trackProbeTab(tab){
  await saveRun(run);
 }
 chrome.tabs.onCreated.addListener(tab=>{trackProbeTab(tab).catch(()=>{});});
+function isTeamsMeetingUrl(value){
+ try{
+  const u=new URL(value);
+  return u.protocol==="https:" && (u.hostname==="teams.microsoft.com" || u.hostname==="teams.live.com") && u.pathname.length>1;
+ }catch(_){return false}
+}
 async function ensureProbeTab(run){
  if(run?.tabId!=null){try{await chrome.tabs.get(run.tabId);return run.tabId}catch(_){run.tabId=null}}
  const tab=await chrome.tabs.create({url:"about:blank",active:false});
@@ -55,6 +61,7 @@ async function startOneOffTest(){
  const items=(response?.items||[]).filter(x=>x.url&&x.teacher&&Number.isFinite(x.period)&&x.period>=1&&x.period<=7);
  if(!items.length){await setStatus("لم أجد روابط Teams صالحة في الجدول الحالي.");return}
  const item=items[0];
+ if(!isTeamsMeetingUrl(item.url)){await setStatus("أوقف الاختبار: الرابط الأول ليس رابط Teams صالحًا؛ لم تُفتح أي صفحة.");return}
  const scanId="test-"+Date.now();
  const run={running:true,testMode:true,schedule:items,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:item.period,periodItems:[item],index:0,cycle:0,current:{...item,scanId}};
  await saveRun(run);
@@ -115,7 +122,9 @@ async function navigateCurrent(run){
    }else await advancePeriod(run,p.n);
    return;
  }
- const item=run.periodItems[run.index];run.current={...item,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())};await saveRun(run);
+ const item=run.periodItems[run.index];
+ if(!isTeamsMeetingUrl(item.url)){run.results.push({teacher:item.teacher,period:run.period,status:"unresolved",detail:"تجاوز مرصاد رابطًا لا يطابق نطاقات Teams المسموحة؛ لم يفتحه.",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run);return}
+ run.current={...item,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())};await saveRun(run);
  await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+45000});
  await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle,{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
  try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:false})}
