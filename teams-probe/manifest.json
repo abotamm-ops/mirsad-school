@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
-  "version": "0.3.2",
-  "description": "تشغيل دورة رصد تجريبية لروابط حصص Teams من جدول مرصاد.",
+  "version": "0.3.3",
+  "description": "تشغيل الرصد الدوري واختبار فوري تشخيصي لرابط Teams واحد من جدول مرصاد.",
   "permissions": [
     "activeTab",
     "tabs",
