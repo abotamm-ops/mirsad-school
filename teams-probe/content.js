@@ -62,19 +62,19 @@
   }
 
   function tokenizeName(name) {
-    return normalize(name).split(/\s+/).filter(Boolean)
+    return normalize(name).split(/[^\p{L}\p{N}]+/u).filter(Boolean)
       .filter(x => !["بن","ابن","ال"].includes(x));
   }
 
   function nameMatch(teacher, text) {
     const target = tokenizeName(teacher);
-    const hay = normalize(text);
-    if (!target.length || !hay) return {match:false, reason:"الاسم غير مكتمل"};
-    // Names must match on at least two meaningful tokens; accept omission of
-    // middle/family components, but avoid a single-token guess.
-    const matched = target.filter(token => hay.includes(token));
-    const required = Math.min(2, target.length);
-    return {match:matched.length >= required, matched, required};
+    const hayTokens = new Set(tokenizeName(text));
+    if (target.length < 2 || hayTokens.size === 0) return {match:false, reason:"الاسم غير مكتمل"};
+    // Match the first and last name tokens exactly. Middle-name omission is
+    // allowed, but substring matches and single-token guesses are not.
+    const first = target[0], last = target[target.length - 1];
+    const matched = [first, last].filter((token, i) => hayTokens.has(token));
+    return {match:matched.length === 2, matched, required:2};
   }
 
   function getTextForRoot(root) {
@@ -164,9 +164,10 @@
           const rowText = normalize(row.innerText || row.textContent);
           if (!rowText || rowText.length > 300 || rowText.length < 2 || seen.has(rowText)) continue;
           seen.add(rowText);
-          const matched = teacherTokens.filter(token => rowText.includes(token));
-          const required = Math.min(2, teacherTokens.length);
-          if (required > 0 && matched.length >= required) {
+          const rowTokens = new Set(tokenizeName(rowText));
+          const required = teacherTokens.length >= 2 ? 2 : 0;
+          const matched = required ? [teacherTokens[0], teacherTokens[teacherTokens.length - 1]].filter(token => rowTokens.has(token)) : [];
+          if (required === 2 && matched.length === 2) {
             matches.push({text:rowText, organizer:/\borganizer\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم")});
           }
         }
