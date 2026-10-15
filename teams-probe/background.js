@@ -89,9 +89,9 @@ async function advancePeriod(run,after){
 }
 async function receiveResult(message){
  const run=await getRun();if(!run?.running||!run.current)return;
- await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
  const item=run.current;
  if(!message.scanId||message.scanId!==item.scanId)return;
+ await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
  run.results.push({teacher:item.teacher,period:run.period,url:item.url,status:message.result?.status||"unresolved",detail:message.result?.detail||"لم تُرجع واجهة Teams نتيجة واضحة",scannedAt:Date.now(),cycle:run.cycle});
  run.index++;run.current=null;await saveRun(run);
  await setStatus("تم فحص "+run.index+" من "+run.periodItems.length+" في الحصة "+run.period+".",{period:run.period,done:run.index,total:run.periodItems.length,cycle:run.cycle,last:run.results[run.results.length-1]});
