@@ -257,8 +257,16 @@
       if (!target?.active || !target.teacher) return;
       await new Promise(resolve => setTimeout(resolve, 1500));
       await preferBrowserForLandingPage();
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const result = await automaticScan(target.teacher);
+      // Give the user time to complete sign-in/join manually. Never click Join/Admit.
+      let result = {status:"unresolved",detail:"لم يتم الانضمام للاجتماع أو لم تظهر قائمة المشاركين بعد؛ لم يُسجّل غياب."};
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 2500 : 3000));
+        result = await automaticScan(target.teacher);
+        if (result.status !== "unresolved" ||
+            !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام/i.test(result.detail || "")) {
+          break;
+        }
+      }
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
     }).catch(() => {});
   }
