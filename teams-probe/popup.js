@@ -64,7 +64,7 @@ document.getElementById("export").addEventListener("click",async()=>{
       item.detail||"",
       item.cycle||""
     ])].map(row=>row.map(csvCell).join(","));
-    const csv="\\uFEFF"+lines.join("\\r\\n");
+    const csv="\uFEFF"+lines.join("\r\n");
     const url="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
     await chrome.downloads.download({
       url,
