@@ -4,10 +4,25 @@ async function refresh(){
     const r=await chrome.runtime.sendMessage({type:"MIRSAD_STATUS"});
     statusNode.textContent=r?.status?.text||"لا توجد حالة";
     const run=r?.run;
-    if(run?.running) statusNode.textContent += "\nالتقدم: "+run.index+" / "+run.queue.length;
+    if(run?.running&&run.period)statusNode.textContent+="\nالتقدم: الحصة "+run.period+"، الدورة "+(run.cycle||1)+"، "+run.index+"/"+(run.periodItems?.length||0);
     if(run?.results?.length){
-      const recent=run.results.slice(-5).map(x=>x.teacher+" — الحصة "+x.period+": "+(x.status==="present"?"حاضر":x.status==="absent"?"غياب مبدئي":x.status==="invited"?"ضمن المدعوين":x.status==="unresolved"?"غير محسوم":"نتيجة غير معروفة"));
-      statusNode.textContent += "\n\nآخر النتائج:\n"+recent.join("\n");
+      const recent=run.results.slice(-5).map(x=>x.teacher+" — الحصة "+x.period+": "+(x.status==="present"?"حاضر":x.status==="absent"?"غياب مبدئي":x.status==="invited"?"ضمن المدعوين":"غير محسوم"));
+      statusNode.textContent+="\n\nآخر النتائج:\n"+recent.join("\n");
+      const grouped=new Map();
+      for(const x of run.results){
+        const key=x.period+"|"+x.teacher;
+        if(!grouped.has(key))grouped.set(key,{period:x.period,teacher:x.teacher,present:0,absent:0,unresolved:0,invited:0,scans:0});
+        const g=grouped.get(key);g.scans++;
+        if(x.status==="present")g.present++;else if(x.status==="absent")g.absent++;else if(x.status==="invited")g.invited++;else g.unresolved++;
+      }
+      const rows=[...grouped.values()].sort((a,b)=>a.period-b.period||a.teacher.localeCompare(b.teacher,"ar"));
+      const summary=rows.slice(-12).map(g=>{
+        const known=g.present+g.absent;
+        const pct=known?Math.round(g.present/known*100)+"%":"—";
+        return "ح"+g.period+" "+g.teacher+": "+pct+" ظهور ("+g.present+"/"+known+")، غير محسوم "+g.unresolved;
+      });
+      statusNode.textContent+="\n\nملخص الزيارات الأخيرة:\n"+summary.join("\n");
+      statusNode.textContent+="\nالنسبة أولية للزيارات المقروءة فقط، وليست حكمًا نهائيًا بالغياب.";
     }
   }catch(_){statusNode.textContent="تعذر قراءة حالة الإضافة."}
 }
