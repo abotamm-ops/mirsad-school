@@ -22,3 +22,4 @@ document.getElementById("stop").addEventListener("click",async()=>{
   setTimeout(refresh,300);
 });
 refresh();
+setInterval(refresh,1500);
