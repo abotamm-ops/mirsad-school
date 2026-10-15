@@ -212,12 +212,52 @@
     }
   });
 
+  // Prefer staying in the browser when Teams offers an explicit web fallback.
+  // This deliberately does NOT click Join/Admit buttons or bypass sign-in.
+  function chooseBrowserFallback() {
+    const labels = [
+      "continue on this browser",
+      "use teams on the web instead",
+      "join on the web instead",
+      "continue in this browser",
+      "متابعة على هذا المستعرض",
+      "المتابعة على هذا المستعرض",
+      "استخدام teams على الويب",
+      "الانضمام على الويب بدلًا من ذلك",
+      "الانضمام على الويب بدلا من ذلك"
+    ];
+    const controls = [...document.querySelectorAll("button,a,[role=button]")];
+    const candidate = controls.find(el => {
+      const label = normalize([el.innerText,el.getAttribute("aria-label"),el.getAttribute("title")].filter(Boolean).join(" "));
+      return label && labels.some(x => label.toLocaleLowerCase().includes(normalize(x).toLocaleLowerCase()));
+    });
+    if (!candidate || candidate.dataset.mirsadWebFallbackClicked === "1") return false;
+    candidate.dataset.mirsadWebFallbackClicked = "1";
+    candidate.click();
+    return true;
+  }
+
+  // Teams can show a landing page that offers the desktop app and web options.
+  // Retry briefly while the landing UI renders, but never click Join or Admit.
+  async function preferBrowserForLandingPage() {
+    for (let i = 0; i < 5; i++) {
+      if (chooseBrowserFallback()) {
+        await new Promise(resolve => setTimeout(resolve, 1800));
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    return false;
+  }
+
   // Automatic mode: the extension popup controls the run; no manual teacher-name panel.
   if (!window.__mirsadAutoPageHandshake) {
     window.__mirsadAutoPageHandshake = true;
     chrome.runtime.sendMessage({type:"MIRSAD_PAGE_READY"}).then(async target => {
       if (!target?.active || !target.teacher) return;
-      await new Promise(resolve => setTimeout(resolve, 6500));
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      await preferBrowserForLandingPage();
+      await new Promise(resolve => setTimeout(resolve, 5000));
       const result = await automaticScan(target.teacher);
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
     }).catch(() => {});
