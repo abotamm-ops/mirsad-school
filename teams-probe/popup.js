@@ -38,3 +38,43 @@ document.getElementById("stop").addEventListener("click",async()=>{
 });
 refresh();
 setInterval(refresh,1500);
+
+
+function csvCell(value){
+  const text=String(value??"");
+  return '"' + text.replace(/"/g,'""') + '"';
+}
+document.getElementById("export").addEventListener("click",async()=>{
+  const button=document.getElementById("export");
+  button.disabled=true;
+  try{
+    const response=await chrome.runtime.sendMessage({type:"MIRSAD_STATUS"});
+    const run=response?.run;
+    const rows=run?.results||[];
+    if(!rows.length){
+      statusNode.textContent="لا توجد فحوصات محفوظة لتصديرها حتى الآن.";
+      return;
+    }
+    const headers=["وقت الفحص","المعلم","رقم الحصة","الحالة","التفاصيل","الدورة"];
+    const lines=[headers,...rows.map(item=>[
+      item.scannedAt?new Date(item.scannedAt).toLocaleString("ar-SA"):"",
+      item.teacher||"",
+      item.period||"",
+      item.status==="present"?"حاضر":item.status==="absent"?"غياب مبدئي":item.status==="invited"?"ضمن المدعوين":"غير محسوم",
+      item.detail||"",
+      item.cycle||""
+    ])].map(row=>row.map(csvCell).join(","));
+    const csv="\\uFEFF"+lines.join("\\r\\n");
+    const url="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+    await chrome.downloads.download({
+      url,
+      filename:"mirsad-teams-report-"+new Date().toISOString().slice(0,10)+".csv",
+      saveAs:true
+    });
+    statusNode.textContent="جهز مرصاد تقريرًا محليًا يحتوي على "+rows.length+" نتيجة. النسب والحالات أولية وليست اعتمادًا نهائيًا للغياب.";
+  }catch(_){
+    statusNode.textContent="تعذر تنزيل التقرير. تأكد من صلاحية التنزيل ثم أعد المحاولة.";
+  }finally{
+    button.disabled=false;
+  }
+});
