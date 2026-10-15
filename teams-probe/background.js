@@ -31,8 +31,8 @@ async function startMonitoring() {
   if(!all.length){await setStatus("لم أجد روابط Teams في الجدول الحالي. تأكد أن جدول اليوم ظاهر وأن روابط الحصص محمّلة.");return;}
   // Timetable columns 2..8 represent lessons 1..7. Preserve that order.
   const queue=all.sort((a,b)=>a.period-b.period||a.teacher.localeCompare(b.teacher,"ar"));
-  const existing=await chrome.tabs.query({url:["https://teams.microsoft.com/*","https://teams.live.com/*"]});
-  const tab=existing.find(t=>t.id!=null)||await chrome.tabs.create({url:queue[0].url,active:false});
+  // Use a dedicated background tab so the user's existing Teams tab is not hijacked.
+  const tab=await chrome.tabs.create({url:"about:blank",active:false});
   const run={running:true,queue,index:0,tabId:tab.id,startedAt:Date.now(),results:[],phase:"opening",current:null};
   await saveRun(run);
   await setStatus("بدأت الدورة: "+queue.length+" رابطًا من جدول مرصاد. يفتح مرصاد الروابط بالتتابع.",{done:0,total:queue.length});
