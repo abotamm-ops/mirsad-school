@@ -328,7 +328,8 @@
     window.__mirsadAutoPageHandshake = true;
     chrome.runtime.sendMessage({type:"MIRSAD_PAGE_READY"}).then(async target => {
       if (!target?.active || !target.teacher) return;
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Give Teams extra time to render its meeting toolbar after joining.
+      await new Promise(resolve => setTimeout(resolve, 4000));
       await preferBrowserForLandingPage();
       const joinState = await attemptJoinIfReady();
       // The extension only clicks a clearly labelled Join button; it does not bypass
@@ -341,8 +342,11 @@
       } else if (joinState === "join-clicked-not-confirmed") {
         result = {status:"unresolved",detail:"ضغط مرصاد زر الانضمام، لكن لم يتأكد ظهور واجهة الاجتماع؛ لم يُسجّل غياب."};
       } else {
-        for (let attempt = 0; attempt < 10; attempt++) {
-          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 2000 : 2500));
+        // Let the post-join toolbar settle before opening the People panel; retry
+        // the roster scan for up to roughly 45 seconds before closing the tab.
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        for (let attempt = 0; attempt < 15; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 1500 : 2500));
           result = await automaticScan(target.teacher);
           if (result.status !== "unresolved" ||
               !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام/i.test(result.detail || "")) {
