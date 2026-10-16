@@ -161,24 +161,35 @@
       }
       return false;
     };
-    // Focused roster-open step: Teams' People button is a toggle, so click it
-    // at most once per scan. Do not use panel-text detection to decide to click
-    // again; the text parser can fail even when the panel is visibly open.
+    // The People control is a toggle. Across the outer retry loop, click it only
+    // once for this probe tab; otherwise a failed parser can close the pane it opened.
     let sections = findSections();
-    if (!sections.present.length && !sections.invited.length) {
+    let clickedPeopleNow = false;
+    if (!sections.present.length && !sections.invited.length && !window.__mirsadRosterClickAttempted) {
       const clicked = clickParticipants();
       if (!clicked) {
-        return {status:"unresolved",detail:"لم أجد زر «أشخاص» ظاهرًا وقابلًا للضغط في صفحة الاجتماع؛ لم يُسجّل غياب."};
+        const people = document.querySelector('button#roster-button,button[data-inp="roster-button"],button[aria-label="أشخاص"]');
+        return {status:"unresolved",detail:"التشخيص: لم أجد زر «أشخاص» قابلًا للضغط. زر roster=" + (!!people) + "، ظاهر=" + (!!people && visible(people)) + "، عناوين الحضور المكتشفة=0؛ لم يُسجّل غياب."};
       }
-      // Wait for the participant pane to render without clicking the toggle again.
-      for (let attempt = 0; attempt < 12; attempt++) {
+      window.__mirsadRosterClickAttempted = true;
+      clickedPeopleNow = true;
+    }
+    // Whether this is the first attempt or a retry, wait for the same pane;
+    // never toggle People closed while waiting for its content to become readable.
+    if (!sections.present.length && !sections.invited.length) {
+      for (let attempt = 0; attempt < (clickedPeopleNow ? 12 : 3); attempt++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         sections = findSections();
         if (sections.present.length || sections.invited.length) break;
       }
     }
     if (!sections.present.length && !sections.invited.length) {
-      return {status:"unresolved",detail:"لم يمكن تحديد أقسام الحضور والمدعوين تلقائيًا."};
+      const people = document.querySelector('button#roster-button,button[data-inp="roster-button"],button[aria-label="أشخاص"]');
+      const dialogs = [...document.querySelectorAll('[role="dialog"],[data-tid*="roster" i],[data-tid*="participant" i]')].filter(visible).length;
+      const visibleText = normalize(document.body?.innerText || "");
+      const hasPresentHeading = /الحضور|attendees|in this meeting/i.test(visibleText);
+      const hasInvitedHeading = /تمت دعوة الآخرين|other invitees|invited/i.test(visibleText);
+      return {status:"unresolved",detail:"التشخيص: ضغط الأشخاص في هذه الصفحة=" + (!!window.__mirsadRosterClickAttempted) + "؛ زر الأشخاص ظاهر=" + (!!people && visible(people)) + "؛ نوافذ/حاويات مشاركين ظاهرة=" + dialogs + "؛ نص عنوان الحضور موجود=" + hasPresentHeading + "؛ نص عنوان المدعوين موجود=" + hasInvitedHeading + "؛ أقسام القراءة المكتشفة=0. قائمة Teams لم تُقرأ بنجاح؛ لم يُسجّل غياب."};
     }
     const teacherTokens = tokenizeName(teacher);
     const scanRows = (sectionList) => {
