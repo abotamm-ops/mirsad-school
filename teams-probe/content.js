@@ -224,20 +224,34 @@
     return true;
   }
 
-  async function attemptJoinIfReady() {
-    const joinedHints = ["participants","people","المشاركون","المشاركين","leave","مغادرة"];
+  function meetingLooksJoined() {
     const bodyText = normalize(document.body?.innerText || "").toLocaleLowerCase();
-    if (joinedHints.some(x => bodyText.includes(normalize(x).toLocaleLowerCase())) &&
-        document.querySelector('[data-tid*="roster"],[data-tid*="participant"],[aria-label*="participants" i]')) return "already-in";
-    // Retry briefly because Teams often renders its join control after the page shell.
+    const hasLeave = ["leave","leave meeting","مغادرة","مغادرة الاجتماع"].some(x => bodyText.includes(normalize(x).toLocaleLowerCase()));
+    const hasPeopleControl = [...document.querySelectorAll("button,[role=button]")].some(el => {
+      const label = normalize([el.innerText,el.getAttribute("aria-label"),el.getAttribute("title")].filter(Boolean).join(" ")).toLocaleLowerCase();
+      return ["people","participants","المشاركون","المشاركين","الأشخاص"].some(x => label.includes(normalize(x).toLocaleLowerCase()));
+    });
+    return hasLeave && hasPeopleControl;
+  }
+
+  async function attemptJoinIfReady() {
+    if (meetingLooksJoined()) return "already-in";
+    // Retry while Teams renders the pre-join page and its explicit Join control.
     const joinLabels = [
       "join now","join","join meeting","join the meeting","join on the web",
       "انضمام الآن","الانضمام الآن","انضم الآن","الانضمام","انضمام","الانضمام إلى الاجتماع","انضمام للاجتماع"
     ];
-    for (let attempt = 0; attempt < 8; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
       if (clickExactButton(joinLabels)) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        return "clicked-join";
+        // Wait for the meeting view to appear, rather than assuming a click means success.
+        for (let wait = 0; wait < 15; wait++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          if (meetingLooksJoined()) return "joined";
+          const body = normalize(document.body?.innerText || "").toLocaleLowerCase();
+          if (body.includes("waiting in the lobby") || body.includes("someone will let you in") ||
+              body.includes("في ساحة الانتظار") || body.includes("سينضم إليك المنظم")) return "waiting-for-admission";
+        }
+        return "join-clicked-not-confirmed";
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -301,10 +315,14 @@
       // sign-in, name entry, lobby admission, or permissions.
       let result = {status:"unresolved",detail:"لم يتأكد الدخول إلى الاجتماع أو لم تظهر قائمة المشاركين؛ لم يُسجّل غياب."};
       if (joinState === "join-not-available") {
-        result = {status:"unresolved",detail:"لم يظهر زر انضمام جاهز. قد تتطلب الصفحة تسجيل الدخول أو إدخال اسم أو موافقة المنظّم؛ لم يُسجّل غياب."};
+        result = {status:"unresolved",detail:"لم يظهر زر «الانضمام الآن» جاهزًا. قد تتطلب الصفحة تسجيل الدخول أو اختيار الحساب؛ لم يُسجّل غياب."};
+      } else if (joinState === "waiting-for-admission") {
+        result = {status:"unresolved",detail:"تم طلب الانضمام لكن Teams يعرض انتظار موافقة المنظّم؛ لم يُسجّل غياب."};
+      } else if (joinState === "join-clicked-not-confirmed") {
+        result = {status:"unresolved",detail:"ضغط مرصاد زر الانضمام، لكن لم يتأكد ظهور واجهة الاجتماع؛ لم يُسجّل غياب."};
       } else {
         for (let attempt = 0; attempt < 10; attempt++) {
-          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 2500 : 3000));
+          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 2000 : 2500));
           result = await automaticScan(target.teacher);
           if (result.status !== "unresolved" ||
               !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام/i.test(result.detail || "")) {
@@ -312,7 +330,8 @@
           }
         }
       }
-      await leaveMeetingIfJoined();
+      // Do not click Leave unless the meeting UI confirms that we actually joined.
+      if (meetingLooksJoined()) await leaveMeetingIfJoined();
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
     }).catch(() => {});
   }
