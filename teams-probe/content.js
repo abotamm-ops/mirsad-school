@@ -214,9 +214,10 @@
 
   function clickExactButton(labels) {
     const controls = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")];
+    const normalizedLabels = labels.map(x => normalize(x).toLocaleLowerCase());
     const el = controls.find(node => {
       const label = normalize([node.innerText,node.getAttribute("aria-label"),node.getAttribute("title"),node.value].filter(Boolean).join(" ")).toLocaleLowerCase();
-      return visible(node) && labels.some(x => label === normalize(x).toLocaleLowerCase());
+      return visible(node) && normalizedLabels.some(x => label === x);
     });
     if (!el || el.disabled || el.getAttribute("aria-disabled") === "true") return false;
     el.click();
@@ -228,12 +229,17 @@
     const bodyText = normalize(document.body?.innerText || "").toLocaleLowerCase();
     if (joinedHints.some(x => bodyText.includes(normalize(x).toLocaleLowerCase())) &&
         document.querySelector('[data-tid*="roster"],[data-tid*="participant"],[aria-label*="participants" i]')) return "already-in";
-    const clicked = clickExactButton([
-      "join now","join","انضمام الآن","الانضمام الآن","انضم الآن","الانضمام"
-    ]);
-    if (clicked) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      return "clicked-join";
+    // Retry briefly because Teams often renders its join control after the page shell.
+    const joinLabels = [
+      "join now","join","join meeting","join the meeting","join on the web",
+      "انضمام الآن","الانضمام الآن","انضم الآن","الانضمام","انضمام","الانضمام إلى الاجتماع","انضمام للاجتماع"
+    ];
+    for (let attempt = 0; attempt < 8; attempt++) {
+      if (clickExactButton(joinLabels)) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return "clicked-join";
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
     return "join-not-available";
   }
