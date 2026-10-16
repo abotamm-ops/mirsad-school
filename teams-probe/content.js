@@ -177,7 +177,7 @@
     // Whether this is the first attempt or a retry, wait for the same pane;
     // never toggle People closed while waiting for its content to become readable.
     if (!sections.present.length && !sections.invited.length) {
-      for (let attempt = 0; attempt < (clickedPeopleNow ? 12 : 3); attempt++) {
+      for (let attempt = 0; attempt < (clickedPeopleNow ? 6 : 2); attempt++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         sections = findSections();
         if (sections.present.length || sections.invited.length) break;
@@ -368,7 +368,7 @@
   // Teams can show a landing page that offers the desktop app and web options.
   // Retry briefly while the landing UI renders, but never click Join or Admit.
   async function preferBrowserForLandingPage() {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       if (chooseBrowserFallback()) {
         await new Promise(resolve => setTimeout(resolve, 1800));
         return true;
@@ -391,7 +391,7 @@
       }
       if (!target?.active || !target.teacher || !target.scanId) return;
       // Give Teams extra time to render its meeting toolbar after joining.
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       await preferBrowserForLandingPage();
       const joinState = await attemptJoinIfReady();
       // The extension only clicks a clearly labelled Join button; it does not bypass
@@ -404,11 +404,10 @@
       } else if (joinState === "join-clicked-not-confirmed") {
         result = {status:"unresolved",detail:"ضغط مرصاد زر الانضمام، لكن لم يتأكد ظهور واجهة الاجتماع؛ لم يُسجّل غياب."};
       } else {
-        // Let the post-join toolbar settle before opening the People panel; retry
-        // the roster scan for up to roughly 45 seconds before closing the tab.
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        for (let attempt = 0; attempt < 15; attempt++) {
-          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 1500 : 2500));
+        // Shorten settling/retries so a 12-class cycle does not waste time on every link.
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        for (let attempt = 0; attempt < 6; attempt++) {
+          if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 1000));
           result = await automaticScan(target.teacher);
           if (result.status !== "unresolved" ||
               !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام/i.test(result.detail || "")) {
