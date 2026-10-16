@@ -267,6 +267,10 @@
   }
 
   async function attemptJoinIfReady() {
+    // If the live Teams toolbar is already present, do not click Join again.
+    // The roster button is a stronger page-state signal than translated body text.
+    const livePeopleButton = document.querySelector('button#roster-button,button[data-inp="roster-button"],button[aria-label="أشخاص"]');
+    if (livePeopleButton && visible(livePeopleButton)) return "already-in";
     if (meetingLooksJoined()) return "already-in";
     // Retry while Teams renders the pre-join page and its explicit Join control.
     const joinLabels = [
