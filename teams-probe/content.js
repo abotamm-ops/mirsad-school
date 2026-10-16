@@ -139,6 +139,13 @@
         [...document.querySelectorAll("[role=dialog],[data-tid*='roster' i],[data-tid*='participant' i]")].some(visible);
     };
     const clickParticipants = () => {
+      // Teams desktop web exposes the People control as button[data-inp="roster-button"].
+      const exact = document.querySelector('button[data-inp="roster-button"],button[aria-label="أشخاص"]');
+      if (exact && visible(exact) && !exact.disabled && exact.getAttribute("aria-disabled") !== "true") {
+        try { exact.scrollIntoView({block:"nearest"}); } catch (_) {}
+        exact.click();
+        return true;
+      }
       const labels = ["أشخاص","الأشخاص","المشاركون","المشاركين","عرض المشاركين","people","participants","view participants","show participants"];
       const nodes = [...document.querySelectorAll("button,[role=button],[role=menuitem],[data-tid],span,div")];
       const matches = nodes.filter(el => {
@@ -146,7 +153,6 @@
         const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.getAttribute("data-tid"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
         return label && labels.some(x => label === normalize(x).toLocaleLowerCase() || label.startsWith(normalize(x).toLocaleLowerCase()+" "));
       });
-      // Click the nearest actual interactive ancestor, not just the visible text span.
       for (const node of matches) {
         const target = node.closest("button,[role=button],[role=menuitem]") || node;
         if (!visible(target)) continue;
