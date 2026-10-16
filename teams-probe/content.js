@@ -134,7 +134,7 @@
   }
   async function automaticScan(teacher) {
     const clickParticipants = () => {
-      const labels = ["المشاركون","المشاركين","عرض المشاركين","الأشخاص","people","participants","show participants","view participants"];
+      const labels = ["أشخاص","الأشخاص","المشاركون","المشاركين","عرض المشاركين","people","participants","show participants","view participants"];
       const controls = [...document.querySelectorAll("button,[role=button],[role=menuitem]")];
       const control = controls.find(el => {
         const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
