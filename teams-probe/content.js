@@ -370,8 +370,15 @@
   // Automatic mode: the extension popup controls the run; no manual teacher-name panel.
   if (!window.__mirsadAutoPageHandshake) {
     window.__mirsadAutoPageHandshake = true;
-    chrome.runtime.sendMessage({type:"MIRSAD_PAGE_READY"}).then(async target => {
-      if (!target?.active || !target.teacher) return;
+    chrome.runtime.sendMessage({type:"MIRSAD_PAGE_READY"}).then(async firstTarget => {
+      // Background state may not be ready at the exact moment Teams loads.
+      // Poll briefly rather than silently exiting and waiting for the 90s timeout.
+      let target = firstTarget;
+      for (let attempt = 0; attempt < 10 && (!target?.active || !target.teacher || !target.scanId); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        target = await chrome.runtime.sendMessage({type:"MIRSAD_PAGE_READY"});
+      }
+      if (!target?.active || !target.teacher || !target.scanId) return;
       // Give Teams extra time to render its meeting toolbar after joining.
       await new Promise(resolve => setTimeout(resolve, 4000));
       await preferBrowserForLandingPage();
