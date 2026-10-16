@@ -134,11 +134,11 @@
   }
   async function automaticScan(teacher) {
     const clickParticipants = () => {
-      const labels = ["المشاركون","المشاركين","عرض المشاركين","participants","people","show participants"];
-      const controls = [...document.querySelectorAll("button,[role=button]")];
+      const labels = ["المشاركون","المشاركين","عرض المشاركين","الأشخاص","people","participants","show participants","view participants"];
+      const controls = [...document.querySelectorAll("button,[role=button],[role=menuitem]")];
       const control = controls.find(el => {
-        const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.innerText].filter(Boolean).join(" "));
-        return labels.some(x => label.toLocaleLowerCase().includes(normalize(x).toLocaleLowerCase()));
+        const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
+        return visible(el) && labels.some(x => label === normalize(x).toLocaleLowerCase() || label.includes(normalize(x).toLocaleLowerCase()));
       });
       if (control) { control.click(); return true; }
       return false;
@@ -146,8 +146,13 @@
     let sections = findSections();
     if (!sections.present.length && !sections.invited.length) {
       clickParticipants();
-      await new Promise(resolve => setTimeout(resolve, 1800));
-      sections = findSections();
+      // Teams renders the side panel asynchronously; give it time and retry once.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 900));
+        sections = findSections();
+        if (sections.present.length || sections.invited.length) break;
+        if (attempt === 2) clickParticipants();
+      }
     }
     if (!sections.present.length && !sections.invited.length) {
       return {status:"unresolved",detail:"لم يمكن تحديد أقسام الحضور والمدعوين تلقائيًا."};
@@ -190,19 +195,18 @@
     };
     const presentRows = scanRows(sections.present);
     const invitedRows = scanRows(sections.invited);
-    if (presentRows.length === 1 && invitedRows.length === 0) {
-      return {status:"present",detail:"تطابق الاسم داخل سجل مشارك واحد في قسم الحضور."};
+    if (presentRows.length === 1) {
+      return {status:"present",detail:presentRows[0].organizer
+        ? "ظهر اسم المعلم في قسم الحضور، وظهر وسم المنظّم في السجل نفسه."
+        : "ظهر اسم المعلم في قسم الحضور؛ لم يُشترط وسم المنظّم لتسجيل الحضور."};
     }
-    if (presentRows.length > 0 || invitedRows.length > 1) {
-      return {status:"unresolved",detail:"تطابق الاسم في أكثر من سجل أو في أكثر من قسم؛ لا يُسجّل حكم."};
+    if (presentRows.length > 1 || invitedRows.length > 1 || (presentRows.length > 0 && invitedRows.length > 0)) {
+      return {status:"unresolved",detail:"تطابق الاسم في أكثر من سجل أو في قسمي الحضور والمدعوين؛ لا يُسجّل حكم."};
     }
     if (invitedRows.length === 1) {
-      if (invitedRows[0].organizer) {
-        return {status:"absent",detail:"ظهر الاسم في سجل واحد بقسم المدعوين، ووسم المنظّم في السجل نفسه."};
-      }
-      return {status:"invited",detail:"ظهر الاسم في سجل المدعوين لكن لم يثبت وسم المنظّم في السجل نفسه؛ لا يُسجّل غياب."};
+      return {status:"invited",detail:"ظهر الاسم في قسم «تمت دعوة الآخرين» ولم يظهر في قسم الحضور؛ لم يحضر حتى الآن، وليس غيابًا نهائيًا."};
     }
-    return {status:"unresolved",detail:"لم يُعثر على سجل مشارك يطابق الاسم بصورة كافية؛ لا يُسجّل غياب."};
+    return {status:"unresolved",detail:"لم يُعثر على سجل يطابق الاسم في قسمي الحضور والمدعوين؛ لا يُسجّل غياب."};
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
