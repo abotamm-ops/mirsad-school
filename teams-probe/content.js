@@ -210,7 +210,7 @@
           seenRows.add(rowText);
           matches.push({
             text:rowText,
-            organizer:/\\borganizer\\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم")
+            organizer:/\borganizer\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم")
           });
         }
       }
