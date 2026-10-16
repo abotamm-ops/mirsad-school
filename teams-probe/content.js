@@ -133,16 +133,31 @@
     });
   }
   async function automaticScan(teacher) {
+    const participantsPanelOpen = () => [...document.querySelectorAll("body *")].some(el => {
+      if (!visible(el)) return false;
+      const txt = normalize(el.innerText || el.textContent).toLocaleLowerCase();
+      return txt === "المشاركون" || txt === "participants";
+    });
     const clickParticipants = () => {
       const labels = ["أشخاص","الأشخاص","المشاركون","المشاركين","عرض المشاركين","people","participants","show participants","view participants"];
       const controls = [...document.querySelectorAll("button,[role=button],[role=menuitem]")];
       const control = controls.find(el => {
         const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
-        return visible(el) && labels.some(x => label === normalize(x).toLocaleLowerCase() || label.includes(normalize(x).toLocaleLowerCase()));
+        return visible(el) && labels.some(x => label === normalize(x).toLocaleLowerCase());
       });
       if (control) { control.click(); return true; }
       return false;
     };
+    // Open the actual People panel first. Section labels elsewhere in the page
+    // must not prevent clicking the toolbar button.
+    if (!participantsPanelOpen()) {
+      clickParticipants();
+      for (let attempt = 0; attempt < 8; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        if (participantsPanelOpen()) break;
+        if (attempt === 3) clickParticipants();
+      }
+    }
     let sections = findSections();
     if (!sections.present.length && !sections.invited.length) {
       clickParticipants();
