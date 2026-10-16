@@ -373,6 +373,22 @@
       // Do not click Leave unless the meeting UI confirms that we actually joined.
       if (meetingLooksJoined()) await leaveMeetingIfJoined();
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
-    }).catch(() => {});
+    }).catch(async error => {
+      // Never let an internal content-script exception silently consume the
+      // whole 90-second background timeout. Return a diagnostic result instead.
+      try {
+        const target = await chrome.runtime.sendMessage({type:"MIRSAD_PAGE_READY"});
+        if (target?.active && target.scanId) {
+          const detail = "تعطل فحص Teams بسبب خطأ داخلي: " +
+            String(error?.message || error || "خطأ غير معروف").slice(0, 180) +
+            ". لم يُسجّل غياب.";
+          await chrome.runtime.sendMessage({
+            type:"MIRSAD_SCAN_RESULT",
+            scanId:target.scanId,
+            result:{status:"unresolved",detail}
+          });
+        }
+      } catch (_) {}
+    });
   }
 })();
