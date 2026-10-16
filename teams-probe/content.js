@@ -161,26 +161,25 @@
       }
       return false;
     };
-    if (!participantsPanelOpen()) {
-      for (let attempt = 0; attempt < 12; attempt++) {
-        clickParticipants();
-        for (let wait = 0; wait < 6; wait++) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          if (participantsPanelOpen()) break;
-        }
-        if (participantsPanelOpen()) break;
-        await new Promise(resolve => setTimeout(resolve, 700));
-      }
-    }
+    // The People control is a toggle. Repeated clicks can reopen/close the panel
+    // and leave it closed just as the scan starts. Click once, then wait for Teams
+    // to render the roster; only retry once if we can still find no roster sections.
     let sections = findSections();
     if (!sections.present.length && !sections.invited.length) {
       clickParticipants();
-      // Teams renders the side panel asynchronously; give it time and retry once.
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        sections = findSections();
+        if (sections.present.length || sections.invited.length) break;
+      }
+    }
+    if (!sections.present.length && !sections.invited.length) {
+      // One final click only after the first wait window, then wait again.
+      clickParticipants();
+      for (let attempt = 0; attempt < 6; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 900));
         sections = findSections();
         if (sections.present.length || sections.invited.length) break;
-        if (attempt === 2) clickParticipants();
       }
     }
     if (!sections.present.length && !sections.invited.length) {
