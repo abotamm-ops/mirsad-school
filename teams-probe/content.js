@@ -133,30 +133,32 @@
     });
   }
   async function automaticScan(teacher) {
-    const participantsPanelOpen = () => [...document.querySelectorAll("body *")].some(el => {
-      if (!visible(el)) return false;
-      const txt = normalize(el.innerText || el.textContent).toLocaleLowerCase();
-      return txt === "المشاركون" || txt === "participants";
-    });
-    const clickParticipants = () => {
-      const labels = ["أشخاص","الأشخاص","المشاركون","المشاركين","عرض المشاركين","people","participants","show participants","view participants"];
-      const controls = [...document.querySelectorAll("button,[role=button],[role=menuitem],[data-tid*='participant' i],[data-tid*='roster' i],[data-tid*='people' i]")];
-      const control = controls.find(el => {
-        const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.getAttribute("data-tid"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
-        return visible(el) && labels.some(x => label === normalize(x).toLocaleLowerCase() || label.includes(normalize(x).toLocaleLowerCase()));
-      });
-      if (!control) return false;
-      try { control.scrollIntoView({block:"nearest"}); } catch (_) {}
-      try { control.focus({preventScroll:true}); } catch (_) {}
-      control.click();
-      return true;
+    const participantsPanelOpen = () => {
+      const text = normalize(document.body?.innerText || "").toLocaleLowerCase();
+      return (text.includes("الحضور") && text.includes("تمت دعوة الآخرين")) ||
+        [...document.querySelectorAll("[role=dialog],[data-tid*='roster' i],[data-tid*='participant' i]")].some(visible);
     };
-    // Open the actual People panel first. Section labels elsewhere in the page
-    // must not prevent clicking the toolbar button.
+    const clickParticipants = () => {
+      const labels = ["أشخاص","الأشخاص","المشاركون","المشاركين","عرض المشاركين","people","participants","view participants","show participants"];
+      const nodes = [...document.querySelectorAll("button,[role=button],[role=menuitem],[data-tid],span,div")];
+      const matches = nodes.filter(el => {
+        if (!visible(el)) return false;
+        const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.getAttribute("data-tid"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
+        return label && labels.some(x => label === normalize(x).toLocaleLowerCase() || label.startsWith(normalize(x).toLocaleLowerCase()+" "));
+      });
+      // Click the nearest actual interactive ancestor, not just the visible text span.
+      for (const node of matches) {
+        const target = node.closest("button,[role=button],[role=menuitem]") || node;
+        if (!visible(target)) continue;
+        try { target.scrollIntoView({block:"nearest"}); } catch (_) {}
+        try { target.click(); return true; } catch (_) {}
+      }
+      return false;
+    };
     if (!participantsPanelOpen()) {
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 12; attempt++) {
         clickParticipants();
-        for (let wait = 0; wait < 5; wait++) {
+        for (let wait = 0; wait < 6; wait++) {
           await new Promise(resolve => setTimeout(resolve, 500));
           if (participantsPanelOpen()) break;
         }
