@@ -218,18 +218,26 @@
     };
     const presentRows = scanRows(sections.present);
     const invitedRows = scanRows(sections.invited);
-    if (presentRows.length === 1) {
-      return {status:"present",detail:presentRows[0].organizer
-        ? "ظهر اسم المعلم في قسم الحضور، وظهر وسم المنظّم في السجل نفسه."
-        : "ظهر اسم المعلم في قسم الحضور؛ لم يُشترط وسم المنظّم لتسجيل الحضور."};
-    }
+    // Apply the requested three-part rule:
+    // (1) allow the teacher's full timetable name to match a shortened room name
+    // by requiring the first and last name tokens, (2) organizer label must be
+    // attached to that same participant row, and (3) classify by the section.
     if (presentRows.length > 1 || invitedRows.length > 1 || (presentRows.length > 0 && invitedRows.length > 0)) {
       return {status:"unresolved",detail:"تطابق الاسم في أكثر من سجل أو في قسمي الحضور والمدعوين؛ لا يُسجّل حكم."};
     }
-    if (invitedRows.length === 1) {
-      return {status:"invited",detail:"ظهر الاسم في قسم «تمت دعوة الآخرين» ولم يظهر في قسم الحضور؛ لم يحضر حتى الآن، وليس غيابًا نهائيًا."};
+    if (presentRows.length === 1) {
+      if (!presentRows[0].organizer) {
+        return {status:"unresolved",detail:"ظهر اسم قريب في قسم الحضور، لكن لم يُثبت ارتباط وسم «المنظّم» بالسجل نفسه؛ لا يُسجّل حكم."};
+      }
+      return {status:"present",detail:"تطابق الاسم الثلاثي مع الاسم الظاهر في الغرفة، وظهر وسم «المنظّم» في السجل نفسه ضمن قسم الحضور."};
     }
-    return {status:"unresolved",detail:"لم يُعثر على سجل يطابق الاسم في قسمي الحضور والمدعوين؛ لا يُسجّل غياب."};
+    if (invitedRows.length === 1) {
+      if (!invitedRows[0].organizer) {
+        return {status:"unresolved",detail:"ظهر اسم قريب في «تمت دعوة الآخرين»، لكن لم يُثبت ارتباط وسم «المنظّم» بالسجل نفسه؛ لا يُسجّل غياب."};
+      }
+      return {status:"invited",detail:"تطابق الاسم الثلاثي مع الاسم الثنائي الظاهر في الغرفة، ووسم «المنظّم» مرتبط بالسجل نفسه ضمن «تمت دعوة الآخرين»؛ المعلم مدعو لكنه لم يظهر ضمن الحضور حتى الآن، ولا يُسجّل غياب نهائي."};
+    }
+    return {status:"unresolved",detail:"لم يُعثر على سجل واحد واضح يطابق الاسم ووسم «المنظّم»؛ لا يُسجّل غياب."};
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
