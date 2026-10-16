@@ -140,22 +140,28 @@
     });
     const clickParticipants = () => {
       const labels = ["أشخاص","الأشخاص","المشاركون","المشاركين","عرض المشاركين","people","participants","show participants","view participants"];
-      const controls = [...document.querySelectorAll("button,[role=button],[role=menuitem]")];
+      const controls = [...document.querySelectorAll("button,[role=button],[role=menuitem],[data-tid*='participant' i],[data-tid*='roster' i],[data-tid*='people' i]")];
       const control = controls.find(el => {
-        const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
-        return visible(el) && labels.some(x => label === normalize(x).toLocaleLowerCase());
+        const label = normalize([el.getAttribute("aria-label"),el.getAttribute("title"),el.getAttribute("data-tid"),el.innerText,el.textContent].filter(Boolean).join(" ")).toLocaleLowerCase();
+        return visible(el) && labels.some(x => label === normalize(x).toLocaleLowerCase() || label.includes(normalize(x).toLocaleLowerCase()));
       });
-      if (control) { control.click(); return true; }
-      return false;
+      if (!control) return false;
+      try { control.scrollIntoView({block:"nearest"}); } catch (_) {}
+      try { control.focus({preventScroll:true}); } catch (_) {}
+      control.click();
+      return true;
     };
     // Open the actual People panel first. Section labels elsewhere in the page
     // must not prevent clicking the toolbar button.
     if (!participantsPanelOpen()) {
-      clickParticipants();
-      for (let attempt = 0; attempt < 8; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 700));
+      for (let attempt = 0; attempt < 5; attempt++) {
+        clickParticipants();
+        for (let wait = 0; wait < 5; wait++) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          if (participantsPanelOpen()) break;
+        }
         if (participantsPanelOpen()) break;
-        if (attempt === 3) clickParticipants();
+        await new Promise(resolve => setTimeout(resolve, 700));
       }
     }
     let sections = findSections();
