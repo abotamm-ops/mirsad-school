@@ -417,7 +417,7 @@
           if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 1000));
           result = await automaticScan(target.teacher);
           if (result.status !== "unresolved" ||
-              !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام/i.test(result.detail || "")) {
+              !/لم يمكن تحديد أقسام الحضور|لم يتم الانضمام|لم تظهر قائمة المشاركين|تعذر تحديد أقسام|التشخيص:/i.test(result.detail || "")) {
             break;
           }
         }
