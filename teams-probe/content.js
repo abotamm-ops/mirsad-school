@@ -23,7 +23,14 @@
   const exactHeading = text => {
     const t = normalize(text).toLocaleLowerCase();
     for (const group of headingAliases) {
-      if (group.labels.some(label => normalize(label).toLocaleLowerCase() === t)) return group.key;
+      for (const label of group.labels) {
+        const expected = normalize(label).toLocaleLowerCase();
+        // Teams may append live participant counts, e.g. "الحضور (1)"
+        // or "تمت دعوة الآخرين (30/31)", to the section heading.
+        if (t === expected || t.startsWith(expected + " (") ||
+            t.startsWith(expected + " (") || t.startsWith(expected + "：") ||
+            t.startsWith(expected + ":")) return group.key;
+      }
     }
     return null;
   };
