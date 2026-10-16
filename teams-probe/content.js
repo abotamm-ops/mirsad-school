@@ -255,10 +255,14 @@
   function meetingLooksJoined() {
     const bodyText = normalize(document.body?.innerText || "").toLocaleLowerCase();
     const hasLeave = ["leave","leave meeting","مغادرة","مغادرة الاجتماع"].some(x => bodyText.includes(normalize(x).toLocaleLowerCase()));
-    const hasPeopleControl = [...document.querySelectorAll("button,[role=button]")].some(el => {
-      const label = normalize([el.innerText,el.getAttribute("aria-label"),el.getAttribute("title")].filter(Boolean).join(" ")).toLocaleLowerCase();
-      return ["people","participants","المشاركون","المشاركين","الأشخاص"].some(x => label.includes(normalize(x).toLocaleLowerCase()));
-    });
+    // The actual Arabic Teams toolbar label is "أشخاص" (not only "الأشخاص").
+    // Prefer its stable DOM selector, which was confirmed in the live page.
+    const peopleButton = document.querySelector('button#roster-button,button[data-inp="roster-button"],button[aria-label="أشخاص"]');
+    const hasPeopleControl = !!(peopleButton && visible(peopleButton)) ||
+      [...document.querySelectorAll("button,[role=button]")].some(el => {
+        const label = normalize([el.innerText,el.getAttribute("aria-label"),el.getAttribute("title")].filter(Boolean).join(" ")).toLocaleLowerCase();
+        return ["people","participants","أشخاص","الأشخاص","المشاركون","المشاركين"].some(x => label.includes(normalize(x).toLocaleLowerCase()));
+      });
     return hasLeave && hasPeopleControl;
   }
 
