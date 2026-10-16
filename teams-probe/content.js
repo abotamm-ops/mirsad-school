@@ -161,23 +161,18 @@
       }
       return false;
     };
-    // The People control is a toggle. Repeated clicks can reopen/close the panel
-    // and leave it closed just as the scan starts. Click once, then wait for Teams
-    // to render the roster; only retry once if we can still find no roster sections.
+    // Focused roster-open step: Teams' People button is a toggle, so click it
+    // at most once per scan. Do not use panel-text detection to decide to click
+    // again; the text parser can fail even when the panel is visibly open.
     let sections = findSections();
     if (!sections.present.length && !sections.invited.length) {
-      clickParticipants();
-      for (let attempt = 0; attempt < 10; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        sections = findSections();
-        if (sections.present.length || sections.invited.length) break;
+      const clicked = clickParticipants();
+      if (!clicked) {
+        return {status:"unresolved",detail:"لم أجد زر «أشخاص» ظاهرًا وقابلًا للضغط في صفحة الاجتماع؛ لم يُسجّل غياب."};
       }
-    }
-    if (!sections.present.length && !sections.invited.length) {
-      // One final click only after the first wait window, then wait again.
-      clickParticipants();
-      for (let attempt = 0; attempt < 6; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 900));
+      // Wait for the participant pane to render without clicking the toggle again.
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
         sections = findSections();
         if (sections.present.length || sections.invited.length) break;
       }
