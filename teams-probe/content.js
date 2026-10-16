@@ -208,9 +208,24 @@
           const rowText = normalize(row.innerText || row.textContent);
           if (seenRows.has(rowText)) continue;
           seenRows.add(rowText);
+          const rowAttrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
+            .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")]
+              .filter(Boolean).join(" "))
+            .join(" ");
+          const evidenceText = normalize(rowText + " " + rowAttrs).toLocaleLowerCase();
+          // A visible X/close icon can be represented by aria-label/title/data-tid;
+          // accept only explicit presence/connection labels, not microphone mute alone.
+          const xEvidence = /(?:^|\s)(?:x|×|✕|✖)(?:\s|$)/i.test(rowAttrs) ||
+            /(?:disconnected|not connected|connection lost|غير متصل|غير متواجـد|انقطع الاتصال|لم ينضم|لم يتصل)/i.test(evidenceText);
+          const lastSeenMatch = evidenceText.match(/(?:آخر ظهور|آخر نشاط|last seen|last active)\s*[:：]?\s*(.{1,50})/i);
+          const lastSeenText = lastSeenMatch ? normalize(lastSeenMatch[1]) : "";
+          const hasLastSeenBeforeCurrent = !!lastSeenText && /(?:قبل|ago|منذ|yesterday|أمس|دقيقة|دقائق|ثانية|ثوانٍ|ساعة|ساعات)/i.test(lastSeenText);
           matches.push({
             text:rowText,
-            organizer:/\borganizer\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم")
+            organizer:/\borganizer\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم"),
+            xEvidence,
+            lastSeenText,
+            hasLastSeenBeforeCurrent
           });
         }
       }
@@ -232,10 +247,15 @@
       return {status:"present",detail:"تطابق الاسم الثلاثي مع الاسم الظاهر في الغرفة، وظهر وسم «المنظّم» في السجل نفسه ضمن قسم الحضور."};
     }
     if (invitedRows.length === 1) {
-      if (!invitedRows[0].organizer) {
+      const row = invitedRows[0];
+      if (!row.organizer) {
         return {status:"unresolved",detail:"ظهر اسم قريب في «تمت دعوة الآخرين»، لكن لم يُثبت ارتباط وسم «المنظّم» بالسجل نفسه؛ لا يُسجّل غياب."};
       }
-      return {status:"invited",detail:"تطابق الاسم الثلاثي مع الاسم الثنائي الظاهر في الغرفة، ووسم «المنظّم» مرتبط بالسجل نفسه ضمن «تمت دعوة الآخرين»؛ المعلم مدعو لكنه لم يظهر ضمن الحضور حتى الآن، ولا يُسجّل غياب نهائي."};
+      if (!row.xEvidence && !row.hasLastSeenBeforeCurrent) {
+        return {status:"unresolved",detail:"الاسم ووسم «المنظّم» ظهرا ضمن المدعوين، لكن لم يُقرأ دليل إضافي موثوق (علامة اتصال/انقطاع أو آخر ظهور قبل الحصة)؛ لا تُجمع الأدلة ولا يُسجّل غياب."};
+      }
+      const evidence = [row.xEvidence ? "ظهرت علامة اتصال/انقطاع في سجل الشخص" : "", row.hasLastSeenBeforeCurrent ? "آخر ظهور مقروء: " + row.lastSeenText : ""].filter(Boolean).join("؛ ");
+      return {status:"invited",detail:"تطابق الاسم الثلاثي مع الاسم المختصر، ووسم «المنظّم» مرتبط بالسجل نفسه ضمن «تمت دعوة الآخرين»، مع دليل إضافي: " + evidence + ". المعلم مدعو ولم يظهر ضمن الحضور؛ الحالة لا تزال ليست غيابًا نهائيًا."};
     }
     return {status:"unresolved",detail:"لم يُعثر على سجل واحد واضح يطابق الاسم ووسم «المنظّم»؛ لا يُسجّل غياب."};
   }
