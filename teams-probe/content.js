@@ -213,13 +213,14 @@
   });
 
   function clickExactButton(labels) {
-    const controls = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")];
+    const controls = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit],a")];
     const normalizedLabels = labels.map(x => normalize(x).toLocaleLowerCase());
     const el = controls.find(node => {
-      const label = normalize([node.innerText,node.getAttribute("aria-label"),node.getAttribute("title"),node.value].filter(Boolean).join(" ")).toLocaleLowerCase();
-      return visible(node) && normalizedLabels.some(x => label === x);
+      const label = normalize([node.innerText,node.textContent,node.getAttribute("aria-label"),node.getAttribute("title"),node.value].filter(Boolean).join(" ")).toLocaleLowerCase();
+      return visible(node) && normalizedLabels.some(x => label === x || label.includes(x));
     });
     if (!el || el.disabled || el.getAttribute("aria-disabled") === "true") return false;
+    try { el.focus({preventScroll:true}); } catch (_) {}
     el.click();
     return true;
   }
