@@ -126,7 +126,7 @@ function nextPeriod(now=new Date()){
  const d=new Date(now);d.setDate(d.getDate()+1);while(!schoolDay(d))d.setDate(d.getDate()+1);
  return {period:PERIODS[0],when:dateAtOffset(d,PERIODS[0].startOffset).getTime()};
 }
-async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https://mirsad-school.onrender.com/*"});return tabs.find(t=>t.url&&!t.url.includes("/absence.html")&&!t.url.includes("/automatic-attendance.html"))||null}
+async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https://mirsad-school.onrender.com/*"});const eligible=tabs.filter(t=>t.url&&!t.url.includes("/absence.html")&&!t.url.includes("/automatic-attendance.html"));const active=eligible.find(t=>t.active);if(active)return active;for(const tab of eligible){try{const result=await chrome.tabs.sendMessage(tab.id,{type:"MIRSAD_GET_SCHEDULE"});if(result?.ok&&Array.isArray(result.items)&&Array.isArray(result.periods)&&result.periods.length===7)return tab}catch(_){}}return eligible[0]||null}
 async function startOneOffTest(){
  const existing=await getRun();
  if(existing?.running){await setStatus("أوقف المراقبة الحالية أولًا قبل الاختبار المباشر.");return}
