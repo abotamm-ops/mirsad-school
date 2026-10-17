@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
   "version": "0.3.6",
-  "description": "تشغيل الرصد التجريبي مع إغلاق تبويب الفحص بعد النتيجة أو المهلة أو الإيقاف.",
+  "description": "رصد حضور Teams وإظهار النتائج في صفحة التحضير الآلي التجريبية.",
   "permissions": [
     "activeTab",
     "tabs",
@@ -39,6 +39,15 @@
       ],
       "js": [
         "schedule.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mirsad-school.onrender.com/automatic-attendance.html"
+      ],
+      "js": [
+        "report-bridge.js"
       ],
       "run_at": "document_idle"
     }
