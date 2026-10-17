@@ -142,8 +142,8 @@ async function startOneOffTest(){
  const run={running:true,testMode:true,schedule:items,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:item.period,periodItems:[item],index:0,cycle:0,current:{...item,scanId}};
  await saveRun(run);
  await setStatus("اختبار مباشر: فتح رابط حصة واحدة للمعلم "+item.teacher+". هذه نتيجة تشخيصية وليست تسجيل حضور رسمي.",{testMode:true,teacher:item.teacher,period:item.period});
- await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+30000});
- try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:false})}catch(_){
+ await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+120000});
+ try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:true})}catch(_){
    run.running=false;run.current=null;run.results.push({teacher:item.teacher,period:item.period,status:"unresolved",detail:"تعذر فتح رابط الاختبار",scannedAt:Date.now(),cycle:0});await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await closeProbeTab(run);await setStatus("تعذر فتح رابط الاختبار؛ أُغلقت صفحة الاختبار.");
  }
 }
@@ -219,9 +219,9 @@ async function navigateCurrent(run){
  if(!item.url){const record={teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,url:"",status:"no-link",detail:"لا يوجد رابط Teams لهذه الحصة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle||0};run.results.push(record);if(!run.testMode&&!run.backtestMode)await appendDailyReport(record);run.index++;run.current=null;await saveRun(run);await setStatus("الحصة "+p.n+" — "+item.teacher+": لا يوجد رابط Teams؛ يتابع مرصاد المعلم التالي.",{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle,last:record});await navigateCurrent(run);return}
  if(!isTeamsMeetingUrl(item.url)){run.results.push({teacher:item.teacher,period:run.period,status:"unresolved",detail:"تجاوز مرصاد رابطًا لا يطابق نطاقات Teams المسموحة؛ لم يفتحه.",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run);return}
  run.current={...item,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())};await saveRun(run);
- await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+30000});
+ await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+120000});
  await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle,{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
- try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:false})}
+ try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:true})}
  catch(_){run.results.push({teacher:item.teacher,period:p.n,status:"unresolved",detail:"تعذر فتح الرابط",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run)}
 }
 async function advancePeriod(run,after){
