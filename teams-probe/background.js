@@ -264,11 +264,10 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_GET_LIVE_REPORT"){
   (async()=>{
    const [run,stored]=await Promise.all([getRun(),chrome.storage.local.get([DAILY_REPORT_KEY,"mirsadManualAttendanceOverrides","mirsadManualMappings"])]);
-   let schedule=Array.isArray(run?.schedule)?run.schedule:[];
-   if(!schedule.length){
-    const tab=await getScheduleTab();
-    if(tab){try{const response=await chrome.tabs.sendMessage(tab.id,{type:"MIRSAD_GET_SCHEDULE"});if(response?.ok)schedule=response.items||[]}catch(_){}}
-   }
+   let schedule=[];
+   const tab=await getScheduleTab();
+   if(tab){try{const response=await chrome.tabs.sendMessage(tab.id,{type:"MIRSAD_GET_SCHEDULE"});if(response?.ok)schedule=response.items||[]}catch(_){}}
+   if(!schedule.length)schedule=Array.isArray(run?.schedule)?run.schedule:[];
    sendResponse({ok:true,run:run||{},schedule,dailyReports:stored[DAILY_REPORT_KEY]||{},manualOverrides:stored.mirsadManualAttendanceOverrides||{},manualMappings:stored.mirsadManualMappings||{}});
   })().catch(()=>sendResponse({ok:false}));
   return true
