@@ -261,7 +261,29 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  }
  if(message?.type==="MIRSAD_STOP"){getRun().then(async run=>{if(run){run.running=false;await saveRun(run);await closeProbeTab(run)}await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await setStatus("تم إيقاف المراقبة بناءً على طلبك.");sendResponse({ok:true})});return true}
  if(message?.type==="MIRSAD_STATUS"){Promise.all([chrome.storage.local.get(STATUS_KEY),getRun()]).then(([s,r])=>sendResponse({status:s[STATUS_KEY]||{text:"لا توجد حالة"},run:r}));return true}
- if(message?.type==="MIRSAD_GET_LIVE_REPORT"){Promise.all([getRun(),chrome.storage.local.get([DAILY_REPORT_KEY,"mirsadManualAttendanceOverrides"])]).then(([run,stored])=>sendResponse({ok:true,run:run||{},dailyReports:stored[DAILY_REPORT_KEY]||{},manualOverrides:stored.mirsadManualAttendanceOverrides||{}}));return true}
+ if(message?.type==="MIRSAD_GET_LIVE_REPORT"){
+  (async()=>{
+   const [run,stored]=await Promise.all([getRun(),chrome.storage.local.get([DAILY_REPORT_KEY,"mirsadManualAttendanceOverrides","mirsadManualMappings"])]);
+   let schedule=Array.isArray(run?.schedule)?run.schedule:[];
+   if(!schedule.length){
+    const tab=await getScheduleTab();
+    if(tab){try{const response=await chrome.tabs.sendMessage(tab.id,{type:"MIRSAD_GET_SCHEDULE"});if(response?.ok)schedule=response.items||[]}catch(_){}}
+   }
+   sendResponse({ok:true,run:run||{},schedule,dailyReports:stored[DAILY_REPORT_KEY]||{},manualOverrides:stored.mirsadManualAttendanceOverrides||{},manualMappings:stored.mirsadManualMappings||{}});
+  })().catch(()=>sendResponse({ok:false}));
+  return true
+ }
+ if(message?.type==="MIRSAD_SAVE_MAPPING"){
+  (async()=>{
+   if(!message.teamsName){sendResponse({ok:false});return}
+   const key="mirsadManualMappings",saved=await chrome.storage.local.get(key);
+   const mappings=saved[key]&&typeof saved[key]==="object"?saved[key]:{};
+   if(message.teacher)mappings[String(message.teamsName)]=String(message.teacher);else delete mappings[String(message.teamsName)];
+   await chrome.storage.local.set({[key]:mappings});
+   sendResponse({ok:true,mappings});
+  })().catch(()=>sendResponse({ok:false}));
+  return true
+ }
  if(message?.type==="MIRSAD_SET_MANUAL_STATUS"){
   (async()=>{const key="mirsadManualAttendanceOverrides";const saved=await chrome.storage.local.get(key);const overrides=saved[key]&&typeof saved[key]==="object"?saved[key]:{};const k=String(message.day||localDayKey())+"|"+String(message.period||"")+"|"+String(message.teacher||"");if(!message.teacher||!message.period){sendResponse({ok:false});return}if(message.status==="clear")delete overrides[k];else if(["present","absent"].includes(message.status))overrides[k]={status:message.status,updatedAt:Date.now(),updatedBy:"manual"};else{sendResponse({ok:false});return}await chrome.storage.local.set({[key]:overrides});sendResponse({ok:true})})().catch(()=>sendResponse({ok:false}));return true
  }
