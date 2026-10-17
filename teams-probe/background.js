@@ -12,6 +12,21 @@ const CYCLE_GAP_MS=15000;
 async function setStatus(text,extra={}){await chrome.storage.local.set({[STATUS_KEY]:{text,at:Date.now(),...extra}})}
 async function getRun(){const x=await chrome.storage.local.get(KEY);return x[KEY]||null}
 async function saveRun(run){await chrome.storage.local.set({[KEY]:run})}
+const DAILY_REPORT_KEY="mirsadDailyAttendanceReports";
+function localDayKey(date=new Date()){
+ const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,"0"),d=String(date.getDate()).padStart(2,"0");
+ return y+"-"+m+"-"+d;
+}
+async function appendDailyReport(record){
+ const day=localDayKey(new Date(record.scannedAt||Date.now()));
+ const saved=await chrome.storage.local.get(DAILY_REPORT_KEY);
+ const reports=saved[DAILY_REPORT_KEY]&&typeof saved[DAILY_REPORT_KEY]==="object"?saved[DAILY_REPORT_KEY]:{};
+ reports[day]=Array.isArray(reports[day])?reports[day]:[];
+ reports[day].push(record);
+ const keys=Object.keys(reports).sort();
+ while(keys.length>45)delete reports[keys.shift()];
+ await chrome.storage.local.set({[DAILY_REPORT_KEY]:reports});
+}
 async function closeProbeTab(run){
  if(!run)return;
  const ids=new Set([...(run.probeTabIds||[]),run.tabId].filter(id=>Number.isInteger(id)));
@@ -149,6 +164,7 @@ async function receiveResult(message){
  const scannedAt=Date.now();
  const resultRecord={teacher:message.result?.teacher||item.teacher,scheduledTeacher:item.teacher,period:run.period,url:item.url,status:message.result?.status||"unresolved",detail:message.result?.detail||"لم تُرجع واجهة Teams نتيجة واضحة",scannedAt,cycle:run.cycle||0};
  run.results.push(resultRecord);
+ if(!run.testMode)await appendDailyReport(resultRecord);
  
  run.index++;run.current=null;
  if(run.testMode){run.running=false;await saveRun(run);await closeProbeTab(run);await setStatus("اكتمل الاختبار المباشر لرابط واحد: "+item.teacher+" — "+(message.result?.detail||message.result?.status||"غير محسوم")+". أُغلقت صفحة الاختبار تلقائيًا. النتيجة تشخيصية فقط.",{testMode:true,last:run.results[run.results.length-1]});return}
@@ -162,7 +178,9 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
  if(alarm.name===SCAN_TIMEOUT_ALARM){
   if(!run.current)return;
   const item=run.current;
-  run.results.push({teacher:item.teacher,period:run.period,url:item.url,status:"unresolved",detail:"انتهت مهلة انتظار Teams دون نتيجة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle||0});
+  const timeoutRecord={teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,url:item.url,status:"unresolved",detail:"انتهت مهلة انتظار Teams دون نتيجة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle||0};
+  run.results.push(timeoutRecord);
+  if(!run.testMode)await appendDailyReport(timeoutRecord);
   run.index++;run.current=null;
   if(run.testMode){run.running=false;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await closeProbeTab(run);await setStatus("انتهت مهلة الاختبار المباشر دون نتيجة من Teams. أُغلقت صفحة الاختبار تلقائيًا؛ لم يُسجّل غياب.",{testMode:true,last:run.results[run.results.length-1]});return}
   await saveRun(run);
