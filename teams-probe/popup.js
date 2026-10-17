@@ -16,8 +16,9 @@ async function renderMappings(run){
     if((item.scannedAt||0)>=current.at){current.status=item.status;current.at=item.scannedAt||0;current.period=item.period;}
     relevant.set(key,current);
   }
-  const teachers=[...new Set((run?.schedule||[]).map(x=>String(x.teacher||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
-  const rows=[...relevant.values()].sort((a,b)=>a.teacher.localeCompare(b.teacher,"ar"));
+  const teachers=[...new Set((run?.schedule||[]).map(x=>String(x.teacher||"").trim()).filter(Boolean))];
+  // Keep the teacher roster and the Teams-organizer rows in their original order; never alphabetize them.
+  const rows=[...relevant.values()];
   const signature=JSON.stringify({rows:rows.map(x=>[x.teacher,x.status,x.period]),teachers});
   if(signature===lastMappingSignature)return;
   lastMappingSignature=signature;
