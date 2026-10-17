@@ -327,13 +327,16 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_SAVE_SCHEDULE_SETTINGS"){
   (async()=>{
    const mode=message.settings?.mode==="manual"?"manual":"automatic";
-   const firstStart=String(message.settings?.firstStart||"06:30");
-   const lessonMinutes=Number(message.settings?.lessonMinutes);
-   const breakMinutes=Number(message.settings?.breakMinutes);
-   if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(firstStart)||!Number.isInteger(lessonMinutes)||lessonMinutes<1||lessonMinutes>180||!Number.isInteger(breakMinutes)||breakMinutes<0||breakMinutes>60){
-    sendResponse({ok:false,reason:"invalid"});return;
+   const manualStart=String(message.settings?.manualStart||"06:30");
+   if(mode==="manual"&&parseClock(manualStart)===null){sendResponse({ok:false,reason:"invalid"});return}
+   let old=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);
+   let basePeriods=old[SCHEDULE_SETTINGS_KEY]?.basePeriods;
+   const scheduleTab=await getScheduleTab();
+   if(scheduleTab){
+    try{await loadPeriodsFromSchedule(scheduleTab.id);old=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);basePeriods=old[SCHEDULE_SETTINGS_KEY]?.basePeriods}catch(_){}
    }
-   const settings={mode,firstStart:mode==="automatic"?"06:30":firstStart,lessonMinutes,breakMinutes,updatedAt:Date.now()};
+   if(!Array.isArray(basePeriods)||basePeriods.length!==7){sendResponse({ok:false,reason:"no-timetable"});return}
+   const settings={mode,manualStart,basePeriods,updatedAt:Date.now()};
    await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:settings});
    await refreshScheduleSettings();
    const run=await getRun();
@@ -342,14 +345,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     run.period=null;run.periodItems=[];run.index=0;run.current=null;await saveRun(run);
     const current=periodNow();
     if(current)await beginPeriod(run,current.n);
-    else{
-     const next=nextPeriod();
-     await setStatus("تم تحديث الأوقات. ينتظر مرصاد الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,scheduleSettings:settings});
-     await chrome.alarms.create(NEXT_ALARM,{when:next.when});
-    }
-   }else{
-    await setStatus(run?.running?"تم حفظ الأوقات الجديدة؛ ستُستخدم للحصص التالية بعد انتهاء الفحص الحالي.":"تم حفظ أوقات الحصص الجديدة. شغّل المراقبة لتبدأ وفق هذه الأوقات.",{scheduleSettings:settings,periods:PERIODS});
-   }
+    else{const next=nextPeriod();await setStatus("تم تحديث التوقيت. ينتظر مرصاد الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,scheduleSettings:settings});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
+   }else await setStatus(run?.running?"تم حفظ التوقيت الجديد؛ سيُطبّق بعد انتهاء الفحص الحالي.":"تم حفظ التوقيت. شغّل المراقبة لتبدأ وفق الإعداد الجديد.",{scheduleSettings:settings,periods:PERIODS});
    sendResponse({ok:true,settings,periods:PERIODS});
   })().catch(()=>sendResponse({ok:false}));
   return true
