@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مرصاد | التحضير الآلي</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6f9;color:#17212b;font-family:Tahoma,Arial,sans-serif}header{background:#155e75;color:#fff;padding:16px 20px}h1{font-size:23px;margin:0 0 6px}header p{margin:0;font-size:13px;line-height:1.8}main{max-width:1500px;margin:auto;padding:14px}.summary{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:10px;margin-bottom:12px}.stat,.panel{background:#fff;border:1px solid #dbe4ea;border-radius:10px;padding:12px}.stat span{display:block;color:#64748b;font-size:12px}.stat strong{display:block;font-size:24px;margin-top:5px}.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.controls button{font:inherit;padding:9px 13px;border:0;border-radius:7px;background:#0e7490;color:white;cursor:pointer}.controls a{color:#0369a1}.live{font-size:13px;color:#475569;margin-right:auto}.table-wrap{overflow:auto;background:white;border:1px solid #dbe4ea;border-radius:10px}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 9px;text-align:right;border-bottom:1px solid #e5eaf0;font-size:13px}thead th{background:#e8f2f5;color:#164e63}tbody tr:last-child td{border-bottom:0}.status{display:inline-block;padding:5px 9px;border-radius:6px;font-weight:bold;white-space:nowrap}.absent{background:#fee2e2;color:#991b1b}.present{background:#dcfce7;color:#166534}.late{background:#ffedd5;color:#9a3412}.unknown{background:#e5e7eb;color:#374151}.pending{background:#fef3c7;color:#92400e}.proof{color:#0369a1;text-decoration:none}.note{font-size:12px;color:#64748b;line-height:1.8;margin-top:12px}.empty{text-align:center;padding:25px;color:#64748b}@media(max-width:700px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:13px}h1{font-size:20px}main{padding:8px}}
+</style></head>
+<body>
+<header><h1>مرصاد | التحضير الآلي</h1><p>متابعة مباشرة لحالة المعلمين في الحصة الجارية. هذه الصفحة مستقلة عن التحضير اليدوي وتقاريره.</p></header>
+<main>
+<div class="summary">
+<div class="stat"><span>الحصة الحالية</span><strong id="period">—</strong></div>
+<div class="stat"><span>حاضر</span><strong id="presentCount">0</strong></div>
+<div class="stat"><span>متأخر</span><strong id="lateCount">0</strong></div>
+<div class="stat"><span>غائب</span><strong id="absentCount">0</strong></div>
+<div class="stat"><span>غير محسوم</span><strong id="unknownCount">0</strong></div>
+</div>
+<div class="controls"><button id="refresh">تحديث الآن</button><a href="index.html">العودة إلى جدول مرصاد</a><span id="live" class="live">بانتظار اتصال إضافة الرصد الآلي…</span></div>
+<section class="table-wrap"><table><thead><tr><th>#</th><th>المعلم</th><th>الحصة</th><th>الدورة الأولى</th><th>الدورة الثانية</th><th>الحالة الحالية</th><th>آخر فحص</th><th>الإثبات</th></tr></thead><tbody id="rows"><tr><td colspan="8" class="empty">افتح هذه الصفحة مع تفعيل إضافة مرصاد للرصد الآلي.</td></tr></tbody></table></section>
+<p class="note">الأحمر = غائب في الدورة الأولى، الأخضر = حاضر، البرتقالي = متأخر إذا غاب أولًا ثم ظهر في الدورة الثانية، والرمادي = غير محسوم. لا تُحوّل مشكلة الاتصال إلى غياب مؤكد. تظهر صور الإثبات متى كانت متاحة ومحفوظة من الإضافة.</p>
+</main>
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const labels={present:"حاضر",absent:"غائب",late:"متأخر",unresolved:"غير محسوم",pending:"بانتظار الفحص"};
+ const cls=s=>({present:"present",absent:"absent",late:"late",unresolved:"unknown",pending:"pending"})[s]||"unknown";
+ const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ function time(v){return v?new Date(v).toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit",second:"2-digit"}):"—"}
+ function ask(){window.postMessage({source:"mirsad-auto-report",type:"GET_REPORT"},location.origin)}
+ function render(data){
+  if(!data||!data.ok){$("live").textContent="الإضافة غير متصلة؛ تأكد من تفعيلها وتحديث الصفحة.";return}
+  const run=data.run||{}, schedule=Array.isArray(run.schedule)?run.schedule:[], results=Array.isArray(run.results)?run.results:[];
+  const period=run.period||null; $("period").textContent=period?("الحصة "+period):"لا توجد حصة مرصودة";
+  $("live").textContent=run.running?(run.current?("يرصد الآن: "+(run.current.teacher||"معلم")+" — الدورة "+(run.cycle||1)):"الرصد يعمل"):"الرصد متوقف أو لم يبدأ";
+  const active=schedule.filter(x=>!period||Number(x.period)===Number(period));
+  const latestByTeacher=new Map();
+  for(const x of results.filter(x=>!period||Number(x.period)===Number(period))){
+   const key=String(x.scheduledTeacher||x.teacher||"");
+   if(!latestByTeacher.has(key))latestByTeacher.set(key,[]);
+   latestByTeacher.get(key).push(x);
+  }
+  let counts={present:0,late:0,absent:0,unresolved:0};
+  $("rows").innerHTML=active.length?active.map((item,i)=>{
+   const arr=(latestByTeacher.get(item.teacher)||[]).slice().sort((a,b)=>(a.scannedAt||0)-(b.scannedAt||0));
+   const first=arr.find(x=>Number(x.cycle)===1)||null;
+   const second=arr.find(x=>Number(x.cycle)===2)||null;
+   let status="pending";
+   if(first&&first.status==="absent")status="absent";
+   if(first&&first.status==="present")status="present";
+   if(second&&second.status==="present")status=(first&&first.status==="absent")?"late":"present";
+   if(second&&second.status==="absent"&&first&&first.status==="absent")status="absent";
+   if((second&&second.status==="unresolved")||(!first&&arr.length))status="unresolved";
+   if(status==="absent"&&second&&second.status==="present")status="late";
+   if(counts[status]!==undefined)counts[status]++;
+   const proof=arr.slice().reverse().find(x=>x.evidenceUrl||x.screenshotUrl||x.evidenceDataUrl);
+   const proofCell=proof?(proof.evidenceUrl||proof.screenshotUrl?'<a class="proof" href="'+esc(proof.evidenceUrl||proof.screenshotUrl)+'" target="_blank" rel="noopener">عرض الصورة</a>':'متاحة محليًا'):"—";
+   return '<tr><td>'+(i+1)+'</td><td><strong>'+esc(item.teacher)+'</strong></td><td>'+esc(item.period)+'</td><td><span class="status '+cls(first?first.status:"pending")+'">'+esc(labels[first?first.status:"pending"]||first.status)+'</span><br><small>'+time(first&&first.scannedAt)+'</small></td><td><span class="status '+cls(second?second.status:"pending")+'">'+esc(labels[second?second.status:"pending"]||second.status)+'</span><br><small>'+time(second&&second.scannedAt)+'</small></td><td><span class="status '+cls(status)+'">'+esc(labels[status])+'</span></td><td>'+time(arr.length?arr[arr.length-1].scannedAt:null)+'</td><td>'+proofCell+'</td></tr>';
+  }).join(""):'<tr><td colspan="8" class="empty">لا توجد روابط للمعلمين في الحصة الحالية ضمن الجدول المحمّل.</td></tr>';
+  for(const k of ["present","late","absent","unresolved"])$(k+"Count").textContent=counts[k];
+ }
+ window.addEventListener("message",e=>{if(e.source!==window||e.origin!==location.origin||e.data?.source!=="mirsad-auto-report"||e.data?.type!=="REPORT_DATA")return;render(e.data.payload)});
+ $("refresh").addEventListener("click",ask);
+ ask();setInterval(ask,3000);
+})();
+</script></body></html>
