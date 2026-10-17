@@ -169,18 +169,14 @@ async function navigateCurrent(run){
    await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
    await chrome.alarms.clear(NEXT_ALARM);
    if((run.cycle||1)===1){
-    // Exactly two full rounds: round 1 starts 5 minutes after lesson start;
-    // round 2 is scheduled for 15 minutes before lesson end.
+    // Round 2 begins immediately after the last teacher in round 1 finishes.
+    // Once round 2 finishes, the scanner rests until the next lesson.
     run.cycle=2;run.index=0;run.periodItems=run.schedule.filter(x=>x.period===run.period);
     await saveRun(run);
-    const secondRoundAt=atToday(p.end).getTime()-15*60*1000;
-    const when=Math.max(Date.now()+1000,secondRoundAt);
-    if(when<atToday(p.end).getTime()){
-     await setStatus("اكتملت الدورة الأولى للحصة "+p.n+". ينتظر مرصاد الدورة الثانية قبل نهاية الحصة بـ15 دقيقة.",{period:p.n,cycle:1,done:run.periodItems.length,total:run.periodItems.length});
-     await chrome.alarms.create(NEXT_ALARM,{when});
-    }else await advancePeriod(run,p.n);
+    await setStatus("اكتملت الدورة الأولى للحصة "+p.n+". تبدأ الدورة الثانية الآن.",{period:p.n,cycle:2,done:0,total:run.periodItems.length});
+    await navigateCurrent(run);
    }else{
-    await setStatus("اكتملت الدورتان للحصة "+p.n+". ينتقل مرصاد للحصة التالية.",{period:p.n,cycle:2,done:run.periodItems.length,total:run.periodItems.length});
+    await setStatus("اكتملت الدورتان للحصة "+p.n+". يتوقف الفحص حتى موعد الحصة التالية.",{period:p.n,cycle:2,done:run.periodItems.length,total:run.periodItems.length});
     await advancePeriod(run,p.n);
    }
    return;
