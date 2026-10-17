@@ -299,19 +299,19 @@
               const attrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
                 .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")].filter(Boolean).join(" ")).join(" ");
               const combined = normalize(text + " " + attrs).toLocaleLowerCase();
-              if (/المنظّم|المنظم|\\borganizer\\b/i.test(combined)) break;
+              if (/المنظّم|المنظم|\borganizer\b/i.test(combined)) break;
             }
             const rowText = normalize(row.innerText || row.textContent);
             const rowAttrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
               .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")].filter(Boolean).join(" ")).join(" ");
             const evidenceText = normalize(rowText + " " + rowAttrs).toLocaleLowerCase();
-            const organizer = /المنظّم|المنظم|\\borganizer\\b/i.test(evidenceText);
+            const organizer = /المنظّم|المنظم|\borganizer\b/i.test(evidenceText);
             const rowKey = section.label + "|" + rowText;
             if (!seenRows.has(rowKey)) {
               seenRows.add(rowKey);
-              const xEvidence = /(?:^|\\s)(?:x|×|✕|✖)(?:\\s|$)/i.test(rowAttrs) ||
+              const xEvidence = /(?:^|\s)(?:x|×|✕|✖)(?:\s|$)/i.test(rowAttrs) ||
                 /(?:disconnected|not connected|connection lost|غير متصل|غير متواجـد|انقطع الاتصال|لم ينضم|لم يتصل)/i.test(evidenceText);
-              const lastSeenMatch = evidenceText.match(/(?:آخر ظهور|آخر نشاط|last seen|last active)\\s*[:：]?\\s*(.{1,50})/i);
+              const lastSeenMatch = evidenceText.match(/(?:آخر ظهور|آخر نشاط|last seen|last active)\s*[:：]?\s*(.{1,50})/i);
               const lastSeenText = lastSeenMatch ? normalize(lastSeenMatch[1]) : "";
               const hasLastSeenBeforeCurrent = !!lastSeenText && /(?:قبل|ago|منذ|yesterday|أمس|دقيقة|دقائق|ثانية|ثوانٍ|ساعة|ساعات)/i.test(lastSeenText);
               matches.push({text:rowText, organizer, xEvidence, lastSeenText, hasLastSeenBeforeCurrent});
@@ -336,7 +336,7 @@
         el.getAttribute("data-tid"), el.innerText, el.textContent
       ].filter(Boolean).join(" ")).toLocaleLowerCase();
       return /^(?:المنظّم|المنظم|organizer)$/.test(own) ||
-        /(?:^|\\s)(?:المنظّم|المنظم|organizer)(?:$|\\s)/.test(own) && own.length <= 50;
+        /(?:^|\s)(?:المنظّم|المنظم|organizer)(?:$|\s)/.test(own) && own.length <= 50;
     });
     for (const badge of organizerNodes) {
       let row = badge;
