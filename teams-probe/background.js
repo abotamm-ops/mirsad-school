@@ -22,7 +22,35 @@ async function appendDailyReport(record){
  const saved=await chrome.storage.local.get(DAILY_REPORT_KEY);
  const reports=saved[DAILY_REPORT_KEY]&&typeof saved[DAILY_REPORT_KEY]==="object"?saved[DAILY_REPORT_KEY]:{};
  reports[day]=Array.isArray(reports[day])?reports[day]:[];
+ // Keep the raw result from every scan cycle, then derive the teacher's
+ // running attendance state for this lesson from all conclusive scans.
+ record.scanStatus=record.scanStatus||record.status||"unresolved";
  reports[day].push(record);
+ const keyOf=x=>String(x.scheduledTeacher||x.teacher||"")+"|"+String(x.period||"")+"|"+String(x.url||"");
+ const groups=new Map();
+ for(const item of reports[day]){
+  const key=keyOf(item);
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(item);
+ }
+ for(const group of groups.values()){
+  group.sort((a,b)=>(a.scannedAt||0)-(b.scannedAt||0));
+  const conclusive=group.filter(x=>x.scanStatus==="present"||x.scanStatus==="absent");
+  const presentCount=conclusive.filter(x=>x.scanStatus==="present").length;
+  const absentCount=conclusive.filter(x=>x.scanStatus==="absent").length;
+  const everPresent=presentCount>0;
+  const wasAbsentBeforePresent=group.some(x=>x.scanStatus==="absent")&&everPresent;
+  const percent=conclusive.length?Math.round(presentCount/conclusive.length*100):0;
+  for(const item of group){
+   item.attendanceStatus=everPresent?(wasAbsentBeforePresent?"late":"present"):(absentCount?"absent":"unresolved");
+   item.attendancePercent=percent;
+   item.presentCycles=presentCount;
+   item.countedCycles=conclusive.length;
+   // status is the summarized status shown by reports; scanStatus preserves
+   // the original result for each cycle, including the initial absence.
+   item.status=item.attendanceStatus;
+  }
+ }
  const keys=Object.keys(reports).sort();
  while(keys.length>45)delete reports[keys.shift()];
  await chrome.storage.local.set({[DAILY_REPORT_KEY]:reports});
