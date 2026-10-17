@@ -1,13 +1,29 @@
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
-const PERIODS=[
- {n:1,start:"06:30",end:"07:15"},
- {n:2,start:"07:16",end:"08:01"},
- {n:3,start:"08:02",end:"08:47"},
- {n:4,start:"08:48",end:"09:33"},
- {n:5,start:"09:34",end:"10:19"},
- {n:6,start:"10:20",end:"11:05"},
- {n:7,start:"11:06",end:"11:51"}
-];
+const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
+const DEFAULT_SCHEDULE_SETTINGS={mode:"automatic",firstStart:"06:30",lessonMinutes:45,breakMinutes:1};
+let scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS};
+let PERIODS=buildPeriods(scheduleSettings);
+function buildPeriods(settings={}){
+ const first=String(settings.firstStart||"06:30");
+ const lessonMinutes=Math.max(1,Math.min(180,Number(settings.lessonMinutes)||45));
+ const breakMinutes=Math.max(0,Math.min(60,Number(settings.breakMinutes)||0));
+ const match=/^(\\d{2}):(\\d{2})$/.exec(first);
+ let cursor=match?Number(match[1])*60+Number(match[2]):390;
+ cursor=((cursor%1440)+1440)%1440;
+ return Array.from({length:7},(_,i)=>{
+  const startMinute=cursor+i*(lessonMinutes+breakMinutes);
+  const endMinute=startMinute+lessonMinutes;
+  const fmt=n=>String(Math.floor((n%1440)/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
+  return {n:i+1,start:fmt(startMinute),end:fmt(endMinute)};
+ });
+}
+async function refreshScheduleSettings(){
+ const stored=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);
+ scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS,...(stored[SCHEDULE_SETTINGS_KEY]||{})};
+ PERIODS=buildPeriods(scheduleSettings);
+ return scheduleSettings;
+}
+refreshScheduleSettings().catch(()=>{});
 const CYCLE_GAP_MS=15000;
 async function setStatus(text,extra={}){await chrome.storage.local.set({[STATUS_KEY]:{text,at:Date.now(),...extra}})}
 async function getRun(){const x=await chrome.storage.local.get(KEY);return x[KEY]||null}
