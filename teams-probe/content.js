@@ -25,11 +25,16 @@
     for (const group of headingAliases) {
       for (const label of group.labels) {
         const expected = normalize(label).toLocaleLowerCase();
-        // Teams may append live participant counts, e.g. "الحضور (1)"
-        // or "تمت دعوة الآخرين (30/31)", to the section heading.
-        if (t === expected || t.startsWith(expected + " (") ||
-            t.startsWith(expected + " (") || t.startsWith(expected + "：") ||
-            t.startsWith(expected + ":")) return group.key;
+        // Accept the label itself or a live count appended by Teams:
+        // "الحضور (1)", "تمت دعوة الآخرين (30/31)", and count variants.
+        if (t === expected) return group.key;
+        if (t.startsWith(expected)) {
+          const suffix = t.slice(expected.length).trim();
+          if (!suffix || /^[：:]$/.test(suffix) ||
+              /^[（(]?\s*\d+(?:\s*[/،,]\s*\d+)?\s*[）)]?$/.test(suffix)) {
+            return group.key;
+          }
+        }
       }
     }
     return null;
@@ -196,7 +201,18 @@
       const visibleText = normalize(document.body?.innerText || "");
       const hasPresentHeading = /الحضور|attendees|in this meeting/i.test(visibleText);
       const hasInvitedHeading = /تمت دعوة الآخرين|other invitees|invited/i.test(visibleText);
-      return {status:"unresolved",detail:"التشخيص: ضغط الأشخاص في هذه الصفحة=" + (!!window.__mirsadRosterClickAttempted) + "؛ زر الأشخاص ظاهر=" + (!!people && visible(people)) + "؛ نوافذ/حاويات مشاركين ظاهرة=" + dialogs + "؛ نص عنوان الحضور موجود=" + hasPresentHeading + "؛ نص عنوان المدعوين موجود=" + hasInvitedHeading + "؛ أقسام القراءة المكتشفة=0. قائمة Teams لم تُقرأ بنجاح؛ لم يُسجّل غياب."};
+      // Include short visible heading-like snippets so a changed Teams label
+      // can be diagnosed without dumping participant names into the report.
+      const headingSnippets = [...document.querySelectorAll("body *")]
+        .filter(el => visible(el))
+        .map(el => ({el, text:normalize(el.innerText || el.textContent)}))
+        .filter(x => x.text && x.text.length <= 100 &&
+          /الحضور|تمت دعوة|attendees|in this meeting|invitees|invited/i.test(x.text))
+        .filter(x => ![...x.el.children].some(c => normalize(c.innerText || c.textContent) === x.text))
+        .slice(0, 6)
+        .map(x => (x.el.tagName.toLowerCase() + (x.el.getAttribute("data-tid") ? "[" + x.el.getAttribute("data-tid").slice(0,40) + "]" : "") + "=" + x.text))
+        .join(" | ");
+      return {status:"unresolved",detail:"التشخيص: ضغط الأشخاص في هذه الصفحة=" + (!!window.__mirsadRosterClickAttempted) + "؛ زر الأشخاص ظاهر=" + (!!people && visible(people)) + "؛ نوافذ/حاويات مشاركين ظاهرة=" + dialogs + "؛ نص عنوان الحضور موجود=" + hasPresentHeading + "؛ نص عنوان المدعوين موجود=" + hasInvitedHeading + "؛ أقسام القراءة المكتشفة=0؛ نماذج العناوين=" + (headingSnippets || "لا توجد").slice(0, 700) + ". قائمة Teams لم تُقرأ بنجاح؛ لم يُسجّل غياب."};
     }
     const teacherTokens = tokenizeName(teacher);
     const scanRows = (sectionList) => {
