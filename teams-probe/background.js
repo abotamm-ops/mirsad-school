@@ -85,7 +85,7 @@ async function ensureProbeTab(run){
 function dateAtOffset(anchor,minuteOffset){
  const d=new Date(anchor);d.setHours(0,0,0,0);d.setMinutes(minuteOffset);return d;
 }
-function schoolDay(date){return date.getDay()!==5&&date.getDay()!==6}
+function schoolDay(date){if(scheduleSettings.mode==="manual")return true;return date.getDay()!==5&&date.getDay()!==6}
 function periodBounds(p,now=new Date(),mode="activeOrNext"){
  const candidates=[];
  for(let dayOffset=-2;dayOffset<=2;dayOffset++){
