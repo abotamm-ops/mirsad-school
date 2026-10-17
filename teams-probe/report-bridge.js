@@ -13,7 +13,13 @@
    chrome.runtime.sendMessage({type:"MIRSAD_BACKTEST",period:event.data.period,requestedTime:event.data.requestedTime}, response=>{
     window.postMessage({source:"mirsad-auto-report",type:"BACKTEST_STARTED",payload:chrome.runtime.lastError?{ok:false}:response},location.origin);
    });
-} else if(event.data.type==="SAVE_MAPPING"){
+} else if(event.data.type==="SAVE_SCHEDULE_SETTINGS"){
+   chrome.runtime.sendMessage({type:"MIRSAD_SAVE_SCHEDULE_SETTINGS",settings:event.data.settings}, response=>{
+    const payload=chrome.runtime.lastError?{ok:false}:response;
+    if(payload?.ok)payload.message="تم حفظ الأوقات. إذا كانت المراقبة تنتظر الحصة التالية، شغّل المراقبة من جديد لتطبيق التوقيت الجديد فورًا.";
+    window.postMessage({source:"mirsad-auto-report",type:"SCHEDULE_SETTINGS_SAVED",payload},location.origin);
+   });
+  } else if(event.data.type==="SAVE_MAPPING"){
    chrome.runtime.sendMessage({type:"MIRSAD_SAVE_MAPPING",teamsName:event.data.teamsName,teacher:event.data.teacher}, response=>{
     window.postMessage({source:"mirsad-auto-report",type:"MAPPING_SAVED",payload:chrome.runtime.lastError?{ok:false}:response},location.origin);
    });
