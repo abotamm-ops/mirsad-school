@@ -305,11 +305,17 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
    await refreshScheduleSettings();
    const run=await getRun();
    if(run?.running&&!run.current){
-    run.running=false;await saveRun(run);
     await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
-    await setStatus("تم حفظ أوقات الحصص. أعد تشغيل المراقبة لتطبيق الجدول الجديد.",{scheduleSettings:settings});
+    run.period=null;run.periodItems=[];run.index=0;run.current=null;await saveRun(run);
+    const current=periodNow();
+    if(current)await beginPeriod(run,current.n);
+    else{
+     const next=nextPeriod();
+     await setStatus("تم تحديث الأوقات. ينتظر مرصاد الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,scheduleSettings:settings});
+     await chrome.alarms.create(NEXT_ALARM,{when:next.when});
+    }
    }else{
-    await setStatus(run?.running?"تم حفظ الأوقات الجديدة؛ ستُستخدم للحصص التالية بعد انتهاء الفحص الحالي.":"تم حفظ أوقات الحصص الجديدة.",{scheduleSettings:settings,periods:PERIODS});
+    await setStatus(run?.running?"تم حفظ الأوقات الجديدة؛ ستُستخدم للحصص التالية بعد انتهاء الفحص الحالي.":"تم حفظ أوقات الحصص الجديدة. شغّل المراقبة لتبدأ وفق هذه الأوقات.",{scheduleSettings:settings,periods:PERIODS});
    }
    sendResponse({ok:true,settings,periods:PERIODS});
   })().catch(()=>sendResponse({ok:false}));
