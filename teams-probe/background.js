@@ -144,10 +144,19 @@ async function beginPeriod(run,periodNo){
  if(now<start){await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:start.getTime()});await setStatus("ينتظر بداية الحصة "+p.n+" عند "+p.start,{waiting:true,period:p.n});return}
  if(now>end){await advancePeriod(run,periodNo);return}
  const items=run.schedule.filter(x=>x.period===p.n);
- run.period=p.n;run.periodItems=items;run.index=0;run.current=null;run.cycle=run.cycle||1;
+ run.period=p.n;run.periodItems=items;run.index=0;run.current=null;run.cycle=1;
  await saveRun(run);
  if(!items.length){await setStatus("لا توجد روابط صالحة للحصة "+p.n+" في الجدول؛ ينتقل مرصاد للحصة التالية.",{period:p.n});await advancePeriod(run,p.n);return}
- await setStatus("بدأ رصد الحصة "+p.n+": "+items.length+" رابطًا. الدورة "+run.cycle+".",{period:p.n,done:0,total:items.length,cycle:run.cycle});
+ const firstRoundAt=start.getTime()+5*60*1000;
+ if(now.getTime()<firstRoundAt){
+  await setStatus("الرصد جاهز للحصة "+p.n+". تبدأ الدورة الأولى بعد مرور 5 دقائق على بداية الحصة.",{period:p.n,waiting:true,cycle:1,total:items.length});
+  await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:firstRoundAt});return;
+ }
+ if(now.getTime()>start.getTime()+10*60*1000){
+  await setStatus("بدأ التشغيل بعد نافذة الدورة الأولى؛ يبدأ الرصد الآن حتى لا تُفقد الحصة.",{period:p.n,cycle:1,total:items.length});
+ }else{
+  await setStatus("بدأت الدورة الأولى للحصة "+p.n+": "+items.length+" رابطًا.",{period:p.n,done:0,total:items.length,cycle:1});
+ }
  await navigateCurrent(run);
 }
 async function navigateCurrent(run){
@@ -156,24 +165,24 @@ async function navigateCurrent(run){
  if(!p)return;
  if(Date.now()>atToday(p.end).getTime()){await advancePeriod(run,run.period);return}
  if(run.index>=run.periodItems.length){
-   const completedCycle=run.cycle||1;
-   // Prioritize teachers whose most recent result in this period was unresolved.
-   const latestByUrl=new Map();
-   for(const result of run.results.filter(x=>x.period===run.period)){
-    const key=result.url||result.teacher;
-    const prior=latestByUrl.get(key);
-    if(!prior||(result.scannedAt||0)>=(prior.scannedAt||0))latestByUrl.set(key,result);
-   }
-   const retryUrls=new Set([...latestByUrl.entries()].filter(([,result])=>result.status==="unresolved").map(([key])=>key));
-   const original=run.periodItems||[];
-   run.periodItems=[...original.filter(x=>retryUrls.has(x.url||x.teacher)),...original.filter(x=>!retryUrls.has(x.url||x.teacher))];
-   run.cycle=completedCycle+1;run.index=0;run.current=null;await saveRun(run);
+   run.current=null;
+   await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
    await chrome.alarms.clear(NEXT_ALARM);
-   const when=Date.now()+CYCLE_GAP_MS;
-   if(when<atToday(p.end).getTime()){
-    await setStatus("اكتملت دورة الحصة "+p.n+". سيعيد الفحص تلقائيًا بعد "+(CYCLE_GAP_MS/1000)+" ثانية.",{period:p.n,cycle:run.cycle-1,done:run.periodItems.length,total:run.periodItems.length});
-    await chrome.alarms.create(NEXT_ALARM,{when});
-   }else await advancePeriod(run,p.n);
+   if((run.cycle||1)===1){
+    // Exactly two full rounds: round 1 starts 5 minutes after lesson start;
+    // round 2 is scheduled for 15 minutes before lesson end.
+    run.cycle=2;run.index=0;run.periodItems=run.schedule.filter(x=>x.period===run.period);
+    await saveRun(run);
+    const secondRoundAt=atToday(p.end).getTime()-15*60*1000;
+    const when=Math.max(Date.now()+1000,secondRoundAt);
+    if(when<atToday(p.end).getTime()){
+     await setStatus("اكتملت الدورة الأولى للحصة "+p.n+". ينتظر مرصاد الدورة الثانية قبل نهاية الحصة بـ15 دقيقة.",{period:p.n,cycle:1,done:run.periodItems.length,total:run.periodItems.length});
+     await chrome.alarms.create(NEXT_ALARM,{when});
+    }else await advancePeriod(run,p.n);
+   }else{
+    await setStatus("اكتملت الدورتان للحصة "+p.n+". ينتقل مرصاد للحصة التالية.",{period:p.n,cycle:2,done:run.periodItems.length,total:run.periodItems.length});
+    await advancePeriod(run,p.n);
+   }
    return;
  }
  const item=run.periodItems[run.index];
@@ -228,7 +237,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
   await navigateCurrent(run);return;
  }
  if(alarm.name!==NEXT_ALARM)return;
- if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<=atToday(p.end).getTime()){await navigateCurrent(run);return}await advancePeriod(run,run.period);return}
+ if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<=atToday(p.end).getTime()){if(!run.current&&run.index===0){await navigateCurrent(run)}else await navigateCurrent(run);return}await advancePeriod(run,run.period);return}
  const p=periodNow();if(p)await beginPeriod(run,p.n);else{const next=nextPeriod();await setStatus("ينتظر الحصة "+next.period.n+" عند "+next.period.start,{waiting:true,period:next.period.n});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 });
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
