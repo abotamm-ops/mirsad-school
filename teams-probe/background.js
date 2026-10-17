@@ -149,28 +149,20 @@ async function startOneOffTest(){
  }
 }
 async function startMonitoring(){
- await refreshScheduleSettings();
  const existing=await getRun();
- if(existing?.running){
-  await setStatus("المراقبة تعمل بالفعل؛ لن تُفتح دورة ثانية.",{period:existing.period,waiting:!existing.period});
-  return;
- }
+ if(existing?.running){await setStatus("المراقبة تعمل بالفعل؛ لن تُفتح دورة ثانية.",{period:existing.period,waiting:!existing.period});return}
  await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
  const scheduleTab=await getScheduleTab();
- if(!scheduleTab){await setStatus("افتح صفحة جدول مرصاد في Chrome أولًا، ثم شغّل المراقبة.");return}
- let response;
- try{response=await chrome.tabs.sendMessage(scheduleTab.id,{type:"MIRSAD_GET_SCHEDULE"})}catch(_){await setStatus("تعذرت قراءة الجدول. حدّث صفحة مرصاد وانتظر تحميل الروابط ثم أعد التشغيل.");return}
- const schedule=(response?.items||[]).filter(x=>x.url&&x.teacher&&Number.isFinite(x.period)&&x.period>=1&&x.period<=7);
+ if(!scheduleTab){await setStatus("افتح صفحة جدول مرصاد التي تعرض أوقات الحصص وروابط Teams، ثم شغّل المراقبة.");return}
+ let loaded;
+ try{loaded=await loadPeriodsFromSchedule(scheduleTab.id)}catch(error){await setStatus(error?.message||"تعذرت قراءة أوقات الحصص من جدول مرصاد.");return}
+ const schedule=loaded.items;
  if(!schedule.length){await setStatus("لم أجد روابط Teams صالحة في الجدول الحالي.");return}
- const run={running:true,schedule,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null};
+ const run={running:true,schedule,periods:PERIODS,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null};
  await saveRun(run);
  const current=periodNow();
  if(current){await beginPeriod(run,current.n)}
- else{
-  const next=nextPeriod();
-  await setStatus("الرصد جاهز. ينتظر بداية الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n});
-  await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:next.when});
- }
+ else{const next=nextPeriod();await setStatus("الرصد جاهز. ينتظر بداية الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n});await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 }
 async function beginPeriod(run,periodNo){
  if(!run?.running)return;
