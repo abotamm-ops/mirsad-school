@@ -174,7 +174,8 @@ async function beginPeriod(run,periodNo){
  run.period=p.n;run.periodItems=items;run.index=0;run.current=null;run.cycle=1;
  await saveRun(run);
  if(!items.length){await setStatus("لا توجد روابط صالحة للحصة "+p.n+" في الجدول؛ ينتقل مرصاد للحصة التالية.",{period:p.n});await advancePeriod(run,p.n);return}
- const cycleMinute=Math.max(1,Math.min(10,Number(scheduleSettings.cycleMinute)||5));\n const firstRoundAt=start.getTime()+cycleMinute*60*1000;
+ const cycleMinute=Math.max(1,Math.min(10,Number(scheduleSettings.cycleMinute)||5));
+ const firstRoundAt=start.getTime()+cycleMinute*60*1000;
  if(now.getTime()<firstRoundAt){
   await setStatus("الرصد جاهز للحصة "+p.n+". تبدأ الدورة الأولى بعد مرور "+cycleMinute+" دقيقة من بداية الحصة.",{period:p.n,waiting:true,cycle:1,total:items.length});
   await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:firstRoundAt});return;
