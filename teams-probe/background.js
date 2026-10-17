@@ -135,10 +135,9 @@ async function startOneOffTest(){
  if(!scheduleTab){await setStatus("افتح صفحة جدول مرصاد التي تحتوي على روابط Teams أولًا.");return}
  let response;
  try{response=await chrome.tabs.sendMessage(scheduleTab.id,{type:"MIRSAD_GET_SCHEDULE"})}catch(_){await setStatus("تعذرت قراءة الجدول. حدّث صفحة مرصاد ثم أعد المحاولة.");return}
- const items=(response?.items||[]).filter(x=>x.teacher&&x.hasLesson&&Number.isFinite(x.period)&&x.period>=1&&x.period<=7);
- if(!items.length){await setStatus("لم أجد روابط Teams صالحة في الجدول الحالي.");return}
+ const items=(response?.items||[]).filter(x=>x.teacher&&x.hasLesson&&Number.isFinite(x.period)&&x.period>=1&&x.period<=7&&isTeamsMeetingUrl(x.url));
+ if(!items.length){await setStatus("لم أجد أي رابط Teams صالحًا للاختبار. تحقق من ظهور أزرار Teams في جدول مرصاد وحدّث الصفحة.");return}
  const item=items[0];
- if(!isTeamsMeetingUrl(item.url)){await setStatus("أوقف الاختبار: الرابط الأول ليس رابط Teams صالحًا؛ لم تُفتح أي صفحة.");return}
  const scanId="test-"+Date.now();
  const run={running:true,testMode:true,schedule:items,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:item.period,periodItems:[item],index:0,cycle:0,current:{...item,scanId}};
  await saveRun(run);
