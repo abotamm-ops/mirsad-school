@@ -325,6 +325,55 @@
     };
     const presentRows = scanRows(sections.present);
     const invitedRows = scanRows(sections.invited);
+
+    // Organizer-first diagnostic/fallback: Teams may render the organizer badge
+    // outside the row selectors above. Locate the badge itself, then inspect only
+    // small ancestors around it for the person's name and accessible attributes.
+    const organizerCandidates = [];
+    const organizerNodes = [...document.querySelectorAll("body *")].filter(visible).filter(el => {
+      const own = normalize([
+        el.getAttribute("aria-label"), el.getAttribute("title"),
+        el.getAttribute("data-tid"), el.innerText, el.textContent
+      ].filter(Boolean).join(" ")).toLocaleLowerCase();
+      return /^(?:المنظّم|المنظم|organizer)$/.test(own) ||
+        /(?:^|\\s)(?:المنظّم|المنظم|organizer)(?:$|\\s)/.test(own) && own.length <= 50;
+    });
+    for (const badge of organizerNodes) {
+      let row = badge;
+      for (let depth = 0; depth < 6 && row.parentElement; depth++) {
+        const parent = row.parentElement;
+        const text = normalize(parent.innerText || parent.textContent);
+        if (!text || text.length > 500) break;
+        row = parent;
+        const rowText = normalize(row.innerText || row.textContent);
+        if (rowText.length >= 2 && rowText.length <= 300) {
+          const tokens = new Set(tokenizeName(rowText));
+          const target = new Set(teacherTokens);
+          const nameOverlap = [...target].filter(t => tokens.has(t)).length;
+          const sectionKey = sections.present.some(s => s.root === row || s.root?.contains(row)) ? "present" :
+            sections.invited.some(s => s.root === row || s.root?.contains(row)) ? "invited" :
+            sections.noResponse.some(s => s.root === row || s.root?.contains(row)) ? "noResponse" : "unknown";
+          organizerCandidates.push({text:rowText, sectionKey, nameOverlap, row});
+          if (nameOverlap >= 2) break;
+        }
+      }
+    }
+    const uniqueOrganizerCandidates = organizerCandidates.filter((candidate, i, all) =>
+      all.findIndex(other => other.text === candidate.text && other.sectionKey === candidate.sectionKey) === i
+    );
+    // If standard row selectors failed, report concise organizer-first diagnostics.
+    // Do not infer attendance from a badge unless its associated row and section
+    // can be established; this diagnostic identifies the DOM boundary to fix next.
+    if (presentRows.length === 0 && invitedRows.length === 0) {
+      const relevant = uniqueOrganizerCandidates
+        .filter(x => x.nameOverlap >= 2 || x.sectionKey !== "unknown")
+        .slice(0, 3)
+        .map(x => "«" + x.text.slice(0, 100) + "» [قسم=" + x.sectionKey + ", تطابق أجزاء الاسم=" + x.nameOverlap + "]")
+        .join("؛ ");
+      if (uniqueOrganizerCandidates.length) {
+        return {status:"unresolved",detail:"التشخيص: عُثر على وسم «المنظّم» في واجهة Teams، لكن تعذّر ربطه بسجل المعلم وقسمه. أقرب سجلات مقروءة: " + (relevant || "لم يظهر سجل يطابق الاسم") + ". لم يُسجّل غياب."};
+      }
+    }
     // Apply the requested three-part rule:
     // (1) allow the teacher's full timetable name to match a shortened room name
     // by requiring the first and last name tokens, (2) organizer label must be
