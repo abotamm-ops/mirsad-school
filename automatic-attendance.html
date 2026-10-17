@@ -62,6 +62,7 @@
  window.addEventListener("message",e=>{
   if(e.source!==window||e.origin!==location.origin||e.data?.source!=="mirsad-auto-report")return;
   if(e.data.type==="REPORT_DATA")render(e.data.payload);
+  if(e.data.type==="BACKTEST_STARTED"){if(e.data.payload?.ok){$("live").textContent="بدأ الاختبار الرجعي؛ تُفحص روابط الحصة مرتين الآن."}else{$("live").textContent="تعذر بدء الاختبار. تأكد من فتح جدول مرصاد وإيقاف المراقبة العادية أولًا."}}
   if(e.data.type==="MANUAL_STATUS_SAVED"){if(e.data.payload?.ok)ask();else window.alert("تعذر حفظ التعديل اليدوي.")}
  });
  $("refresh").addEventListener("click",ask);\n const dt=new Date();dt.setMinutes(dt.getMinutes()-5);dt.setSeconds(0,0);$("testTime").value=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0")+"T"+String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0");\n $("backtest").addEventListener("click",()=>{const period=Number($("testPeriod").value),requestedTime=$("testTime").value;if(!requestedTime){window.alert("اختر وقت الاختبار، ويمكن أن يكون سابقًا.");return}window.postMessage({source:"mirsad-auto-report",type:"BACKTEST",period,requestedTime},location.origin);$("live").textContent="جارٍ بدء الاختبار الرجعي…";});\n ask();setInterval(ask,3000);
