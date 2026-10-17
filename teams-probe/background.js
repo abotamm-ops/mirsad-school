@@ -184,5 +184,23 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_STOP"){getRun().then(async run=>{if(run){run.running=false;await saveRun(run);await closeProbeTab(run)}await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await setStatus("تم إيقاف المراقبة بناءً على طلبك.");sendResponse({ok:true})});return true}
  if(message?.type==="MIRSAD_STATUS"){Promise.all([chrome.storage.local.get(STATUS_KEY),getRun()]).then(([s,r])=>sendResponse({status:s[STATUS_KEY]||{text:"لا توجد حالة"},run:r}));return true}
  if(message?.type==="MIRSAD_PAGE_READY"){getRun().then(run=>sendResponse(run?.running&&run.current?{active:true,teacher:run.current.teacher,period:run.period,index:run.index,scanId:run.current.scanId}:{active:false}));return true}
+ if(message?.type==="MIRSAD_CAPTURE_EVIDENCE"){
+  (async()=>{
+   if(message.status!=="absent"||!sender.tab?.windowId) {sendResponse({ok:false});return}
+   try{
+    const dataUrl=await chrome.tabs.captureVisibleTab(sender.tab.windowId,{format:"png"});
+    const now=Date.now();
+    const safeName=String(message.teacher||"معلم").replace(/[\\/:*?"<>|]/g,"_").slice(0,70);
+    const filename="MirsadEvidence/"+safeName+"_ح"+String(message.period||"").replace(/[^0-9]/g,"")+"_"+new Date(now).toISOString().replace(/[:.]/g,"-")+".png";
+    const downloadId=await chrome.downloads.download({url:dataUrl,filename,saveAs:false,conflictAction:"uniquify"});
+    const evidenceKey="mirsadEvidenceRecords";
+    const saved=await chrome.storage.local.get(evidenceKey);
+    const records=Array.isArray(saved[evidenceKey])?saved[evidenceKey]:[];
+    records.push({teacher:message.teacher||"",period:message.period||"",status:"absent",detail:message.detail||"",capturedAt:now,filename,downloadId,scanId:message.scanId||""});
+    await chrome.storage.local.set({[evidenceKey]:records.slice(-1000)});
+    sendResponse({ok:true,filename,downloadId});
+   }catch(error){sendResponse({ok:false,error:String(error?.message||error)})}
+  })();return true
+ }
  if(message?.type==="MIRSAD_SCAN_RESULT"){receiveResult(message).catch(()=>{});sendResponse({ok:true});return false}
 });
