@@ -343,11 +343,19 @@
       if (!row.organizer) {
         return {status:"unresolved",detail:"ظهر اسم قريب في «تمت دعوة الآخرين»، لكن لم يُثبت ارتباط وسم «المنظّم» بالسجل نفسه؛ لا يُسجّل غياب."};
       }
-      if (!row.xEvidence && !row.hasLastSeenBeforeCurrent) {
-        return {status:"unresolved",detail:"الاسم ووسم «المنظّم» ظهرا ضمن المدعوين، لكن لم يُقرأ دليل إضافي موثوق (علامة اتصال/انقطاع أو آخر ظهور قبل الحصة)؛ لا تُجمع الأدلة ولا يُسجّل غياب."};
-      }
-      const evidence = [row.xEvidence ? "ظهرت علامة اتصال/انقطاع في سجل الشخص" : "", row.hasLastSeenBeforeCurrent ? "آخر ظهور مقروء: " + row.lastSeenText : ""].filter(Boolean).join("؛ ");
-      return {status:"invited",detail:"تطابق الاسم الثلاثي مع الاسم المختصر، ووسم «المنظّم» مرتبط بالسجل نفسه ضمن «تمت دعوة الآخرين»، مع دليل إضافي: " + evidence + ". المعلم مدعو ولم يظهر ضمن الحضور؛ الحالة لا تزال ليست غيابًا نهائيًا."};
+      const evidence = [
+        row.xEvidence ? "رُصدت علامة اتصال/انقطاع في سجل الشخص" : "",
+        row.hasLastSeenBeforeCurrent ? "آخر ظهور/نشاط قرأه Teams: " + row.lastSeenText : ""
+      ].filter(Boolean).join("؛ ");
+      const lastSeenNote = row.hasLastSeenBeforeCurrent
+        ? " آخر ظهور/نشاط ظاهر في Teams: " + row.lastSeenText + "."
+        : " لم يعرض Teams وقت آخر حضور/ظهور يمكن قراءته بثقة؛ لذلك لا نختلق مدة زمنية.";
+      return {
+        status:"invited",
+        detail:"تم تحديد سجل المنظّم ضمن «تمت دعوة الآخرين»؛ هذا يعني أنه لم يظهر ضمن الحضور عند الفحص. " +
+          (evidence ? "مؤشرات مساندة: " + evidence + ". " : "لم تتوفر مؤشرات اتصال/آخر ظهور موثوقة إضافية. ") +
+          lastSeenNote + " تُسجّل الحالة «لم يظهر عند الفحص» وتُعاد مراقبته، ولا تُحوّل إلى غياب نهائي إلا وفق قاعدة زمنية معتمدة."
+      };
     }
     return {status:"unresolved",detail:"لم يُعثر على سجل واحد واضح يطابق الاسم ووسم «المنظّم»؛ لا يُسجّل غياب."};
   }
