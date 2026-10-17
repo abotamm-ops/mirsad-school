@@ -26,7 +26,7 @@
   lastData=data;
   const run=data.run||{}, schedule=Array.isArray(run.schedule)?run.schedule:[], results=Array.isArray(run.results)?run.results:[], period=run.period||null;
   $("live").textContent=run.running?(run.current?("يفحص الآن: "+run.current.teacher+" — الدورة "+(run.cycle||1)):"الرصد يعمل — "+(period?("الحصة "+period):"بانتظار الحصة")):"الرصد متوقف أو لم يبدأ";
-  const active=schedule.filter(x=>!period||Number(x.period)===Number(period));
+  const seen=new Set(); const active=schedule.filter(x=>!period||Number(x.period)===Number(period)).filter(x=>{const k=String(x.teacher||"")+"|"+Number(x.period);if(seen.has(k))return false;seen.add(k);return true});
   const overrides=data.manualOverrides||{}, day=dayKey();
   const html=active.map(item=>{
    const teacher=String(item.teacher||""), p=Number(item.period);
@@ -43,7 +43,7 @@
    if(override?.status)status=override.status;
    const red=status==="provisional"||status==="absent";
    const label=status==="absent"?"غياب":status==="provisional"?"لم يظهر في الدورة الأولى":status==="present"?"":status==="unresolved"?"تعذّر التحقق":"بانتظار الرصد";
-   const action=override?.status==="absent"?"إلغاء التعديل اليدوي":override?.status==="present"?"إلغاء التعديل اليدوي":"تعديل الحالة";
+   const action=override?.status?"تعديل يدوي (مُعدّل)":"تعديل يدوي";
    const className=status==="absent"?"absent":status==="provisional"?"provisional":"";
    return '<div class="row"><div class="name '+className+'">'+esc(teacher)+'</div><div class="state '+(red?"":"normal")+'">'+esc(label)+'</div><button class="edit" data-teacher="'+esc(teacher)+'" data-period="'+p+'">'+action+'</button></div>';
   }).join("");
