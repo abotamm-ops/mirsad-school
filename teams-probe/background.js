@@ -146,7 +146,14 @@ async function receiveResult(message){
  const item=run.current;
  if(!message.scanId||message.scanId!==item.scanId)return;
  await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
- run.results.push({teacher:message.result?.teacher||item.teacher,scheduledTeacher:item.teacher,period:run.period,url:item.url,status:message.result?.status||"unresolved",detail:message.result?.detail||"لم تُرجع واجهة Teams نتيجة واضحة",scannedAt:Date.now(),cycle:run.cycle||0});
+ const scannedAt=Date.now();
+ const resultRecord={teacher:message.result?.teacher||item.teacher,scheduledTeacher:item.teacher,period:run.period,url:item.url,status:message.result?.status||"unresolved",detail:message.result?.detail||"لم تُرجع واجهة Teams نتيجة واضحة",scannedAt,cycle:run.cycle||0};
+ run.results.push(resultRecord);
+ const HISTORY_KEY="mirsadAttendanceHistory";
+ const storedHistory=await chrome.storage.local.get(HISTORY_KEY);
+ const history=Array.isArray(storedHistory[HISTORY_KEY])?storedHistory[HISTORY_KEY]:[];
+ history.push({teacher:resultRecord.teacher,status:resultRecord.status,period:resultRecord.period,scannedAt:resultRecord.scannedAt,detail:resultRecord.detail});
+ await chrome.storage.local.set({[HISTORY_KEY]:history.slice(-5000)});
  run.index++;run.current=null;
  if(run.testMode){run.running=false;await saveRun(run);await closeProbeTab(run);await setStatus("اكتمل الاختبار المباشر لرابط واحد: "+item.teacher+" — "+(message.result?.detail||message.result?.status||"غير محسوم")+". أُغلقت صفحة الاختبار تلقائيًا. النتيجة تشخيصية فقط.",{testMode:true,last:run.results[run.results.length-1]});return}
  await saveRun(run);
