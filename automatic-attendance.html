@@ -19,13 +19,13 @@
  const $=id=>document.getElementById(id);
  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const dayKey=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
- let lastData=null;
+ let lastData=null, lastScheduleSignature="";
  function ask(){window.postMessage({source:"mirsad-auto-report",type:"GET_REPORT"},location.origin)}
  function saveMapping(teamsName,teacher){window.postMessage({source:"mirsad-auto-report",type:"SAVE_MAPPING",teamsName,teacher},location.origin)}
  function saveSchedule(settings){window.postMessage({source:"mirsad-auto-report",type:"SAVE_SCHEDULE_SETTINGS",settings},location.origin)}
  function fmtMinute(value){const n=((value%1440)+1440)%1440;return String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0")}
  function previewSchedule(){const start=$("scheduleMode").value==="automatic"?"06:30":$("firstStart").value||"06:30";const duration=Math.max(1,Math.min(180,Number($("lessonMinutes").value)||45));const gap=Math.max(0,Math.min(60,Number($("breakMinutes").value)||0));const parts=start.split(":").map(Number);let cursor=parts[0]*60+parts[1];$("periodPreview").innerHTML=Array.from({length:7},(_,i)=>{const s=cursor+i*(duration+gap);return '<span class="period-chip">الحصة '+(i+1)+": "+fmtMinute(s)+"–"+fmtMinute(s+duration)+"</span>'}).join("");$("firstStart").disabled=$("scheduleMode").value!=="manual"}
- function showScheduleSettings(settings,periods){if(settings){$("scheduleMode").value=settings.mode==="manual"?"manual":"automatic";$("firstStart").value=settings.firstStart||"06:30";$("lessonMinutes").value=settings.lessonMinutes||45;$("breakMinutes").value=settings.breakMinutes??1}previewSchedule();if(periods?.length)$("periodPreview").innerHTML=periods.map(p=>'<span class="period-chip">الحصة '+p.n+": "+p.start+"–"+p.end+"</span>").join("")}
+ function showScheduleSettings(settings,periods){if(settings){const sig=JSON.stringify({mode:settings.mode,firstStart:settings.firstStart,lessonMinutes:settings.lessonMinutes,breakMinutes:settings.breakMinutes});if(sig!==lastScheduleSignature){lastScheduleSignature=sig;$("scheduleMode").value=settings.mode==="manual"?"manual":"automatic";$("firstStart").value=settings.firstStart||"06:30";$("lessonMinutes").value=settings.lessonMinutes||45;$("breakMinutes").value=settings.breakMinutes??1}}previewSchedule();if(periods?.length)$("periodPreview").innerHTML=periods.map(p=>'<span class="period-chip">الحصة '+p.n+": "+p.start+"–"+p.end+"</span>").join("")}
  function setManual(period,teacher,status){window.postMessage({source:"mirsad-auto-report",type:"SET_MANUAL_STATUS",day:dayKey(),period,teacher,status},location.origin)}
  function renderMappings(schedule,results,mappings){
   const roster=[...new Set((schedule||[]).map(x=>String(x.teacher||"").trim()).filter(Boolean))];
