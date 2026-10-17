@@ -1,29 +1,14 @@
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
-const DEFAULT_SCHEDULE_SETTINGS={mode:"automatic",firstStart:"06:30",lessonMinutes:45,breakMinutes:1};
+const DEFAULT_SCHEDULE_SETTINGS={mode:"automatic",manualStart:"06:30",basePeriods:[]};
 let scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS};
-let PERIODS=buildPeriods(scheduleSettings);
-function buildPeriods(settings={}){
- const first=String(settings.firstStart||"06:30");
- const lessonMinutes=Math.max(1,Math.min(180,Number(settings.lessonMinutes)||45));
- const breakMinutes=Math.max(0,Math.min(60,Number(settings.breakMinutes)||0));
- const match=/^(\\d{2}):(\\d{2})$/.exec(first);
- let cursor=match?Number(match[1])*60+Number(match[2]):390;
- cursor=((cursor%1440)+1440)%1440;
- return Array.from({length:7},(_,i)=>{
-  const startMinute=cursor+i*(lessonMinutes+breakMinutes);
-  const endMinute=startMinute+lessonMinutes;
-  const fmt=n=>String(Math.floor((n%1440)/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
-  return {n:i+1,start:fmt(startMinute),end:fmt(endMinute),startOffset:startMinute,endOffset:endMinute};
- });
-}
-async function refreshScheduleSettings(){
- const stored=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);
- scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS,...(stored[SCHEDULE_SETTINGS_KEY]||{})};
- PERIODS=buildPeriods(scheduleSettings);
- return scheduleSettings;
-}
+let PERIODS=[];
+function parseClock(v){const m=/^(\d{1,2}):(\d{2})$/.exec(String(v||""));return m?Number(m[1])*60+Number(m[2]):null}
+function clockText(n){n=((n%1440)+1440)%1440;return String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0")}
+function makePeriods(base,settings){if(!Array.isArray(base)||base.length!==7)return [];const b=base.map((p,i)=>({n:i+1,startOffset:Number(p.startOffset),endOffset:Number(p.endOffset)}));if(b.some(p=>!Number.isFinite(p.startOffset)||!Number.isFinite(p.endOffset)||p.endOffset<=p.startOffset))return [];let delta=0;if(settings.mode==="manual"){const wanted=parseClock(settings.manualStart);if(wanted===null)return [];delta=wanted-b[0].startOffset}return b.map(p=>({n:p.n,startOffset:p.startOffset+delta,endOffset:p.endOffset+delta,start:clockText(p.startOffset+delta),end:clockText(p.endOffset+delta)}))}
+async function refreshScheduleSettings(){const saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS,...(saved[SCHEDULE_SETTINGS_KEY]||{})};PERIODS=makePeriods(scheduleSettings.basePeriods,scheduleSettings);return scheduleSettings}
 refreshScheduleSettings().catch(()=>{});
+async function loadPeriodsFromSchedule(tabId){const response=await chrome.tabs.sendMessage(tabId,{type:"MIRSAD_GET_SCHEDULE"});const items=(response?.items||[]).filter(x=>x.url&&x.teacher&&Number.isFinite(x.period)&&x.period>=1&&x.period<=7);const base=response?.periods;if(!Array.isArray(base)||base.length!==7||base.some(p=>!Number.isFinite(p.startOffset)||!Number.isFinite(p.endOffset)))throw new Error("تعذر قراءة أوقات الحصص السبعة من جدول مرصاد. حدّث صفحة الجدول وتأكد من ظهور الأوقات.");const saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS,...(saved[SCHEDULE_SETTINGS_KEY]||{}),basePeriods:base};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:scheduleSettings});PERIODS=makePeriods(base,scheduleSettings);if(PERIODS.length!==7)throw new Error("أوقات الجدول غير صالحة.");return {items,periods:PERIODS}}
 const CYCLE_GAP_MS=15000;
 async function setStatus(text,extra={}){await chrome.storage.local.set({[STATUS_KEY]:{text,at:Date.now(),...extra}})}
 async function getRun(){const x=await chrome.storage.local.get(KEY);return x[KEY]||null}
@@ -325,31 +310,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   return true
  }
  if(message?.type==="MIRSAD_SAVE_SCHEDULE_SETTINGS"){
-  (async()=>{
-   const mode=message.settings?.mode==="manual"?"manual":"automatic";
-   const manualStart=String(message.settings?.manualStart||"06:30");
-   if(mode==="manual"&&parseClock(manualStart)===null){sendResponse({ok:false,reason:"invalid"});return}
-   let old=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);
-   let basePeriods=old[SCHEDULE_SETTINGS_KEY]?.basePeriods;
-   const scheduleTab=await getScheduleTab();
-   if(scheduleTab){
-    try{await loadPeriodsFromSchedule(scheduleTab.id);old=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);basePeriods=old[SCHEDULE_SETTINGS_KEY]?.basePeriods}catch(_){}
-   }
-   if(!Array.isArray(basePeriods)||basePeriods.length!==7){sendResponse({ok:false,reason:"no-timetable"});return}
-   const settings={mode,manualStart,basePeriods,updatedAt:Date.now()};
-   await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:settings});
-   await refreshScheduleSettings();
-   const run=await getRun();
-   if(run?.running&&!run.current){
-    await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
-    run.period=null;run.periodItems=[];run.index=0;run.current=null;await saveRun(run);
-    const current=periodNow();
-    if(current)await beginPeriod(run,current.n);
-    else{const next=nextPeriod();await setStatus("تم تحديث التوقيت. ينتظر مرصاد الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,scheduleSettings:settings});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
-   }else await setStatus(run?.running?"تم حفظ التوقيت الجديد؛ سيُطبّق بعد انتهاء الفحص الحالي.":"تم حفظ التوقيت. شغّل المراقبة لتبدأ وفق الإعداد الجديد.",{scheduleSettings:settings,periods:PERIODS});
-   sendResponse({ok:true,settings,periods:PERIODS});
-  })().catch(()=>sendResponse({ok:false}));
-  return true
+ (async()=>{const mode=message.settings?.mode==="manual"?"manual":"automatic",manualStart=String(message.settings?.manualStart||"06:30");if(mode==="manual"&&parseClock(manualStart)===null){sendResponse({ok:false,reason:"invalid"});return}let saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY),base=saved[SCHEDULE_SETTINGS_KEY]?.basePeriods;const tab=await getScheduleTab();if(tab){try{await loadPeriodsFromSchedule(tab.id);saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);base=saved[SCHEDULE_SETTINGS_KEY]?.basePeriods}catch(_){}}if(!Array.isArray(base)||base.length!==7){sendResponse({ok:false,reason:"no-timetable"});return}const settings={mode,manualStart,basePeriods:base,updatedAt:Date.now()};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:settings});await refreshScheduleSettings();const run=await getRun();if(run?.running&&!run.current){await chrome.alarms.clear(NEXT_ALARM);run.period=null;run.periodItems=[];run.index=0;await saveRun(run);const current=periodNow();if(current)await beginPeriod(run,current.n);else{const next=nextPeriod();await setStatus("تم تحديث التوقيت. ينتظر مرصاد الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}}else await setStatus("تم حفظ التوقيت. شغّل المراقبة لتطبيقه.",{scheduleSettings:settings,periods:PERIODS});sendResponse({ok:true,settings,periods:PERIODS})})().catch(()=>sendResponse({ok:false}));return true
  }
  if(message?.type==="MIRSAD_SAVE_MAPPING"){
   (async()=>{

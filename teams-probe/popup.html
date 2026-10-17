@@ -1,13 +1,11 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مرصاد</title>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مرصاد</title>
 <style>
-body{font:14px/1.7 Tahoma,Arial,sans-serif;width:390px;margin:0;padding:14px;color:#17202a;background:#f7fafc}h2{margin:0 0 8px;font-size:18px}p{margin:6px 0 12px;color:#475569}button{width:100%;padding:10px;border:0;border-radius:8px;background:#0f766e;color:white;font:inherit;font-weight:bold;cursor:pointer}button.stop{background:#9f1239;margin-top:8px}#status{padding:10px;margin-top:10px;border-radius:8px;background:#e2e8f0;white-space:pre-wrap}small{display:block;color:#64748b;margin-top:8px}
-
+body{font:14px/1.7 Tahoma,Arial,sans-serif;width:390px;margin:0;padding:14px;color:#17202a;background:#f7fafc}h2{margin:0 0 8px;font-size:18px}p{margin:6px 0 12px;color:#475569}button{width:100%;padding:10px;border:0;border-radius:8px;background:#0f766e;color:white;font:inherit;font-weight:bold;cursor:pointer}button.stop{background:#9f1239;margin-top:8px}#status{padding:10px;margin-top:10px;border-radius:8px;background:#e2e8f0;white-space:pre-wrap}small{display:block;color:#64748b;margin-top:8px}.settings{padding:12px;background:#fff;border:1px solid #dbe3ea;border-radius:9px;margin:10px 0}.settings label{display:block;font-weight:bold;margin-bottom:5px}.settings select,.settings input{width:100%;box-sizing:border-box;font:inherit;padding:8px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:9px}.preview{font-size:12px;white-space:pre-line;color:#334155;background:#f1f5f9;padding:8px;border-radius:6px;margin-bottom:8px}
 </style></head><body>
-<h2>مرصاد | الرصد الآلي</h2>
-<p>يشغّل دورة فحص روابط الحصص الموجودة في جدول مرصاد المفتوح، دون إدخال أسماء المعلمين.</p>
+<h2>مرصاد | الرصد الآلي</h2><p>حدد كيف تُحسب أوقات الحصص قبل تشغيل الرصد.</p>
+<section class="settings"><label for="mode">طريقة التوقيت</label><select id="mode"><option value="automatic">آلي — من جدول مرصاد</option><option value="manual">يدوي — إزاحة الجدول من وقت تحدده</option></select>
+<div id="manual-box" hidden><label for="manualStart">وقت بداية الحصة الأولى يدويًا</label><input id="manualStart" type="time" value="06:30"><small>تُزاح جميع الحصص بالمقدار نفسه مع بقاء مدة كل حصة والفواصل كما في الجدول.</small></div>
+<div id="preview" class="preview">سيتم عرض الأوقات بعد قراءة جدول مرصاد.</div><button id="save-time" type="button" style="background:#334155">حفظ التوقيت</button></section>
 <button id="start">تشغيل المراقبة</button><button id="stop" class="stop">إيقاف المراقبة</button><button id="export" style="background:#1d4ed8;margin-top:8px">تنزيل تقرير الفحوصات CSV</button>
-<div id="status">لم تبدأ دورة الرصد بعد.</div>
-<small>نسخة تجريبية: لا تسجّل غيابًا إذا تعذرت قراءة قائمة المشاركين.</small>
-<script src="popup.js"></script></body></html>
+<div id="status">لم تبدأ دورة الرصد بعد.</div><small>التوقيت الآلي يقرأ أوقات الحصص من الجدول المفتوح. التوقيت اليدوي يزيح الجدول كاملًا.</small><script src="popup.js"></script></body></html>
