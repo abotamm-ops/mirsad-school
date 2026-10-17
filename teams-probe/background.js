@@ -14,7 +14,7 @@ function buildPeriods(settings={}){
   const startMinute=cursor+i*(lessonMinutes+breakMinutes);
   const endMinute=startMinute+lessonMinutes;
   const fmt=n=>String(Math.floor((n%1440)/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
-  return {n:i+1,start:fmt(startMinute),end:fmt(endMinute)};
+  return {n:i+1,start:fmt(startMinute),end:fmt(endMinute),startOffset:startMinute,endOffset:endMinute};
  });
 }
 async function refreshScheduleSettings(){
@@ -97,16 +97,49 @@ async function ensureProbeTab(run){
  const tab=await chrome.tabs.create({url:"about:blank",active:false});
  run.tabId=tab.id;await saveRun(run);return tab.id;
 }
-function atToday(hhmm){const [h,m]=hhmm.split(":").map(Number);const d=new Date();d.setHours(h,m,0,0);return d}
-function periodNow(now=new Date()){if(now.getDay()===5||now.getDay()===6)return null;const mins=now.getHours()*60+now.getMinutes();return PERIODS.find(p=>{const [sh,sm]=p.start.split(":").map(Number),[eh,em]=p.end.split(":").map(Number);return mins>=sh*60+sm&&mins<=eh*60+em})||null}
+function dateAtOffset(anchor,minuteOffset){
+ const d=new Date(anchor);d.setHours(0,0,0,0);d.setMinutes(minuteOffset);return d;
+}
+function schoolDay(date){return date.getDay()!==5&&date.getDay()!==6}
+function periodBounds(p,now=new Date(),mode="activeOrNext"){
+ const candidates=[];
+ for(let dayOffset=-2;dayOffset<=2;dayOffset++){
+  const anchor=new Date(now);anchor.setDate(anchor.getDate()+dayOffset);anchor.setHours(0,0,0,0);
+  if(!schoolDay(anchor))continue;
+  const start=dateAtOffset(anchor,p.startOffset);
+  const end=dateAtOffset(anchor,p.endOffset);
+  candidates.push({start,end,anchor});
+ }
+ const active=candidates.find(x=>now>=x.start&&now<=x.end);
+ if(active)return active;
+ if(mode==="future"){
+  const future=candidates.filter(x=>x.start>now).sort((a,b)=>a.start-b.start);
+  if(future.length)return future[0];
+ }
+ const past=candidates.filter(x=>x.start<=now).sort((a,b)=>b.start-a.start);
+ if(mode==="past"&&past.length)return past[0];
+ const future=candidates.filter(x=>x.start>now).sort((a,b)=>a.start-b.start);
+ if(future.length)return future[0];
+ return past[0]||candidates[0];
+}
+function periodNow(now=new Date()){
+ const active=PERIODS.find(p=>{const b=periodBounds(p,now,"active");return b&&now>=b.start&&now<=b.end});
+ return active||null;
+}
 function nextPeriod(now=new Date()){
- if(now.getDay()===5||now.getDay()===6){const d=new Date(now);while(d.getDay()===5||d.getDay()===6)d.setDate(d.getDate()+1);const first=PERIODS[0],[h,m]=first.start.split(":").map(Number);d.setHours(h,m,0,0);return {period:first,when:d.getTime()}}
- for(const p of PERIODS){const d=atToday(p.start);if(d>now)return {period:p,when:d.getTime()}}
- // Saudi school week: Sunday through Thursday. Skip Friday and Saturday.
- const d=new Date(now);d.setDate(d.getDate()+1);
- while(d.getDay()===5||d.getDay()===6)d.setDate(d.getDate()+1);
- const first=PERIODS[0], [h,m]=first.start.split(":").map(Number);d.setHours(h,m,0,0);
- return {period:first,when:d.getTime()}
+ const candidates=[];
+ for(let dayOffset=-1;dayOffset<=8;dayOffset++){
+  const anchor=new Date(now);anchor.setDate(anchor.getDate()+dayOffset);anchor.setHours(0,0,0,0);
+  if(!schoolDay(anchor))continue;
+  for(const p of PERIODS){
+   const start=dateAtOffset(anchor,p.startOffset);
+   if(start>now)candidates.push({period:p,when:start.getTime()});
+  }
+ }
+ candidates.sort((a,b)=>a.when-b.when);
+ if(candidates.length)return candidates[0];
+ const d=new Date(now);d.setDate(d.getDate()+1);while(!schoolDay(d))d.setDate(d.getDate()+1);
+ return {period:PERIODS[0],when:dateAtOffset(d,PERIODS[0].startOffset).getTime()};
 }
 async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https://mirsad-school.onrender.com/*"});return tabs.find(t=>t.url&&!t.url.includes("/absence.html")&&!t.url.includes("/automatic-attendance.html"))||null}
 async function startOneOffTest(){
@@ -157,7 +190,7 @@ async function startMonitoring(){
 async function beginPeriod(run,periodNo){
  if(!run?.running)return;
  const p=PERIODS.find(x=>x.n===periodNo);if(!p)return;
- const now=new Date(), start=atToday(p.start), end=atToday(p.end);
+ const now=new Date(), bounds=periodBounds(p,now,"activeOrNext"), start=bounds.start, end=bounds.end;
  if(now<start){await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:start.getTime()});await setStatus("ينتظر بداية الحصة "+p.n+" عند "+p.start,{waiting:true,period:p.n});return}
  if(now>end){await advancePeriod(run,periodNo);return}
  const items=run.schedule.filter(x=>x.period===p.n);
@@ -180,7 +213,7 @@ async function navigateCurrent(run){
  if(!run?.running)return;
  const p=PERIODS.find(x=>x.n===run.period);
  if(!p)return;
- if(!run.backtestMode&&Date.now()>atToday(p.end).getTime()){await advancePeriod(run,run.period);return}
+ if(!run.backtestMode&&Date.now()>periodBounds(p,new Date(),"past").end.getTime()){await advancePeriod(run,run.period);return}
  if(run.index>=run.periodItems.length){
    run.current=null;
    await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
@@ -215,7 +248,7 @@ async function advancePeriod(run,after){
  if(!run?.running)return;
  const next=PERIODS.find(p=>p.n>after);
  if(!next){
-   const nxt=nextPeriod(new Date(atToday(PERIODS[6].end).getTime()+1000));
+   const nxt=nextPeriod(new Date(Date.now()+1000));
    await setStatus("انتهت حصص اليوم. ينتظر مرصاد الحصة "+nxt.period.n+" في "+nxt.period.start+" في يوم دراسي قادم.",{waiting:true,period:nxt.period.n});
    await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:nxt.when});
    return
@@ -256,7 +289,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
   await navigateCurrent(run);return;
  }
  if(alarm.name!==NEXT_ALARM)return;
- if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<=atToday(p.end).getTime()){if(!run.current&&run.index===0){await navigateCurrent(run)}else await navigateCurrent(run);return}await advancePeriod(run,run.period);return}
+ if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<=periodBounds(p,new Date(),"past").end.getTime()){if(!run.current&&run.index===0){await navigateCurrent(run)}else await navigateCurrent(run);return}await advancePeriod(run,run.period);return}
  const p=periodNow();if(p)await beginPeriod(run,p.n);else{const next=nextPeriod();await setStatus("ينتظر الحصة "+next.period.n+" عند "+next.period.start,{waiting:true,period:next.period.n});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 });
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
