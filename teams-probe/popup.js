@@ -1,10 +1,54 @@
 const statusNode=document.getElementById("status");
+const mappingList=document.getElementById("mapping-list");
+const MAPPING_KEY="mirsadManualMappings";
+let lastMappingSignature="";
+let manualMappings={};
+async function renderMappings(run){
+  const saved=await chrome.storage.local.get(MAPPING_KEY);
+  manualMappings=saved[MAPPING_KEY]||{};
+  const results=run?.results||[];
+  const relevant=new Map();
+  for(const item of results){
+    if(item.status!=="present"&&item.status!=="absent")continue;
+    const key=String(item.teacher||"").trim();
+    if(!key)continue;
+    const current=relevant.get(key)||{teacher:key,status:item.status,at:item.scannedAt||0,period:item.period};
+    if((item.scannedAt||0)>=current.at){current.status=item.status;current.at=item.scannedAt||0;current.period=item.period;}
+    relevant.set(key,current);
+  }
+  const teachers=[...new Set((run?.schedule||[]).map(x=>String(x.teacher||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
+  const rows=[...relevant.values()].sort((a,b)=>a.teacher.localeCompare(b.teacher,"ar"));
+  const signature=JSON.stringify({rows:rows.map(x=>[x.teacher,x.status,x.period]),teachers});
+  if(signature===lastMappingSignature)return;
+  lastMappingSignature=signature;
+  mappingList.replaceChildren();
+  if(!rows.length){mappingList.textContent="لم تُسجّل أسماء بحالة حاضر أو غائب حتى الآن.";return;}
+  for(const row of rows){
+    const wrapper=document.createElement("div");wrapper.className="mapping-row";
+    const name=document.createElement("div");name.className="teams-name";name.textContent="اسم Teams: "+row.teacher;wrapper.appendChild(name);
+    const meta=document.createElement("div");meta.className="mapping-meta";meta.textContent=(row.status==="present"?"الحالة: حاضر":"الحالة: غائب")+" — الحصة "+row.period;wrapper.appendChild(meta);
+    const select=document.createElement("select");select.setAttribute("aria-label","اختر المعلم الصحيح للاسم "+row.teacher);
+    const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="— اختر اسم المعلم الصحيح —";select.appendChild(placeholder);
+    for(const teacher of teachers){const option=document.createElement("option");option.value=teacher;option.textContent=teacher;select.appendChild(option);}
+    select.value=manualMappings[row.teacher]||"";
+    select.addEventListener("change",async()=>{
+      manualMappings[row.teacher]=select.value;
+      if(!select.value)delete manualMappings[row.teacher];
+      await chrome.storage.local.set({[MAPPING_KEY]:manualMappings});
+      meta.textContent=(row.status==="present"?"الحالة: حاضر":"الحالة: غائب")+" — الحصة "+row.period+(select.value?" — رُبط يدويًا بـ: "+select.value:" — لم يتم اختيار معلم");
+    });
+    wrapper.appendChild(select);
+    if(manualMappings[row.teacher]){const chosen=document.createElement("div");chosen.className="mapping-meta";chosen.textContent="المعلم المختار: "+manualMappings[row.teacher];wrapper.appendChild(chosen);}
+    mappingList.appendChild(wrapper);
+  }
+}
 async function refresh(){
   try{
     const r=await chrome.runtime.sendMessage({type:"MIRSAD_STATUS"});
     statusNode.textContent=r?.status?.text||"لا توجد حالة";
     const run=r?.run;
     if(run?.running&&run.period)statusNode.textContent+="\nالتقدم: الحصة "+run.period+"، الدورة "+(run.cycle||1)+"، "+run.index+"/"+(run.periodItems?.length||0);
+    await renderMappings(run);
     if(run?.results?.length){
       const recent=run.results.slice(-5).map(x=>x.teacher+" — الحصة "+x.period+": "+(x.status==="present"?"حاضر":x.status==="absent"?"غياب مبدئي":x.status==="invited"?"ضمن المدعوين":"غير محسوم"));
       statusNode.textContent+="\n\nآخر النتائج:\n"+recent.join("\n");
@@ -60,10 +104,13 @@ document.getElementById("export").addEventListener("click",async()=>{
       statusNode.textContent="لا توجد فحوصات محفوظة لتصديرها حتى الآن.";
       return;
     }
-    const headers=["وقت الفحص","المعلم","رقم الحصة","الحالة","التفاصيل","الدورة"];
+    const mappingStore=await chrome.storage.local.get(MAPPING_KEY);
+    const mappings=mappingStore[MAPPING_KEY]||{};
+    const headers=["وقت الفحص","اسم Teams","المعلم المطابق يدويًا","رقم الحصة","الحالة","التفاصيل","الدورة"];
     const lines=[headers,...rows.map(item=>[
       item.scannedAt?new Date(item.scannedAt).toLocaleString("ar-SA"):"",
       item.teacher||"",
+      mappings[item.teacher]||"",
       item.period||"",
       item.status==="present"?"حاضر":item.status==="absent"?"غياب مبدئي":item.status==="invited"?"ضمن المدعوين":"غير محسوم",
       item.detail||"",
