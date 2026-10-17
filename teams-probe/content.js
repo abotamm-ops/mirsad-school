@@ -432,6 +432,10 @@
           }
         }
       }
+      // Save a local screenshot of the participant list for absent results, before leaving.
+      if (result.status === "absent") {
+        try { await chrome.runtime.sendMessage({type:"MIRSAD_CAPTURE_EVIDENCE",scanId:target.scanId,teacher:result.teacher||target.teacher,period:target.period,status:result.status,detail:result.detail}); } catch (_) {}
+      }
       // Do not click Leave unless the meeting UI confirms that we actually joined.
       if (meetingLooksJoined()) await leaveMeetingIfJoined();
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
