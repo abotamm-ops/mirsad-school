@@ -156,8 +156,10 @@ async function startMonitoring(){
  let loaded;
  try{loaded=await loadPeriodsFromSchedule(scheduleTab.id)}catch(error){await setStatus(error?.message||"تعذرت قراءة أوقات الحصص من جدول مرصاد.");return}
  const schedule=loaded.items;
- if(!schedule.length){await setStatus("لم أجد روابط Teams صالحة في الجدول الحالي.");return}
- const run={running:true,schedule,periods:PERIODS,tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null};
+ const periodCounts=Array.from({length:7},(_,i)=>schedule.filter(x=>x.period===i+1).length);
+ const validLinkCounts=Array.from({length:7},(_,i)=>schedule.filter(x=>x.period===i+1&&isTeamsMeetingUrl(x.url)).length);
+ if(!schedule.length){await setStatus("قرأ مرصاد الجدول لكنه لم يجد حصصًا قابلة للرصد. حدّث صفحة الجدول وتأكد من ظهور بطاقات الدروس.",{diagnostic:true,totalItems:0,periodCounts,validLinkCounts});return}
+ const run={running:true,schedule,periods:PERIODS,diagnostic:{totalItems:schedule.length,periodCounts,validLinkCounts},tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null};
  await saveRun(run);
  const current=periodNow();
  if(current){await beginPeriod(run,current.n)}
@@ -172,7 +174,7 @@ async function beginPeriod(run,periodNo){
  const items=run.schedule.filter(x=>x.period===p.n);
  run.period=p.n;run.periodItems=items;run.index=0;run.current=null;run.cycle=1;
  await saveRun(run);
- if(!items.length){await setStatus("لا توجد روابط صالحة للحصة "+p.n+" في الجدول؛ ينتقل مرصاد للحصة التالية.",{period:p.n});await advancePeriod(run,p.n);return}
+ if(!items.length){await setStatus("لم يبدأ فحص الحصة "+p.n+": لا توجد دروس مقروءة لهذه الحصة. إجمالي الدروس المقروءة "+run.schedule.length+". أعداد الحصص: "+(run.diagnostic?.periodCounts||[]).join("، ")+".",{diagnostic:true,period:p.n,totalItems:run.schedule.length,periodCounts:run.diagnostic?.periodCounts||[],validLinkCounts:run.diagnostic?.validLinkCounts||[]});await advancePeriod(run,p.n);return}
  const cycleMinute=Math.max(1,Math.min(10,Number(scheduleSettings.cycleMinute)||5));
  const firstRoundAt=start.getTime()+cycleMinute*60*1000;
  if(now.getTime()<firstRoundAt){
