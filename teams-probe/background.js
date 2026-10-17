@@ -131,6 +131,7 @@ async function startOneOffTest(){
  }
 }
 async function startMonitoring(){
+ await refreshScheduleSettings();
  const existing=await getRun();
  if(existing?.running){
   await setStatus("المراقبة تعمل بالفعل؛ لن تُفتح دورة ثانية.",{period:existing.period,waiting:!existing.period});
@@ -239,6 +240,7 @@ async function receiveResult(message){
  await navigateCurrent(run)
 }
 chrome.alarms.onAlarm.addListener(async alarm=>{
+ await refreshScheduleSettings();
  const run=await getRun();if(!run?.running)return;
  if(alarm.name===SCAN_TIMEOUT_ALARM){
   if(!run.current)return;
@@ -279,12 +281,37 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_STATUS"){Promise.all([chrome.storage.local.get(STATUS_KEY),getRun()]).then(([s,r])=>sendResponse({status:s[STATUS_KEY]||{text:"لا توجد حالة"},run:r}));return true}
  if(message?.type==="MIRSAD_GET_LIVE_REPORT"){
   (async()=>{
-   const [run,stored]=await Promise.all([getRun(),chrome.storage.local.get([DAILY_REPORT_KEY,"mirsadManualAttendanceOverrides","mirsadManualMappings"])]);
+   await refreshScheduleSettings();
+   const [run,stored]=await Promise.all([getRun(),chrome.storage.local.get([DAILY_REPORT_KEY,"mirsadManualAttendanceOverrides","mirsadManualMappings",SCHEDULE_SETTINGS_KEY])]);
    let schedule=[];
    const tab=await getScheduleTab();
    if(tab){try{const response=await chrome.tabs.sendMessage(tab.id,{type:"MIRSAD_GET_SCHEDULE"});if(response?.ok)schedule=response.items||[]}catch(_){}}
    if(!schedule.length)schedule=Array.isArray(run?.schedule)?run.schedule:[];
-   sendResponse({ok:true,run:run||{},schedule,dailyReports:stored[DAILY_REPORT_KEY]||{},manualOverrides:stored.mirsadManualAttendanceOverrides||{},manualMappings:stored.mirsadManualMappings||{}});
+   sendResponse({ok:true,run:run||{},schedule,dailyReports:stored[DAILY_REPORT_KEY]||{},manualOverrides:stored.mirsadManualAttendanceOverrides||{},manualMappings:stored.mirsadManualMappings||{},scheduleSettings:stored[SCHEDULE_SETTINGS_KEY]||DEFAULT_SCHEDULE_SETTINGS,periods:PERIODS});
+  })().catch(()=>sendResponse({ok:false}));
+  return true
+ }
+ if(message?.type==="MIRSAD_SAVE_SCHEDULE_SETTINGS"){
+  (async()=>{
+   const mode=message.settings?.mode==="manual"?"manual":"automatic";
+   const firstStart=String(message.settings?.firstStart||"06:30");
+   const lessonMinutes=Number(message.settings?.lessonMinutes);
+   const breakMinutes=Number(message.settings?.breakMinutes);
+   if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(firstStart)||!Number.isInteger(lessonMinutes)||lessonMinutes<1||lessonMinutes>180||!Number.isInteger(breakMinutes)||breakMinutes<0||breakMinutes>60){
+    sendResponse({ok:false,reason:"invalid"});return;
+   }
+   const settings={mode,firstStart:mode==="automatic"?"06:30":firstStart,lessonMinutes,breakMinutes,updatedAt:Date.now()};
+   await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:settings});
+   await refreshScheduleSettings();
+   const run=await getRun();
+   if(run?.running&&!run.current){
+    run.running=false;await saveRun(run);
+    await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
+    await setStatus("تم حفظ أوقات الحصص. أعد تشغيل المراقبة لتطبيق الجدول الجديد.",{scheduleSettings:settings});
+   }else{
+    await setStatus(run?.running?"تم حفظ الأوقات الجديدة؛ ستُستخدم للحصص التالية بعد انتهاء الفحص الحالي.":"تم حفظ أوقات الحصص الجديدة.",{scheduleSettings:settings,periods:PERIODS});
+   }
+   sendResponse({ok:true,settings,periods:PERIODS});
   })().catch(()=>sendResponse({ok:false}));
   return true
  }
