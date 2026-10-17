@@ -341,14 +341,21 @@
         normalize(child.innerText || child.textContent) === normalize(x.el.innerText || x.el.textContent)
       ));
     const sectionForNode = node => {
+      // DOM order is not always the same as the visual order in Teams' virtualized
+      // roster. Use the nearest visible section heading above the badge instead.
+      const badgeRect = node.getBoundingClientRect();
       let nearest = null;
+      let nearestDistance = Infinity;
       for (const heading of orderedSectionHeadings) {
-        const relation = heading.el.compareDocumentPosition(node);
-        if (relation & Node.DOCUMENT_POSITION_FOLLOWING) continue;
-        if (relation & Node.DOCUMENT_POSITION_PRECEDING) {
-          if (!nearest || (nearest.el.compareDocumentPosition(heading.el) & Node.DOCUMENT_POSITION_FOLLOWING)) nearest = heading;
-        } else if (heading.el === node || heading.el.contains(node)) {
+        const rect = heading.el.getBoundingClientRect();
+        if (rect.bottom > badgeRect.top + 2) continue;
+        // Ignore headings in a different horizontal pane where possible.
+        const horizontalGap = Math.max(0, rect.left - badgeRect.right, badgeRect.left - rect.right);
+        if (horizontalGap > 180) continue;
+        const distance = badgeRect.top - rect.bottom;
+        if (distance < nearestDistance) {
           nearest = heading;
+          nearestDistance = distance;
         }
       }
       return nearest?.key || "unknown";
