@@ -53,20 +53,25 @@
     }
 
     const sections = {present:[], invited:[], noResponse:[]};
-    for (const h of headings) {
-      if (h.key === "organizer") continue;
+    const sectionHeadings = headings.filter(h => h.key === "present" || h.key === "invited" || h.key === "noResponse");
+    for (const h of sectionHeadings) {
       let root = h.el;
-      // Find a compact ancestor that includes this heading and nearby rows,
-      // but not the whole meeting page.
-      for (let i=0; i<6 && root.parentElement; i++) {
+      // Grow the section container only while it remains inside this section.
+      // If an ancestor also contains another section heading, stop before it;
+      // otherwise the same teacher row can be counted as both present and invited.
+      for (let i=0; i<8 && root.parentElement; i++) {
         const parent = root.parentElement;
         const txt = normalize(parent.innerText || parent.textContent);
         if (txt.length > 10000) break;
+        const containsOtherSection = sectionHeadings.some(other =>
+          other !== h && parent.contains(other.el)
+        );
+        if (containsOtherSection) break;
         root = parent;
         if (txt.length > h.label.length + 20 && txt.length < 6000) break;
       }
       const txt = normalize(root.innerText || root.textContent);
-      if (txt && !sections[h.key].some(s => s.text === txt)) {
+      if (txt && !sections[h.key].some(s => s.root === root || s.text === txt)) {
         sections[h.key].push({label:h.label, text:txt, root});
       }
     }
