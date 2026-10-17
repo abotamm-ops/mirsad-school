@@ -1,6 +1,6 @@
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
-const DEFAULT_SCHEDULE_SETTINGS={mode:"automatic",manualStart:"06:30",basePeriods:[]};
+const DEFAULT_SCHEDULE_SETTINGS={mode:"automatic",manualStart:"06:30",cycleMinute:5,basePeriods:[]};
 let scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS};
 let PERIODS=[];
 function parseClock(v){const m=/^(\d{1,2}):(\d{2})$/.exec(String(v||""));return m?Number(m[1])*60+Number(m[2]):null}
@@ -174,9 +174,9 @@ async function beginPeriod(run,periodNo){
  run.period=p.n;run.periodItems=items;run.index=0;run.current=null;run.cycle=1;
  await saveRun(run);
  if(!items.length){await setStatus("لا توجد روابط صالحة للحصة "+p.n+" في الجدول؛ ينتقل مرصاد للحصة التالية.",{period:p.n});await advancePeriod(run,p.n);return}
- const firstRoundAt=start.getTime()+5*60*1000;
+ const cycleMinute=Math.max(1,Math.min(10,Number(scheduleSettings.cycleMinute)||5));\n const firstRoundAt=start.getTime()+cycleMinute*60*1000;
  if(now.getTime()<firstRoundAt){
-  await setStatus("الرصد جاهز للحصة "+p.n+". تبدأ الدورة الأولى بعد مرور 5 دقائق على بداية الحصة.",{period:p.n,waiting:true,cycle:1,total:items.length});
+  await setStatus("الرصد جاهز للحصة "+p.n+". تبدأ الدورة الأولى بعد مرور "+cycleMinute+" دقيقة من بداية الحصة.",{period:p.n,waiting:true,cycle:1,total:items.length});
   await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:firstRoundAt});return;
  }
  if(now.getTime()>start.getTime()+10*60*1000){
@@ -302,7 +302,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   return true
  }
  if(message?.type==="MIRSAD_SAVE_SCHEDULE_SETTINGS"){
- (async()=>{const mode=message.settings?.mode==="manual"?"manual":"automatic",manualStart=String(message.settings?.manualStart||"06:30");if(mode==="manual"&&parseClock(manualStart)===null){sendResponse({ok:false,reason:"invalid"});return}let saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY),base=saved[SCHEDULE_SETTINGS_KEY]?.basePeriods;const tab=await getScheduleTab();if(tab){try{await loadPeriodsFromSchedule(tab.id);saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);base=saved[SCHEDULE_SETTINGS_KEY]?.basePeriods}catch(_){}}if(!Array.isArray(base)||base.length!==7){sendResponse({ok:false,reason:"no-timetable"});return}const settings={mode,manualStart,basePeriods:base,updatedAt:Date.now()};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:settings});await refreshScheduleSettings();const run=await getRun();if(run?.running&&!run.current){await chrome.alarms.clear(NEXT_ALARM);run.period=null;run.periodItems=[];run.index=0;await saveRun(run);const current=periodNow();if(current)await beginPeriod(run,current.n);else{const next=nextPeriod();await setStatus("تم تحديث التوقيت. ينتظر مرصاد الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}}else await setStatus("تم حفظ التوقيت. شغّل المراقبة لتطبيقه.",{scheduleSettings:settings,periods:PERIODS});sendResponse({ok:true,settings,periods:PERIODS})})().catch(()=>sendResponse({ok:false}));return true
+ (async()=>{const mode=message.settings?.mode==="manual"?"manual":"automatic",manualStart=String(message.settings?.manualStart||"06:30"),cycleMinute=Number(message.settings?.cycleMinute);if((mode==="manual"&&parseClock(manualStart)===null)||!Number.isInteger(cycleMinute)||cycleMinute<1||cycleMinute>10){sendResponse({ok:false,reason:"invalid"});return}let saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY),base=saved[SCHEDULE_SETTINGS_KEY]?.basePeriods;const tab=await getScheduleTab();if(tab){try{await loadPeriodsFromSchedule(tab.id);saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);base=saved[SCHEDULE_SETTINGS_KEY]?.basePeriods}catch(_){}}if(!Array.isArray(base)||base.length!==7){sendResponse({ok:false,reason:"no-timetable"});return}const settings={mode,manualStart,cycleMinute,basePeriods:base,updatedAt:Date.now()};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:settings});await refreshScheduleSettings();const run=await getRun();if(run?.running&&!run.current){await chrome.alarms.clear(NEXT_ALARM);run.period=null;run.periodItems=[];run.index=0;await saveRun(run);const current=periodNow();if(current)await beginPeriod(run,current.n);else{const next=nextPeriod();await setStatus("تم تحديث التوقيت. ينتظر مرصاد الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}}else await setStatus("تم حفظ التوقيت. شغّل المراقبة لتطبيقه.",{scheduleSettings:settings,periods:PERIODS});sendResponse({ok:true,settings,periods:PERIODS})})().catch(()=>sendResponse({ok:false}));return true
  }
  if(message?.type==="MIRSAD_SAVE_MAPPING"){
   (async()=>{
