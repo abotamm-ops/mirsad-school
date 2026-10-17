@@ -268,6 +268,59 @@
           });
         }
       }
+      // Fallback for Teams UI variants where participant rows do not expose
+      // listitem/option/treeitem/data-tid semantics. Search the isolated section
+      // for the smallest DOM elements that contain both name tokens, then keep
+      // only a bounded ancestor whose own text/accessible labels also contain
+      // the organizer badge. This avoids borrowing the badge from another row.
+      if (matches.length === 0) {
+        for (const section of sectionList) {
+          const root = section.root;
+          if (!root?.querySelectorAll) continue;
+          const elements = [...root.querySelectorAll("*")];
+          const named = elements.filter(el => {
+            const text = normalize(el.innerText || el.textContent);
+            if (!text || text.length > 300 || text.length < 2) return false;
+            const tokens = new Set(tokenizeName(text));
+            return tokens.has(teacherTokens[0]) && tokens.has(teacherTokens[teacherTokens.length - 1]);
+          });
+          // Start from the smallest name-bearing element and walk upward only
+          // within this section, stopping before an ancestor that contains a
+          // second matching person or grows beyond a single-record-sized text.
+          for (const leaf of named.filter(el => !named.some(other => other !== el && el.contains(other)))) {
+            let row = leaf;
+            for (let depth = 0; depth < 5 && row.parentElement && row.parentElement !== root; depth++) {
+              const parent = row.parentElement;
+              const text = normalize(parent.innerText || parent.textContent);
+              if (text.length > 500) break;
+              const tokens = new Set(tokenizeName(text));
+              if (!tokens.has(teacherTokens[0]) || !tokens.has(teacherTokens[teacherTokens.length - 1])) break;
+              row = parent;
+              const attrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
+                .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")].filter(Boolean).join(" ")).join(" ");
+              const combined = normalize(text + " " + attrs).toLocaleLowerCase();
+              if (/المنظّم|المنظم|\\borganizer\\b/i.test(combined)) break;
+            }
+            const rowText = normalize(row.innerText || row.textContent);
+            const rowAttrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
+              .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")].filter(Boolean).join(" ")).join(" ");
+            const evidenceText = normalize(rowText + " " + rowAttrs).toLocaleLowerCase();
+            const organizer = /المنظّم|المنظم|\\borganizer\\b/i.test(evidenceText);
+            const rowKey = section.label + "|" + rowText;
+            if (!seenRows.has(rowKey)) {
+              seenRows.add(rowKey);
+              const xEvidence = /(?:^|\\s)(?:x|×|✕|✖)(?:\\s|$)/i.test(rowAttrs) ||
+                /(?:disconnected|not connected|connection lost|غير متصل|غير متواجـد|انقطع الاتصال|لم ينضم|لم يتصل)/i.test(evidenceText);
+              const lastSeenMatch = evidenceText.match(/(?:آخر ظهور|آخر نشاط|last seen|last active)\\s*[:：]?\\s*(.{1,50})/i);
+              const lastSeenText = lastSeenMatch ? normalize(lastSeenMatch[1]) : "";
+              const hasLastSeenBeforeCurrent = !!lastSeenText && /(?:قبل|ago|منذ|yesterday|أمس|دقيقة|دقائق|ثانية|ثوانٍ|ساعة|ساعات)/i.test(lastSeenText);
+              matches.push({text:rowText, organizer, xEvidence, lastSeenText, hasLastSeenBeforeCurrent});
+            }
+            if (matches.length > 1) break;
+          }
+          if (matches.length > 1) break;
+        }
+      }
       return matches;
     };
     const presentRows = scanRows(sections.present);
