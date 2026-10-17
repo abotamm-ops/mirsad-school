@@ -219,148 +219,29 @@
         .join(" | ");
       return {status:"unresolved",detail:"التشخيص: ضغط الأشخاص في هذه الصفحة=" + (!!window.__mirsadRosterClickAttempted) + "؛ زر الأشخاص ظاهر=" + (!!people && visible(people)) + "؛ نوافذ/حاويات مشاركين ظاهرة=" + dialogs + "؛ نص عنوان الحضور موجود=" + hasPresentHeading + "؛ نص عنوان المدعوين موجود=" + hasInvitedHeading + "؛ أقسام القراءة المكتشفة=0؛ نماذج العناوين=" + (headingSnippets || "لا توجد").slice(0, 700) + ". قائمة Teams لم تُقرأ بنجاح؛ لم يُسجّل غياب."};
     }
-    const teacherTokens = tokenizeName(teacher);
-    const scanRows = (sectionList) => {
-      const matches = [];
-      const seenRows = new Set();
-      if (teacherTokens.length < 2) return matches;
-      const selector = '[role="listitem"],[role="option"],[role="treeitem"],li,[data-tid*="roster"],[data-tid*="participant"]';
-      for (const section of sectionList) {
-        const root = section.root;
-        if (!root?.querySelectorAll) continue;
-        const candidates = [...root.querySelectorAll(selector)];
-        // Prefer the smallest matching participant record. Broad ancestor
-        // containers may contain several people and must not lend the
-        // organizer label of one person to another.
-        const matching = candidates.filter(row => {
-          const text = normalize(row.innerText || row.textContent);
-          if (!text || text.length > 300 || text.length < 2) return false;
-          const tokens = new Set(tokenizeName(text));
-          return tokens.has(teacherTokens[0]) && tokens.has(teacherTokens[teacherTokens.length - 1]);
-        });
-        const leafMatches = matching.filter(row => ![...row.querySelectorAll(selector)].some(child => {
-          const text = normalize(child.innerText || child.textContent);
-          const tokens = new Set(tokenizeName(text));
-          return text.length >= 2 && text.length <= 300 && tokens.has(teacherTokens[0]) && tokens.has(teacherTokens[teacherTokens.length - 1]);
-        }));
-        for (const row of (leafMatches.length ? leafMatches : matching)) {
-          const rowText = normalize(row.innerText || row.textContent);
-          if (seenRows.has(rowText)) continue;
-          seenRows.add(rowText);
-          const rowAttrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
-            .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")]
-              .filter(Boolean).join(" "))
-            .join(" ");
-          const evidenceText = normalize(rowText + " " + rowAttrs).toLocaleLowerCase();
-          // A visible X/close icon can be represented by aria-label/title/data-tid;
-          // accept only explicit presence/connection labels, not microphone mute alone.
-          const xEvidence = /(?:^|\s)(?:x|×|✕|✖)(?:\s|$)/i.test(rowAttrs) ||
-            /(?:disconnected|not connected|connection lost|غير متصل|غير متواجـد|انقطع الاتصال|لم ينضم|لم يتصل)/i.test(evidenceText);
-          const lastSeenMatch = evidenceText.match(/(?:آخر ظهور|آخر نشاط|last seen|last active)\s*[:：]?\s*(.{1,50})/i);
-          const lastSeenText = lastSeenMatch ? normalize(lastSeenMatch[1]) : "";
-          const hasLastSeenBeforeCurrent = !!lastSeenText && /(?:قبل|ago|منذ|yesterday|أمس|دقيقة|دقائق|ثانية|ثوانٍ|ساعة|ساعات)/i.test(lastSeenText);
-          matches.push({
-            text:rowText,
-            organizer:/\borganizer\b/i.test(rowText) || rowText.includes("المنظّم") || rowText.includes("المنظم"),
-            xEvidence,
-            lastSeenText,
-            hasLastSeenBeforeCurrent
-          });
+    // Organizer-only rule: the name attached to the Teams organizer badge is
+    // the teacher identity. Never compare it against timetable teacher names.
+    const organizerWord = /(?:المنظّم|المنظم|organizer)/i;
+    const sectionLabels = [
+      {key:"present", re:/الحضور(?:\s*\(\s*\d+(?:\s*[/،,]\s*\d+)?\s*\))?|in this meeting|attendees/i},
+      {key:"invited", re:/تمت دعوة الآخرين|تمت دعوة الاخرين|invited|other invitees/i},
+      {key:"noResponse", re:/لا توجد استجابة|لم يستجب|didn.t respond|hasn.t responded/i}
+    ];
+    const classifyTextAroundOrganizer = text => {
+      const normalized = normalize(text);
+      const badge = normalized.search(organizerWord);
+      if (badge < 0) return "unknown";
+      let latest = {key:"unknown", index:-1};
+      for (const label of sectionLabels) {
+        const re = new RegExp(label.re.source, "ig");
+        let match;
+        while ((match = re.exec(normalized)) !== null) {
+          if (match.index < badge && match.index > latest.index) latest = {key:label.key,index:match.index};
         }
       }
-      // Fallback for Teams UI variants where participant rows do not expose
-      // listitem/option/treeitem/data-tid semantics. Search the isolated section
-      // for the smallest DOM elements that contain both name tokens, then keep
-      // only a bounded ancestor whose own text/accessible labels also contain
-      // the organizer badge. This avoids borrowing the badge from another row.
-      if (matches.length === 0) {
-        for (const section of sectionList) {
-          const root = section.root;
-          if (!root?.querySelectorAll) continue;
-          const elements = [...root.querySelectorAll("*")];
-          const named = elements.filter(el => {
-            const text = normalize(el.innerText || el.textContent);
-            if (!text || text.length > 300 || text.length < 2) return false;
-            const tokens = new Set(tokenizeName(text));
-            return tokens.has(teacherTokens[0]) && tokens.has(teacherTokens[teacherTokens.length - 1]);
-          });
-          // Start from the smallest name-bearing element and walk upward only
-          // within this section, stopping before an ancestor that contains a
-          // second matching person or grows beyond a single-record-sized text.
-          for (const leaf of named.filter(el => !named.some(other => other !== el && el.contains(other)))) {
-            let row = leaf;
-            for (let depth = 0; depth < 5 && row.parentElement && row.parentElement !== root; depth++) {
-              const parent = row.parentElement;
-              const text = normalize(parent.innerText || parent.textContent);
-              if (text.length > 500) break;
-              const tokens = new Set(tokenizeName(text));
-              if (!tokens.has(teacherTokens[0]) || !tokens.has(teacherTokens[teacherTokens.length - 1])) break;
-              row = parent;
-              const attrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
-                .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")].filter(Boolean).join(" ")).join(" ");
-              const combined = normalize(text + " " + attrs).toLocaleLowerCase();
-              if (/المنظّم|المنظم|\borganizer\b/i.test(combined)) break;
-            }
-            const rowText = normalize(row.innerText || row.textContent);
-            const rowAttrs = [...row.querySelectorAll("[aria-label],[title],[data-tid]"), row]
-              .map(el => [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-tid")].filter(Boolean).join(" ")).join(" ");
-            const evidenceText = normalize(rowText + " " + rowAttrs).toLocaleLowerCase();
-            const organizer = /المنظّم|المنظم|\borganizer\b/i.test(evidenceText);
-            const rowKey = section.label + "|" + rowText;
-            if (!seenRows.has(rowKey)) {
-              seenRows.add(rowKey);
-              const xEvidence = /(?:^|\s)(?:x|×|✕|✖)(?:\s|$)/i.test(rowAttrs) ||
-                /(?:disconnected|not connected|connection lost|غير متصل|غير متواجـد|انقطع الاتصال|لم ينضم|لم يتصل)/i.test(evidenceText);
-              const lastSeenMatch = evidenceText.match(/(?:آخر ظهور|آخر نشاط|last seen|last active)\s*[:：]?\s*(.{1,50})/i);
-              const lastSeenText = lastSeenMatch ? normalize(lastSeenMatch[1]) : "";
-              const hasLastSeenBeforeCurrent = !!lastSeenText && /(?:قبل|ago|منذ|yesterday|أمس|دقيقة|دقائق|ثانية|ثوانٍ|ساعة|ساعات)/i.test(lastSeenText);
-              matches.push({text:rowText, organizer, xEvidence, lastSeenText, hasLastSeenBeforeCurrent});
-            }
-            if (matches.length > 1) break;
-          }
-          if (matches.length > 1) break;
-        }
-      }
-      return matches;
+      return latest.key;
     };
-    const presentRows = scanRows(sections.present);
-    const invitedRows = scanRows(sections.invited);
-
-    // Organizer-first diagnostic/fallback: Teams may render the organizer badge
-    // outside the row selectors above. Locate the badge itself, then inspect only
-    // small ancestors around it for the person's name and accessible attributes.
-    const organizerCandidates = [];
-    // Determine the participant's section by DOM order: the nearest preceding
-    // recognized Teams section heading is more reliable than root.contains(row),
-    // because Teams may render headings and participant rows as siblings.
-    const orderedSectionHeadings = [...document.querySelectorAll("body *")]
-      .filter(visible)
-      .map(el => ({el, key: exactHeading(normalize(el.innerText || el.textContent))}))
-      .filter(x => x.key === "present" || x.key === "invited" || x.key === "noResponse")
-      .filter(x => ![...x.el.children].some(child =>
-        normalize(child.innerText || child.textContent) === normalize(x.el.innerText || x.el.textContent)
-      ));
-    const sectionForNode = node => {
-      // DOM order is not always the same as the visual order in Teams' virtualized
-      // roster. Use the nearest visible section heading above the badge instead.
-      const badgeRect = node.getBoundingClientRect();
-      let nearest = null;
-      let nearestDistance = Infinity;
-      for (const heading of orderedSectionHeadings) {
-        const rect = heading.el.getBoundingClientRect();
-        if (rect.bottom > badgeRect.top + 2) continue;
-        // Ignore headings in a different horizontal pane where possible.
-        const horizontalGap = Math.max(0, rect.left - badgeRect.right, badgeRect.left - rect.right);
-        if (horizontalGap > 180) continue;
-        const distance = badgeRect.top - rect.bottom;
-        if (distance < nearestDistance) {
-          nearest = heading;
-          nearestDistance = distance;
-        }
-      }
-      return nearest?.key || "unknown";
-    };
-    const organizerNodes = [...document.querySelectorAll("body *")].filter(visible).filter(el => {
+    const organizerElements = [...document.querySelectorAll("body *")].filter(visible).filter(el => {
       const own = normalize([
         el.getAttribute("aria-label"), el.getAttribute("title"),
         el.getAttribute("data-tid"), el.innerText, el.textContent
@@ -368,84 +249,43 @@
       return /^(?:المنظّم|المنظم|organizer)$/.test(own) ||
         /(?:^|\s)(?:المنظّم|المنظم|organizer)(?:$|\s)/.test(own) && own.length <= 50;
     });
-    for (const badge of organizerNodes) {
-      let row = badge;
-      for (let depth = 0; depth < 6 && row.parentElement; depth++) {
-        const parent = row.parentElement;
-        const text = normalize(parent.innerText || parent.textContent);
-        if (!text || text.length > 500) break;
-        row = parent;
-        const rowText = normalize(row.innerText || row.textContent);
-        if (rowText.length >= 2 && rowText.length <= 300) {
-          const tokens = new Set(tokenizeName(rowText));
-          const target = new Set(teacherTokens);
-          const nameOverlap = [...target].filter(t => tokens.has(t)).length;
-          const sectionKey = sectionForNode(badge);
-          organizerCandidates.push({text:rowText, sectionKey, nameOverlap, row});
-          if (nameOverlap >= 2) break;
-        }
+    const candidates = [];
+    for (const badge of organizerElements) {
+      let node = badge;
+      let name = "";
+      let section = "unknown";
+      let contextText = "";
+      for (let depth=0; depth<8 && node; depth++, node=node.parentElement) {
+        const text = normalize(node.innerText || node.textContent);
+        if (!text || text.length > 2500) continue;
+        const badgeIndex = text.search(organizerWord);
+        if (badgeIndex < 0) continue;
+        const before = text.slice(0,badgeIndex).trim();
+        const cleaned = before.replace(/(?:الحضور|تمت دعوة الآخرين|تمت دعوة الاخرين|لا توجد استجابة|in this meeting|attendees|invited|other invitees)/ig," ").trim();
+        const words = cleaned.split(/\s+/).filter(Boolean);
+        if (words.length >= 1 && words.length <= 7 && !name) name = cleaned;
+        const detected = classifyTextAroundOrganizer(text);
+        if (detected !== "unknown") { section=detected; contextText=text; }
+        if (name && section !== "unknown" && text.length < 500) break;
       }
+      name = name.replace(/[\s:：\-–—|]+$/g,"").trim();
+      if (name && name.length <= 100) candidates.push({name,section,contextText});
     }
-    const uniqueOrganizerCandidates = organizerCandidates.filter((candidate, i, all) =>
-      all.findIndex(other => other.text === candidate.text && other.sectionKey === candidate.sectionKey) === i
+    const uniqueCandidates = candidates.filter((x,i,all)=>
+      all.findIndex(y=>normalize(y.name)===normalize(x.name) && y.section===x.section)===i
     );
-    // Use the organizer badge itself when standard participant-row selectors
-    // fail, but only when its local text matches both first and last name tokens
-    // and DOM order places it inside a recognized attendance section.
-    const organizerMatches = uniqueOrganizerCandidates.filter(x =>
-      x.nameOverlap >= 2 && (x.sectionKey === "present" || x.sectionKey === "invited")
-    );
-    if (presentRows.length === 0 && invitedRows.length === 0 && organizerMatches.length === 1) {
-      const candidate = organizerMatches[0];
-      if (candidate.sectionKey === "present") {
-        return {status:"present",detail:"تم العثور على وسم «المنظّم» مرتبطًا بالاسم «" + candidate.text.slice(0, 100) + "» ضمن قسم الحضور."};
+    const classified = uniqueCandidates.filter(x=>x.section==="present" || x.section==="invited");
+    if (classified.length === 1) {
+      const person = classified[0];
+      if (person.section === "present") {
+        return {status:"present",teacher:person.name,detail:"المعلّم «"+person.name+"» مرتبط بوسم «المنظّم» ويظهر ضمن «الحضور»؛ الحالة: حاضر."};
       }
-      return {status:"invited",detail:"تم العثور على وسم «المنظّم» مرتبطًا بالاسم «" + candidate.text.slice(0, 100) + "» ضمن قسم «تمت دعوة الآخرين». لم يظهر ضمن الحضور عند الفحص؛ تُعاد مراقبته ولا يُحوّل ذلك وحده إلى غياب نهائي."};
+      return {status:"absent",teacher:person.name,detail:"المعلّم «"+person.name+"» مرتبط بوسم «المنظّم» ويظهر ضمن «تمت دعوة الآخرين» وليس ضمن «الحضور»؛ الحالة: غائب."};
     }
-    // Otherwise report concise organizer-first diagnostics for the next iteration.
-    if (presentRows.length === 0 && invitedRows.length === 0) {
-      const relevant = uniqueOrganizerCandidates
-        .filter(x => x.nameOverlap >= 2 || x.sectionKey !== "unknown")
-        .slice(0, 3)
-        .map(x => "«" + x.text.slice(0, 100) + "» [قسم=" + x.sectionKey + ", تطابق أجزاء الاسم=" + x.nameOverlap + "]")
-        .join("؛ ");
-      if (uniqueOrganizerCandidates.length) {
-        return {status:"unresolved",detail:"التشخيص: عُثر على وسم «المنظّم» لكن لم يمكن تحديد قسمه بثقة. أقرب سجلات مقروءة: " + (relevant || "لم يظهر سجل يطابق الاسم") + ". لم يُسجّل غياب."};
-      }
+    if (uniqueCandidates.length) {
+      return {status:"unresolved",teacher:uniqueCandidates[0].name,detail:"عُثر على المنظّم باسم «"+uniqueCandidates[0].name+"»، لكن تعذّر تحديد القسم المرتبط به بثقة؛ لم تُسجّل حالة حضور أو غياب."};
     }
-    // Apply the requested three-part rule:
-    // (1) allow the teacher's full timetable name to match a shortened room name
-    // by requiring the first and last name tokens, (2) organizer label must be
-    // attached to that same participant row, and (3) classify by the section.
-    if (presentRows.length > 1 || invitedRows.length > 1 || (presentRows.length > 0 && invitedRows.length > 0)) {
-      return {status:"unresolved",detail:"تطابق الاسم في أكثر من سجل أو في قسمي الحضور والمدعوين؛ لا يُسجّل حكم."};
-    }
-    if (presentRows.length === 1) {
-      if (!presentRows[0].organizer) {
-        return {status:"unresolved",detail:"ظهر اسم قريب في قسم الحضور، لكن لم يُثبت ارتباط وسم «المنظّم» بالسجل نفسه؛ لا يُسجّل حكم."};
-      }
-      return {status:"present",detail:"تطابق الاسم الثلاثي مع الاسم الظاهر في الغرفة، وظهر وسم «المنظّم» في السجل نفسه ضمن قسم الحضور."};
-    }
-    if (invitedRows.length === 1) {
-      const row = invitedRows[0];
-      if (!row.organizer) {
-        return {status:"unresolved",detail:"ظهر اسم قريب في «تمت دعوة الآخرين»، لكن لم يُثبت ارتباط وسم «المنظّم» بالسجل نفسه؛ لا يُسجّل غياب."};
-      }
-      const evidence = [
-        row.xEvidence ? "رُصدت علامة اتصال/انقطاع في سجل الشخص" : "",
-        row.hasLastSeenBeforeCurrent ? "آخر ظهور/نشاط قرأه Teams: " + row.lastSeenText : ""
-      ].filter(Boolean).join("؛ ");
-      const lastSeenNote = row.hasLastSeenBeforeCurrent
-        ? " آخر ظهور/نشاط ظاهر في Teams: " + row.lastSeenText + "."
-        : " لم يعرض Teams وقت آخر حضور/ظهور يمكن قراءته بثقة؛ لذلك لا نختلق مدة زمنية.";
-      return {
-        status:"invited",
-        detail:"تم تحديد سجل المنظّم ضمن «تمت دعوة الآخرين»؛ هذا يعني أنه لم يظهر ضمن الحضور عند الفحص. " +
-          (evidence ? "مؤشرات مساندة: " + evidence + ". " : "لم تتوفر مؤشرات اتصال/آخر ظهور موثوقة إضافية. ") +
-          lastSeenNote + " تُسجّل الحالة «لم يظهر عند الفحص» وتُعاد مراقبته، ولا تُحوّل إلى غياب نهائي إلا وفق قاعدة زمنية معتمدة."
-      };
-    }
-    return {status:"unresolved",detail:"لم يُعثر على سجل واحد واضح يطابق الاسم ووسم «المنظّم»؛ لا يُسجّل غياب."};
+    return {status:"unresolved",detail:"لم يُعثر على اسم واضح مرتبط بوسم «المنظّم»؛ لم تُسجّل حالة حضور أو غياب."};
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
