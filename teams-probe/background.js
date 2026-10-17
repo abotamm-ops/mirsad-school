@@ -92,7 +92,7 @@ function nextPeriod(now=new Date()){
  const first=PERIODS[0], [h,m]=first.start.split(":").map(Number);d.setHours(h,m,0,0);
  return {period:first,when:d.getTime()}
 }
-async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https://mirsad-school.onrender.com/*"});return tabs.find(t=>t.url&&!t.url.includes("/absence.html"))||null}
+async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https://mirsad-school.onrender.com/*"});return tabs.find(t=>t.url&&!t.url.includes("/absence.html")&&!t.url.includes("/automatic-attendance.html"))||null}
 async function startOneOffTest(){
  const existing=await getRun();
  if(existing?.running){await setStatus("أوقف المراقبة الحالية أولًا قبل الاختبار المباشر.");return}
@@ -236,6 +236,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_START"){startMonitoring().then(()=>sendResponse({ok:true})).catch(()=>sendResponse({ok:false}));return true}
  if(message?.type==="MIRSAD_STOP"){getRun().then(async run=>{if(run){run.running=false;await saveRun(run);await closeProbeTab(run)}await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await setStatus("تم إيقاف المراقبة بناءً على طلبك.");sendResponse({ok:true})});return true}
  if(message?.type==="MIRSAD_STATUS"){Promise.all([chrome.storage.local.get(STATUS_KEY),getRun()]).then(([s,r])=>sendResponse({status:s[STATUS_KEY]||{text:"لا توجد حالة"},run:r}));return true}
+ if(message?.type==="MIRSAD_GET_LIVE_REPORT"){Promise.all([getRun(),chrome.storage.local.get(DAILY_REPORT_KEY)]).then(([run,stored])=>sendResponse({ok:true,run:run||{},dailyReports:stored[DAILY_REPORT_KEY]||{}}));return true}
  if(message?.type==="MIRSAD_PAGE_READY"){getRun().then(run=>sendResponse(run?.running&&run.current?{active:true,teacher:run.current.teacher,period:run.period,index:run.index,scanId:run.current.scanId}:{active:false}));return true}
  if(message?.type==="MIRSAD_CAPTURE_EVIDENCE"){
   (async()=>{
