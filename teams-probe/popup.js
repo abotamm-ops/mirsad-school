@@ -1,11 +1,13 @@
 const statusNode=document.getElementById("status");
 const mappingList=document.getElementById("mapping-list");
 const MAPPING_KEY="mirsadManualMappings";
+const HISTORY_KEY="mirsadAttendanceHistory";
 let lastMappingSignature="";
 let manualMappings={};
 async function renderMappings(run){
-  const saved=await chrome.storage.local.get(MAPPING_KEY);
+  const saved=await chrome.storage.local.get([MAPPING_KEY,HISTORY_KEY]);
   manualMappings=saved[MAPPING_KEY]||{};
+  const history=Array.isArray(saved[HISTORY_KEY])?saved[HISTORY_KEY]:[];
   const results=run?.results||[];
   const relevant=new Map();
   for(const item of results){
@@ -27,6 +29,10 @@ async function renderMappings(run){
     const wrapper=document.createElement("div");wrapper.className="mapping-row";
     const name=document.createElement("div");name.className="teams-name";name.textContent="اسم Teams: "+row.teacher;wrapper.appendChild(name);
     const meta=document.createElement("div");meta.className="mapping-meta";meta.textContent=(row.status==="present"?"الحالة: حاضر":"الحالة: غائب")+" — الحصة "+row.period;wrapper.appendChild(meta);
+    const previous=history.filter(x=>x.teacher===row.teacher&&x.status==="present"&&(x.scannedAt||0)<row.at).sort((a,b)=>(b.scannedAt||0)-(a.scannedAt||0))[0];
+    const lastSeen=document.createElement("div");lastSeen.className="mapping-meta";
+    lastSeen.textContent=previous?"آخر ظهور سابق ضمن الحضور: "+new Date(previous.scannedAt).toLocaleString("ar-SA"):"آخر ظهور سابق ضمن الحضور: لا يوجد رصد سابق محفوظ";
+    wrapper.appendChild(lastSeen);
     const select=document.createElement("select");select.setAttribute("aria-label","اختر المعلم الصحيح للاسم "+row.teacher);
     const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="— اختر اسم المعلم الصحيح —";select.appendChild(placeholder);
     for(const teacher of teachers){const option=document.createElement("option");option.value=teacher;option.textContent=teacher;select.appendChild(option);}
