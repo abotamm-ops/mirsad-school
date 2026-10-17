@@ -330,6 +330,29 @@
     // outside the row selectors above. Locate the badge itself, then inspect only
     // small ancestors around it for the person's name and accessible attributes.
     const organizerCandidates = [];
+    // Determine the participant's section by DOM order: the nearest preceding
+    // recognized Teams section heading is more reliable than root.contains(row),
+    // because Teams may render headings and participant rows as siblings.
+    const orderedSectionHeadings = [...document.querySelectorAll("body *")]
+      .filter(visible)
+      .map(el => ({el, key: exactHeading(normalize(el.innerText || el.textContent))}))
+      .filter(x => x.key === "present" || x.key === "invited" || x.key === "noResponse")
+      .filter(x => ![...x.el.children].some(child =>
+        normalize(child.innerText || child.textContent) === normalize(x.el.innerText || x.el.textContent)
+      ));
+    const sectionForNode = node => {
+      let nearest = null;
+      for (const heading of orderedSectionHeadings) {
+        const relation = heading.el.compareDocumentPosition(node);
+        if (relation & Node.DOCUMENT_POSITION_FOLLOWING) continue;
+        if (relation & Node.DOCUMENT_POSITION_PRECEDING) {
+          if (!nearest || (nearest.el.compareDocumentPosition(heading.el) & Node.DOCUMENT_POSITION_FOLLOWING)) nearest = heading;
+        } else if (heading.el === node || heading.el.contains(node)) {
+          nearest = heading;
+        }
+      }
+      return nearest?.key || "unknown";
+    };
     const organizerNodes = [...document.querySelectorAll("body *")].filter(visible).filter(el => {
       const own = normalize([
         el.getAttribute("aria-label"), el.getAttribute("title"),
@@ -350,9 +373,7 @@
           const tokens = new Set(tokenizeName(rowText));
           const target = new Set(teacherTokens);
           const nameOverlap = [...target].filter(t => tokens.has(t)).length;
-          const sectionKey = sections.present.some(s => s.root === row || s.root?.contains(row)) ? "present" :
-            sections.invited.some(s => s.root === row || s.root?.contains(row)) ? "invited" :
-            sections.noResponse.some(s => s.root === row || s.root?.contains(row)) ? "noResponse" : "unknown";
+          const sectionKey = sectionForNode(badge);
           organizerCandidates.push({text:rowText, sectionKey, nameOverlap, row});
           if (nameOverlap >= 2) break;
         }
@@ -361,9 +382,20 @@
     const uniqueOrganizerCandidates = organizerCandidates.filter((candidate, i, all) =>
       all.findIndex(other => other.text === candidate.text && other.sectionKey === candidate.sectionKey) === i
     );
-    // If standard row selectors failed, report concise organizer-first diagnostics.
-    // Do not infer attendance from a badge unless its associated row and section
-    // can be established; this diagnostic identifies the DOM boundary to fix next.
+    // Use the organizer badge itself when standard participant-row selectors
+    // fail, but only when its local text matches both first and last name tokens
+    // and DOM order places it inside a recognized attendance section.
+    const organizerMatches = uniqueOrganizerCandidates.filter(x =>
+      x.nameOverlap >= 2 && (x.sectionKey === "present" || x.sectionKey === "invited")
+    );
+    if (presentRows.length === 0 && invitedRows.length === 0 && organizerMatches.length === 1) {
+      const candidate = organizerMatches[0];
+      if (candidate.sectionKey === "present") {
+        return {status:"present",detail:"تم العثور على وسم «المنظّم» مرتبطًا بالاسم «" + candidate.text.slice(0, 100) + "» ضمن قسم الحضور."};
+      }
+      return {status:"invited",detail:"تم العثور على وسم «المنظّم» مرتبطًا بالاسم «" + candidate.text.slice(0, 100) + "» ضمن قسم «تمت دعوة الآخرين». لم يظهر ضمن الحضور عند الفحص؛ تُعاد مراقبته ولا يُحوّل ذلك وحده إلى غياب نهائي."};
+    }
+    // Otherwise report concise organizer-first diagnostics for the next iteration.
     if (presentRows.length === 0 && invitedRows.length === 0) {
       const relevant = uniqueOrganizerCandidates
         .filter(x => x.nameOverlap >= 2 || x.sectionKey !== "unknown")
@@ -371,7 +403,7 @@
         .map(x => "«" + x.text.slice(0, 100) + "» [قسم=" + x.sectionKey + ", تطابق أجزاء الاسم=" + x.nameOverlap + "]")
         .join("؛ ");
       if (uniqueOrganizerCandidates.length) {
-        return {status:"unresolved",detail:"التشخيص: عُثر على وسم «المنظّم» في واجهة Teams، لكن تعذّر ربطه بسجل المعلم وقسمه. أقرب سجلات مقروءة: " + (relevant || "لم يظهر سجل يطابق الاسم") + ". لم يُسجّل غياب."};
+        return {status:"unresolved",detail:"التشخيص: عُثر على وسم «المنظّم» لكن لم يمكن تحديد قسمه بثقة. أقرب سجلات مقروءة: " + (relevant || "لم يظهر سجل يطابق الاسم") + ". لم يُسجّل غياب."};
       }
     }
     // Apply the requested three-part rule:
