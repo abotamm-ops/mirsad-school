@@ -9,7 +9,11 @@
     const payload = chrome.runtime.lastError ? {ok:false,error:chrome.runtime.lastError.message} : response;
     window.postMessage({source:"mirsad-auto-report",type:"REPORT_DATA",payload},location.origin);
    });
-  } else if(event.data.type==="SET_MANUAL_STATUS"){
+  } else if(event.data.type==="BACKTEST"){
+   chrome.runtime.sendMessage({type:"MIRSAD_BACKTEST",period:event.data.period,requestedTime:event.data.requestedTime}, response=>{
+    window.postMessage({source:"mirsad-auto-report",type:"BACKTEST_STARTED",payload:chrome.runtime.lastError?{ok:false}:response},location.origin);
+   });
+} else if(event.data.type==="SET_MANUAL_STATUS"){
    chrome.runtime.sendMessage({type:"MIRSAD_SET_MANUAL_STATUS",day:event.data.day,period:event.data.period,teacher:event.data.teacher,status:event.data.status}, response=>{
     window.postMessage({source:"mirsad-auto-report",type:"MANUAL_STATUS_SAVED",payload:chrome.runtime.lastError?{ok:false}:response},location.origin);
    });
