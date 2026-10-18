@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مرصاد | الرصد الآلي</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6f9;color:#18212b;font-family:Tahoma,Arial,sans-serif}
+header{background:#155e75;color:#fff;padding:18px}header h1{margin:0 0 6px;font-size:23px}header p{margin:0;font-size:13px;line-height:1.8}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}nav a{display:inline-block;background:#ffffff20;color:#fff;text-decoration:none;padding:9px 12px;border-radius:8px;font-size:13px}
+main{max-width:1000px;margin:18px auto;padding:0 12px}.card{background:#fff;border:1px solid #dce5eb;border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font-size:18px;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label{display:block;font-size:13px;font-weight:bold;margin:0 0 7px}input,select,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-radius:8px;width:100%}
+small,.muted{color:#64748b;font-size:12px;line-height:1.8}.actions{display:flex;gap:8px;margin-top:14px}.primary{background:#0e7490;color:#fff;border:0;font-weight:bold;cursor:pointer}.secondary{background:#f8fafc;cursor:pointer}
+.status{padding:11px;border-radius:9px;font-size:13px;line-height:1.8;background:#e0f2fe;color:#075985;margin-top:14px}.status.warn{background:#fff7df;color:#854d0e}
+table{width:100%;border-collapse:collapse}th,td{text-align:right;padding:10px;border-bottom:1px solid #e5eaf0;font-size:13px}th{background:#f8fafc}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.actions{flex-direction:column}header h1{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+<h1>الرصد الآلي</h1>
+<p>إعدادات متابعة قاعات Teams وتسجيل أول حضور ونسب الزيارات اللاحقة.</p>
+<nav><a href="/">العودة إلى جدول المعلمين</a><a href="/absence.html">رصد الغياب والأرشيف</a></nav>
+</header>
+<main>
+<section class="card">
+<h2>إعدادات دورة الرصد</h2>
+<div class="grid">
+<div><label for="minVisits">أقل عدد زيارات لكل قاعة في الحصة</label><input id="minVisits" type="number" min="1" max="60" value="3"><small>حد أدنى لضمان عدم الاكتفاء بفحص واحد.</small></div>
+<div><label for="maxVisits">أقصى عدد زيارات لكل قاعة في الحصة</label><input id="maxVisits" type="number" min="1" max="120" value="10"><small>عدد الزيارات الذي لا تتجاوزه دورة الرصد.</small></div>
+<div><label for="cycleDelay">الانتظار بين دورات الفحص (ثانية)</label><input id="cycleDelay" type="number" min="0" max="600" value="15"><small>صفر يعني بدء الدورة التالية مباشرة بعد انتهاء السابقة.</small></div>
+<div><label for="classCount">عدد الفصول</label><input id="classCount" type="number" min="1" max="40" value="12"><small>قابل للتعديل بحسب عدد الفصول في المدرسة.</small></div>
+<div><label for="cycleCount">عدد الدورات الدراسية في اليوم</label><select id="cycleCount"><option value="1">دورة واحدة</option><option value="2" selected>دورتان</option></select><small>يُحفظ الاختيار ضمن إعدادات مرصاد على هذا الجهاز.</small></div>
+<div id="breakMinutesWrap"><label for="breakMinutes">الفاصل بين الدورتين (بالدقائق)</label><input id="breakMinutes" type="number" min="0" max="180" step="1" value="30"><small>تحديد مدة الفاصل بالدقائق فقط.</small></div>
+</div>
+<div class="actions"><button id="save" class="primary">حفظ الإعدادات</button><button id="reset" class="secondary">استعادة الإعدادات الافتراضية</button></div>
+<div id="status" class="status">هذه أول خطوة: حفظ إعدادات الرصد على هذا الجهاز. لم يبدأ الاتصال بقاعات Teams بعد.</div>
+</section>
+<section class="card">
+<h2>قاعدة تسجيل الحضور</h2>
+<table><thead><tr><th>ما يظهر في Teams</th><th>النتيجة التي يسجلها مرصاد</th></tr></thead><tbody>
+<tr><td>اسم المعلم ضمن «الحضور» في أول فحص</td><td>حاضر من البداية</td></tr>
+<tr><td>اسم المعلم ضمن «تمت دعوة الآخرين» في أول فحص</td><td>متأخر مبدئيًا؛ يثبت التأخير إذا حضر لاحقًا</td></tr>
+<tr><td>حاضر في الزيارات اللاحقة</td><td>تُحتسب زيارة حضور ضمن النسبة</td></tr>
+<tr><td>لم يُرصد طوال الحصة بعد فحوص مكتملة</td><td>متغيب عن الحصة</td></tr>
+<tr><td>فشل الاتصال أو تعذر قراءة القائمة</td><td>تعذّر التحقق؛ لا يُحسب غيابًا</td></tr>
+</tbody></table>
+<p class="muted">لا تُعدّ هذه الصفحة أنها تراقب Teams حاليًا. يلزم أولًا ربط قراءة قائمة المشاركين بطريقة موثوقة؛ لا نريد إظهار نتائج حضور غير حقيقية.</p>
+</section>
+<section class="card">
+<h2>سجل الزيارات</h2>
+<p id="logEmpty" class="muted">لا توجد زيارات مسجلة بعد. سيظهر هنا وقت الفحص واسم الفصل والنتيجة بعد تفعيل الاتصال الفعلي بـ Teams.</p>
+</section>
+</main>
+<script>
+(() => {
+ const defaults={minVisits:3,maxVisits:10,cycleDelay:15,classCount:12,cycleCount:2,breakMinutes:30};
+ const ids=Object.keys(defaults);
+ const status=document.getElementById("status");
+ function read(){try{return {...defaults,...JSON.parse(localStorage.getItem("mirsadAutoMonitorSettings")||"{}")}}catch(_){return defaults}}
+ function show(values){for(const id of ids)document.getElementById(id).value=values[id];document.getElementById("breakMinutesWrap").hidden=Number(values.cycleCount)!==2}
+ function validate(){
+  const v={}; for(const id of ids){v[id]=Number(document.getElementById(id).value);if(!Number.isFinite(v[id])||v[id]<Number(document.getElementById(id).min)||v[id]>Number(document.getElementById(id).max)){status.className="status warn";status.textContent="راجع قيمة: "+document.querySelector('label[for="'+id+'"]').textContent;return null}}
+  v.cycleCount=Number(document.getElementById("cycleCount").value);v.breakMinutes=Number(document.getElementById("breakMinutes").value);
+  if(![1,2].includes(v.cycleCount)){status.className="status warn";status.textContent="اختر دورة واحدة أو دورتين.";return null}
+  if(!Number.isInteger(v.breakMinutes)||v.breakMinutes<0||v.breakMinutes>180){status.className="status warn";status.textContent="مدة الفاصل يجب أن تكون عددًا صحيحًا من 0 إلى 180 دقيقة.";return null}
+  if(v.minVisits>v.maxVisits){status.className="status warn";status.textContent="أقل عدد زيارات لا يمكن أن يكون أكبر من أقصى عدد زيارات.";return null}
+  return v;
+ }
+ show(read());
+ document.getElementById("cycleCount").addEventListener("change",()=>{document.getElementById("breakMinutesWrap").hidden=Number(document.getElementById("cycleCount").value)!==2});
+ document.getElementById("save").addEventListener("click",()=>{const v=validate();if(!v)return;localStorage.setItem("mirsadAutoMonitorSettings",JSON.stringify(v));status.className="status";status.textContent="حُفظت الإعدادات على هذا الجهاز بنجاح. إعداد الدورات والفاصل محفوظ، لكن تطبيق الفاصل تلقائيًا على فتح حصص Teams يحتاج ربطه بمنطق الجدول والرصد."});
+ document.getElementById("reset").addEventListener("click",()=>{show(defaults);localStorage.setItem("mirsadAutoMonitorSettings",JSON.stringify(defaults));status.className="status";status.textContent="تمت استعادة الإعدادات الافتراضية وحفظها على هذا الجهاز."});
+})();
+</script>
+</body></html>
