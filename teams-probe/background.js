@@ -163,7 +163,7 @@ async function startMonitoring(){
  await saveRun(run);
  const current=periodNow();
  if(current){await beginPeriod(run,current.n)}
- else{const next=nextPeriod();await setStatus("الرصد جاهز. ينتظر بداية الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n});await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
+ else{const now=new Date();const next=nextPeriod(now);await setStatus("لا توجد حصة نشطة الآن. الوقت الحالي "+now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". أقرب موعد: الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,now:now.toISOString(),nextAt:next.when,periods:PERIODS});await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 }
 async function beginPeriod(run,periodNo){
  if(!run?.running)return;
@@ -269,8 +269,8 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
   await navigateCurrent(run);return;
  }
  if(alarm.name!==NEXT_ALARM)return;
- if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<=periodBounds(p,new Date(),"past").end.getTime()){if(!run.current&&run.index===0){await navigateCurrent(run)}else await navigateCurrent(run);return}await advancePeriod(run,run.period);return}
- const p=periodNow();if(p)await beginPeriod(run,p.n);else{const next=nextPeriod();await setStatus("ينتظر الحصة "+next.period.n+" عند "+next.period.start,{waiting:true,period:next.period.n});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
+ if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<=periodBounds(p,new Date(),"past").end.getTime()){if(!run.current&&run.index===0&&(run.cycle||1)===1){await beginPeriod(run,run.period)}else{await navigateCurrent(run)}return}await advancePeriod(run,run.period);return}
+ const now=new Date();const p=periodNow(now);if(p)await beginPeriod(run,p.n);else{const next=nextPeriod(now);await setStatus("لا توجد حصة نشطة الآن. الوقت الحالي "+now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". أقرب موعد: الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,now:now.toISOString(),nextAt:next.when,periods:PERIODS});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 });
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_TEST_ONE"){startOneOffTest().then(()=>sendResponse({ok:true})).catch(()=>sendResponse({ok:false}));return true}
