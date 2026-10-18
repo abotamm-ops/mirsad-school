@@ -31,7 +31,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:right;padding:10px;bo
 <div><label for="cycleDelay">الانتظار بين دورات الفحص (ثانية)</label><input id="cycleDelay" type="number" min="0" max="600" value="15"><small>صفر يعني بدء الدورة التالية مباشرة بعد انتهاء السابقة.</small></div>
 <div><label for="classCount">عدد الفصول</label><input id="classCount" type="number" min="1" max="40" value="12"><small>قابل للتعديل بحسب عدد الفصول في المدرسة.</small></div>
 <div><label for="cycleCount">عدد الدورات الدراسية في اليوم</label><select id="cycleCount"><option value="1">دورة واحدة</option><option value="2" selected>دورتان</option></select><small>يُحفظ الاختيار ضمن إعدادات مرصاد على هذا الجهاز.</small></div>
-<div id="breakMinutesWrap"><label for="breakMinutes">الفاصل بين الدورتين (بالدقائق)</label><input id="breakMinutes" type="number" min="0" max="180" step="1" value="30"><small>تحديد مدة الفاصل بالدقائق فقط.</small></div>
+<div id="breakMinutesWrap"><label for="breakMinutes">الفاصل بين الدورتين (بالدقائق)</label><input id="breakMinutes" type="number" min="1" max="180" step="1" value="1"><small>اختر دقيقة أو دقيقتين أو ثلاث دقائق، أو أي مدة صحيحة حتى 180 دقيقة.</small></div>
 </div>
 <div class="actions"><button id="save" class="primary">حفظ الإعدادات</button><button id="reset" class="secondary">استعادة الإعدادات الافتراضية</button></div>
 <div id="status" class="status">هذه أول خطوة: حفظ إعدادات الرصد على هذا الجهاز. لم يبدأ الاتصال بقاعات Teams بعد.</div>
@@ -54,7 +54,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:right;padding:10px;bo
 </main>
 <script>
 (() => {
- const defaults={minVisits:3,maxVisits:10,cycleDelay:15,classCount:12,cycleCount:2,breakMinutes:30};
+ const defaults={minVisits:3,maxVisits:10,cycleDelay:15,classCount:12,cycleCount:2,breakMinutes:1};
  const ids=Object.keys(defaults);
  const status=document.getElementById("status");
  function read(){try{return {...defaults,...JSON.parse(localStorage.getItem("mirsadAutoMonitorSettings")||"{}")}}catch(_){return defaults}}
@@ -63,7 +63,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:right;padding:10px;bo
   const v={}; for(const id of ids){v[id]=Number(document.getElementById(id).value);if(!Number.isFinite(v[id])||v[id]<Number(document.getElementById(id).min)||v[id]>Number(document.getElementById(id).max)){status.className="status warn";status.textContent="راجع قيمة: "+document.querySelector('label[for="'+id+'"]').textContent;return null}}
   v.cycleCount=Number(document.getElementById("cycleCount").value);v.breakMinutes=Number(document.getElementById("breakMinutes").value);
   if(![1,2].includes(v.cycleCount)){status.className="status warn";status.textContent="اختر دورة واحدة أو دورتين.";return null}
-  if(!Number.isInteger(v.breakMinutes)||v.breakMinutes<0||v.breakMinutes>180){status.className="status warn";status.textContent="مدة الفاصل يجب أن تكون عددًا صحيحًا من 0 إلى 180 دقيقة.";return null}
+  if(!Number.isInteger(v.breakMinutes)||v.breakMinutes<1||v.breakMinutes>180){status.className="status warn";status.textContent="مدة الفاصل يجب أن تكون عددًا صحيحًا من 1 إلى 180 دقيقة.";return null}
   if(v.minVisits>v.maxVisits){status.className="status warn";status.textContent="أقل عدد زيارات لا يمكن أن يكون أكبر من أقصى عدد زيارات.";return null}
   return v;
  }
