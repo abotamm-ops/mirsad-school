@@ -4,7 +4,7 @@
 </style></head><body>
 <header><h1>مرصاد | الرصد الآلي</h1><p>متابعة حصص المعلمين، أرشيف الحضور، وإحصائية الغياب</p></header>
 <main><nav class="nav"><button data-tab="today" class="active">📋 رصد اليوم</button><button data-tab="archive">🗂️ أرشيف الحضور</button><button data-tab="stats">📊 إحصائية الغياب</button><a href="./index.html">↩ جدول المعلمين</a></nav>
-<section id="today" class="panel"><h2>جدول الرصد اليومي</h2><p class="sub" id="dateLabel"></p><div class="legend"><b class="present status">حاضر</b><b class="absent status">غائب 📷</b><b class="partial status">حاضر جزئيًا (يُكتب حاضر)</b><b class="unknown status">غير محسوم</b></div><div class="note" style="margin-bottom:12px">ربط تجريبي محلي: اختر تقرير CSV من إضافة مرصاد لعرض النتائج في هذا المتصفح فقط. لا يرسل الملف إلى الخادم ولا يحفظه بعد إغلاق الصفحة. المزامنة التلقائية ورفع صور Drive يحتاجان إعداد وصول آمن.</div><div class="controls"><label>استيراد تقرير مرصاد (CSV) <input id="csvInput" type="file" accept=".csv,text/csv"></label><span id="importStatus" class="sub" role="status"></span></div><div class="tablebox"><table><thead><tr><th>المعلم</th><th>الحصة 1</th><th>الحصة 2</th><th>الحصة 3</th><th>الحصة 4</th><th>الحصة 5</th><th>الحصة 6</th><th>الحصة 7</th></tr></thead><tbody id="todayBody"></tbody></table></div><p class="sub">حاضر لا يُصوَّر. صور الإثبات مرتبطة فقط بدورات الغياب، وتُفتح بالضغط على الحالة.</p></section>
+<section id="today" class="panel"><h2>جدول الرصد اليومي</h2><p class="sub" id="dateLabel"></p><div class="legend"><b class="present status">حاضر</b><b class="absent status">غائب 📷</b><b class="partial status">حاضر جزئيًا (يُكتب حاضر)</b><b class="unknown status">غير محسوم</b></div><div class="note" style="margin-bottom:12px">ربط تجريبي محلي: اختر تقرير CSV من إضافة مرصاد لعرض النتائج في هذا المتصفح فقط. لا يرسل الملف إلى الخادم ولا يحفظه بعد إغلاق الصفحة. المزامنة التلقائية ورفع صور Drive يحتاجان إعداد وصول آمن.</div><div class="controls"><label>استيراد تقرير مرصاد (CSV) <input id="csvInput" type="file" accept=".csv,text/csv"></label><label>استيراد تقرير مفصّل (JSON) <input id="jsonInput" type="file" accept=".json,application/json"></label><span id="importStatus" class="sub" role="status"></span></div><div class="tablebox"><table><thead><tr><th>المعلم</th><th>الحصة 1</th><th>الحصة 2</th><th>الحصة 3</th><th>الحصة 4</th><th>الحصة 5</th><th>الحصة 6</th><th>الحصة 7</th></tr></thead><tbody id="todayBody"></tbody></table></div><p class="sub">حاضر لا يُصوَّر. صور الإثبات مرتبطة فقط بدورات الغياب، وتُفتح بالضغط على الحالة.</p></section>
 <section id="archive" class="panel" hidden><h2>أرشيف الحضور</h2><div class="controls"><label>تاريخ الرصد <input type="date" id="dateInput"></label></div><div id="archiveBody" class="empty">لم يتم ربط سجلات الأرشيف بعد.</div></section>
 <section id="stats" class="panel" hidden><h2>إحصائية الغياب</h2><div class="cards" id="statsCards"></div><div class="note">غياب يوم كامل = الغياب في كل دورات جميع حصص المعلم المجدولة في اليوم. الحضور الجزئي بالبرتقالي ويُحسب حاضرًا. لا يُحتسب «غير محسوم» غيابًا مؤكدًا.</div></section>
 <dialog id="details"><button id="dismiss" style="float:left">إغلاق ✕</button><h2 id="detailTitle">تفاصيل الحصة</h2><div id="detailBody"></div></dialog></main>
@@ -27,6 +27,34 @@ function parseCsv(raw){const rows=[];let row=[],cell='',q=false;raw=raw.replace(
 function cleanDigits(v){return String(v||'').replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c)))}
 function csvStatus(v){const n=String(v||'').trim();return n==='غائب'?'absent':n==='حاضر'?'present':'unknown'}
 function importReport(text,chosenDate){const rows=parseCsv(text);const headers=rows.shift()||[];const required=['المعلم من الجدول','اسم Teams المرصود','رقم الحصة','الحالة'];if(!required.every(h=>headers.includes(h)))throw new Error('أعمدة تقرير مرصاد المطلوبة غير موجودة');const ix=h=>headers.indexOf(h);const grouped=new Map();let count=0;for(const row of rows){const teacher=(row[ix('المعلم من الجدول')]||row[ix('اسم Teams المرصود')]||'').trim();const lesson=Number(cleanDigits(row[ix('رقم الحصة')]));if(!teacher||!Number.isInteger(lesson)||lesson<1||lesson>7)continue;const status=csvStatus(row[ix('الحالة')]);const date=chosenDate;const key=date+'|'+teacher+'|'+lesson;const record=grouped.get(key)||{date,teacherId:teacher,teacherName:teacher,lesson,subject:row[ix('المادة')]||'',rounds:[]};record.rounds.push({status});grouped.set(key,record);count++}if(!count)throw new Error('لم أجد حصصًا صالحة للعرض');records.splice(0,records.length,...grouped.values());return count}
+function importDetailedJSON(text){
+ const data=JSON.parse(text);
+ if(!data||data.schemaVersion!==1||!Array.isArray(data.records))throw new Error('ملف JSON غير مطابق لصيغة مرصاد المعتمدة');
+ if(data.records.length>15000)throw new Error('عدد السجلات كبير جدًا');
+ const items=data.records.map((x,i)=>{
+  if(!x||!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date)||typeof x.teacherId!=='string'||!x.teacherId.trim()||typeof x.teacherName!=='string'||!x.teacherName.trim()||!Number.isInteger(x.lesson)||x.lesson<1||x.lesson>7||!Array.isArray(x.rounds)||x.rounds.length<1||x.rounds.length>2)
+   throw new Error('سجل غير صالح رقم '+(i+1));
+  const rounds=x.rounds.map((r,j)=>{
+   if(!r||!['present','absent','unknown'].includes(r.status))throw new Error('حالة دورة غير صحيحة في السجل '+(i+1));
+   const evidenceUrl=r.status==='absent'&&typeof r.evidenceUrl==='string'?safeUrl(r.evidenceUrl):null;
+   return {status:r.status,evidenceUrl};
+  });
+  return {date:x.date,teacherId:x.teacherId.trim(),teacherName:x.teacherName.trim(),subject:typeof x.subject==='string'?x.subject:'',lesson:x.lesson,rounds};
+ });
+ const keys=new Set();
+ for(const r of items){const k=r.date+'|'+r.teacherId+'|'+r.lesson;if(keys.has(k))throw new Error('حصة مكررة للمعلم في التاريخ نفسه');keys.add(k)}
+ records.splice(0,records.length,...items);return items.length;
+}
+document.getElementById('jsonInput').addEventListener('change',async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ const out=document.getElementById('importStatus');
+ try{
+  if(file.size>5*1024*1024)throw new Error('الملف أكبر من 5 ميغابايت');
+  const n=importDetailedJSON(await file.text());
+  out.textContent='تم عرض '+n+' حصة محليًا، مع حالات الدورتين وروابط الإثبات المتوفرة.';
+  renderTable('todayBody',day);renderArchive();renderStats();
+ }catch(err){out.textContent='تعذر الاستيراد: '+err.message}finally{e.target.value=''}
+});
 document.getElementById('csvInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;const out=document.getElementById('importStatus');try{if(file.size>2*1024*1024)throw new Error('الملف أكبر من 2 ميغابايت');const text=await file.text();const n=importReport(text,day);out.textContent='عُرضت '+n+' نتيجة محليًا. نتائج الدورتين تتطلب وجود سجل لكل دورة في التقرير؛ روابط الصور غير موجودة بملف CSV.';renderTable('todayBody',day);renderArchive();renderStats()}catch(error){out.textContent='تعذر الاستيراد: '+error.message}finally{e.target.value=''}});
 
 function renderTable(target,chosenDay){const root=document.getElementById(target);root.replaceChildren();const rows=records.filter(r=>r.date===chosenDay);if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.className='empty';td.textContent='لا توجد نتائج مرصودة لهذا اليوم حتى الآن — لم يتم ربط مصدر البيانات.';tr.append(td);root.append(tr);return}const teachers=[...new Map(rows.map(r=>[r.teacherId,r.teacherName])).entries()];for(const [id,name] of teachers){const tr=document.createElement('tr'),head=document.createElement('th');head.textContent=name;tr.append(head);for(let n=1;n<=7;n++){const td=document.createElement('td'),r=rows.find(v=>v.teacherId===id&&v.lesson===n);if(r){const state=outcome(r.rounds),b=document.createElement('button');b.className='status '+state;b.textContent=labels[state];b.title=(r.subject||'')+' — الحصة '+n;b.onclick=()=>showDetails(r);td.append(b)}else td.textContent='—';tr.append(td)}root.append(tr)}}
