@@ -13,3 +13,5 @@ input[type=url]{direction:ltr;text-align:left}
 [hidden]{display:none!important}.connection-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}#connectionSummary{margin-bottom:12px}
 
 .connection-advanced{width:100%;font-size:12px;color:#526472}.connection-advanced summary{cursor:pointer;padding:6px 0}.connection-advanced input{margin:8px 0}
+
+#todayTable td small,#archiveTable td small{display:block;margin-top:5px;color:#64748b;font-size:11px}

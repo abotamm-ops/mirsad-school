@@ -71,7 +71,7 @@ with sync_playwright() as p:
  pushed={'scanId':'live-refresh','scheduledTeacher':'المعلم الثالث','teacher':'اسم Teams','period':1,'cycle':1,'status':'unresolved','scannedAt':1792490500000}
  assert json.loads(post({'key':'w'*40,'action':'record','date':'2026-10-20','record':pushed}))['ok']
  page.evaluate("window.postMessage({source:'mirsad-monitor-extension',type:'changed'},location.origin)")
- page.wait_for_function("document.querySelectorAll('#todayTable .unresolved').length===2")
+ page.wait_for_function("Array.from(document.querySelectorAll('#todayTable small')).some(el=>el.textContent.includes('تعذّر فحص 1 دورة'))")
  print('PASS live upload notification refreshes dashboard from authenticated service')
  # Device login survives reload and a legacy reader key never overwrites the manual archive password.
  page.evaluate("localStorage.setItem('mirsad_archive_password_v1','fixture-existing-archive-password')")
