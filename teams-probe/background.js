@@ -155,7 +155,7 @@ async function startMonitoring(immediate=false){
  if(existing?.running&&immediate&&existing.current){await setStatus("المراقبة تعمل بالفعل؛ لن يُفتح فحص فوري أثناء فحص رابط.",{period:existing.period,waiting:!existing.period});return}
  const suspendedRun=immediate&&existing?.running?existing:null;
  const suspendedAlarm=suspendedRun&&chrome.alarms.get?await chrome.alarms.get(NEXT_ALARM):null;
- if(!immediate)await CloudMonitoring.ensureDay();
+ if(!immediate)await CloudMonitoring.ensureDay(true);
  const scheduleTab=await getScheduleTab();
  const driveDay=(await chrome.storage.local.get("mirsadDriveDay")).mirsadDriveDay;
  const frozen=driveDay?.date===MirsadMonitorModel.day()?driveDay.snapshot:null;

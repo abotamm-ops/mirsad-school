@@ -31,4 +31,10 @@ with sync_playwright() as p:
  page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#liveMonitoring .live-absence-card');assert 'رصد مباشر' in page.locator('#liveMonitoring h2').inner_text()
  for path in ['/absence/','/absence.html']:
   page.goto('https://mirsad-school.onrender.com'+path);page.wait_for_selector('#liveMonitoring .live-absence-card');assert page.locator('#liveMonitoring .live-monitor-link').count()==0
+ data['snapshot']['scheduleSettings']={'manualStart':'18:30','periodDuration':45,'manualGapMinutes':1};data['snapshot']['lessons'][0]['period']=4;data['snapshot']['lessons'][1]['period']=5;data['records']=[scan('absent',1,'20:52:00',4)]
+ page.clock.fast_forward(stamp('20:54:00')-page.evaluate('Date.now()'));page.wait_for_selector('.live-absence-card');assert 'الحصة الرابعة' in page.locator('#liveMonitoringContext').inner_text();assert 'الدورة الأولى' in page.locator('.live-absence-card').inner_text()
+ page.screenshot(path='/tmp/mirsad-live-evening-fixed.png')
+ data['records'].append(scan('absent',2,'21:00:00',4));page.clock.fast_forward(stamp('21:00:01')-page.evaluate('Date.now()'));page.wait_for_function("document.querySelector('.live-absence-card').textContent.includes('الدورة الثانية')")
+ page.clock.fast_forward(stamp('21:33:00')-page.evaluate('Date.now()'));page.wait_for_selector('.live-absence-card',state='hidden')
+ data['records'].append(scan('absent',1,'21:35:00',5));page.clock.fast_forward(stamp('21:35:01')-page.evaluate('Date.now()'));page.wait_for_selector('.live-absence-card');assert 'الحصة الخامسة' in page.locator('#liveMonitoringContext').inner_text()
  assert not errors,errors;b.close();print('PASS homepage and dashboard live banner; first/second rounds; class elapsed time; new-result sound without repeats; arrival removes alert; finished classes clear; sound can be muted')

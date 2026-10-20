@@ -37,6 +37,10 @@
   const schedule={...defaultSchedule,...data.snapshot.scheduleSettings,...data.reportSchedule},match=/^(\d{2}):(\d{2})$/.exec(schedule.manualStart||'');
   if(!match)return empty;const duration=Number(schedule.periodDuration),gap=Number(schedule.manualGapMinutes);if(!Number.isFinite(duration)||duration<1||!Number.isFinite(gap)||gap<0)return empty;
   const base=new Date(date+'T00:00:00+03:00').getTime()+(Number(match[1])*60+Number(match[2]))*60000;
+  if(!data.reportSchedule&&!data.snapshot.scheduleSettings&&(data.records||[]).some(r=>{
+   if(!Number.isInteger(r.period)||r.period<1||r.period>7||!Number.isFinite(r.scannedAt)||day(new Date(r.scannedAt))!==date)return false;
+   const start=base+(r.period-1)*(duration+gap)*60000;return r.scannedAt<start-120000||r.scannedAt>start+duration*60000+120000;
+  }))return {...empty,timingMismatch:true};
   let period=null,startedAt,endAt;for(let p=1;p<=7;p++){const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
   if(!period)return empty;
   const reset=[...(data.adjustments||[])].reverse().find(a=>a.type==='reset'),cutoff=reset?.at||0;
