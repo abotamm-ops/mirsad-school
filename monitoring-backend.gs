@@ -25,11 +25,29 @@ function monitorRequest_(p){
  var siteReader=!!sitePassword&&monitorEqual_(p.key,sitePassword);
  var publicRead=props.getProperty('MONITOR_PUBLIC_READ')==='true';
  if(!writer&&!reader&&!siteReader&&!publicRead)throw new Error('غير مصرح بالدخول');
- var administrative=['override','resetReport','reportSchedule'].indexOf(p.action)>=0;
+ var administrative=['override','resetReport','purgeDay','reportSchedule'].indexOf(p.action)>=0;
  if(administrative){var supplied=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(p.adminPin||''),Utilities.Charset.UTF_8).map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2)}).join('');var expected=props.getProperty('MONITOR_ADMIN_PIN_HASH')||'0e3dc69daef679ae76ca56039591a2002c71041a945a57db4460ee22db2259e5';if(!monitorEqual_(supplied,expected))throw new Error('الرقم السري للإدارة غير صحيح')}
  var reading=['dates','day'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
  var root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT));
  if(p.action==='dates'){var dates=[],it=root.getFolders();while(it.hasNext()){var f=it.next(),m=/^توثيق غياب (\d{4}-\d{2}-\d{2})$/.exec(f.getName());if(m&&monitorFile_(f,'attendance.json'))dates.push(m[1])}return {dates:dates.sort().reverse(),authMode:publicRead?'public':siteReader?'site-password':'access-key'}}
+ if(administrative&&(typeof p.requestId!=='string'||!/^[A-Za-z0-9_-]{8,120}$/.test(p.requestId)))throw new Error('معرّف العملية غير صالح');
+ if(p.action==='purgeDay'){
+  if(typeof p.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(p.date))throw new Error('حدد تاريخ اليوم المطلوب حذفه');
+  var markerKey='MONITOR_PURGED_DAY_'+p.date,previous=props.getProperty(markerKey),marker=previous?JSON.parse(previous):null;
+  if(marker&&marker.requestId===p.requestId)return {deleted:true,date:p.date};
+  var matches=root.getFoldersByName('توثيق غياب '+p.date);
+  while(matches.hasNext()){
+   var doomed=matches.next();if(doomed.getId()===root.getId())throw new Error('تعذر تحديد مجلد اليوم بأمان');
+   var response=UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(doomed.getId()),{method:'delete',headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},muteHttpExceptions:true});
+   var code=response.getResponseCode();if(code!==204&&code!==404)throw new Error('تعذر حذف مجلد اليوم نهائيًا؛ شغّل authorizeMonitoringMaintenance بحساب المالك لمنح الصلاحيات ثم أعد المحاولة');
+  }
+  props.setProperty(markerKey,JSON.stringify({at:Date.now(),requestId:p.requestId}));
+  return {deleted:true,date:p.date};
+ }
+ if(['record','image'].includes(p.action)){
+  var purged=props.getProperty('MONITOR_PURGED_DAY_'+(p.date||monitorToday_()));
+  if(purged&&(!Number.isFinite(Number(p.record?.scannedAt))||Number(p.record.scannedAt)<=JSON.parse(purged).at))return {discarded:true,reason:'أُلغي هذا الفحص عند تصفير اليوم'};
+ }
  var date=p.date||monitorToday_();if(p.action==='startDay'&&date!==monitorToday_())throw new Error('بداية اليوم تكون لتاريخ اليوم في السعودية فقط');var folder=monitorDay_(root,date,p.action==='startDay');
  var file=monitorFile_(folder,'attendance.json'),data=monitorRead_(file,null);
  if(p.action==='startDay'){
@@ -55,6 +73,7 @@ function monitorRequest_(p){
   }
   data.adjustments.push(entry);monitorWrite_(folder,'attendance.json',data);return {saved:true,adjustment:entry};
  }
+ if(['record','image'].includes(p.action)&&purged&&Number(p.record?.scannedAt)<Math.max(JSON.parse(purged).at,Number(data.snapshot.createdAt)||0))return {discarded:true,reason:'هذا الفحص يخص التجربة المحذوفة'};
  if(p.action==='day'){var result=JSON.parse(JSON.stringify(data));result.records.forEach(function(r){r.evidenceUrl=result.evidence[r.scanId]?.url||null});delete result.evidence;return result}
  var record=p.record||{},lesson=data.snapshot.lessons.find(function(l){return monitorName_(l.teacherName)===monitorName_(record.scheduledTeacher)&&l.period===Number(record.period)});
  if(!lesson||typeof record.scanId!=='string'||record.scanId.length>200||!record.scanId)throw new Error('النتيجة لا تطابق جدول اليوم المحفوظ');
@@ -106,4 +125,12 @@ function enablePublicMonitoringSharing(){
  props.setProperty('MONITOR_PUBLIC_READ','true');
  console.log('تم فتح قراءة الرصد والصور لأي شخص لديه الرابط. الصور السابقة: '+count);
  return root.getUrl();
+}
+
+// Owner runs this read-only check once to grant the permanent-delete service scopes.
+function authorizeMonitoringMaintenance(){
+ var folder=DriveApp.getFolderById(MONITOR_ROOT);
+ var response=UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName)',{headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},muteHttpExceptions:true});
+ if(response.getResponseCode()!==200)throw new Error('تعذر تفعيل صلاحية إدارة مجلد التوثيق');
+ console.log('صلاحية إدارة مجلد التوثيق جاهزة: '+folder.getName());
 }

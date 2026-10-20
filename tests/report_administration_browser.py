@@ -23,7 +23,7 @@ try:
   page.route('https://mirsad-school.onrender.com/**',lambda r:r.fulfill(path=str(R/r.request.url.split('mirsad-school.onrender.com/')[1].split('?')[0])))
   page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable tbody tr')
   assert page.locator('#connection').is_hidden();assert page.locator('#todayTable .absent').count()==4
-  assert page.locator('.reset-report:visible').count()==0
+  assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==0
   widths=page.locator('#todayTable tbody tr').first.locator('td').evaluate_all('(els)=>els.map(e=>e.getBoundingClientRect().width)');assert max(widths)-min(widths)<1
   page.screenshot(path='/tmp/mirsad-report-redesign.png',full_page=True)
   page.locator('#toggleAdministration').click();page.locator('#todayTable .edit-lesson').first.click()
@@ -36,12 +36,12 @@ try:
   page.locator('#resetPin').fill('wrong');page.locator('#resetForm button').click();page.wait_for_function("document.querySelector('#resetFeedback').textContent.includes('غير صحيح')")
   assert len(post({'action':'day','date':'2026-10-20'})['adjustments'])==1
   page.locator('#resetPin').fill(PIN);page.locator('#resetForm button').click();page.wait_for_selector('#resetDialog',state='hidden')
-  assert page.locator('#todayTable .absent').count()==0;assert page.locator('#todayTable .pending').count()==4
-  assert 'لم يبدأ الرصد' in page.locator('#todayTable .pending').first.inner_text()
-  page.locator('#todayTable .pending').first.click();assert page.locator('#detailBody a').count()==1;assert 'غائب' in page.locator('#detailBody').inner_text();page.locator('#closeDetails').click()
-  raw=post({'action':'day','date':'2026-10-20'});assert len(raw['records'])==1;assert raw['records'][0]['evidenceUrl'];assert len(raw['adjustments'])==2
+  assert page.locator('#todayTable .absent').count()==0;assert page.locator('#todayTable tbody tr').count()==0
+  assert post({'action':'day','date':'2026-10-20'})['ok'] is False
+  assert post({'action':'dates'})['dates']==[]
+  assert 'نهائيًا' in page.locator('#status').inner_text()
   assert PIN not in page.evaluate('JSON.stringify(localStorage)');assert not errors,errors
   page.screenshot(path='/tmp/mirsad-report-reset.png',full_page=True)
-  print('PASS anonymous reports, equal columns, protected correction, correct statistics, protected reset, retained original absence/photo/audit, no saved PIN')
+  print('PASS anonymous reports, equal columns, protected correction, correct statistics, protected permanent day deletion (original evidence remains after individual correction), no saved PIN')
   b.close()
 finally:proc.terminate()
