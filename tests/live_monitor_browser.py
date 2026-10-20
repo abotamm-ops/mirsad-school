@@ -21,7 +21,7 @@ with sync_playwright() as p:
  page.locator('#liveMonitoringSound').click();page.wait_for_function('window.__tones===2');assert page.locator('#liveMonitoringSound').get_attribute('aria-pressed')=='true'
  box=page.locator('#liveMonitoring').bounding_box();title=page.locator('#liveMonitoring h2').bounding_box();assert abs(box['x']+box['width']/2-720)<1;assert abs(title['x']+title['width']/2-720)<1;assert box['height']<300;assert box['width']<=1040
  page.screenshot(path='/tmp/mirsad-live-first-round.png')
- data['records'].append(scan('absent',2,'06:40:00'));page.clock.fast_forward(301000);page.wait_for_function('window.__tones===4');assert 'الدورة الثانية' in page.locator('.live-absence-card').inner_text();assert 'الدورة الأولى: غائب' in page.locator('.live-absence-card').inner_text()
+ data['records'].append(scan('absent',2,'06:40:00'));page.clock.fast_forward(301000);page.wait_for_function('window.__tones===4');assert 'الدورة الثانية' in page.locator('.live-absence-card').inner_text();assert 'الدورة الأولى' in page.locator('#liveMonitoringCycles').inner_text()
  page.clock.fast_forward(15000);page.wait_for_timeout(100);assert page.evaluate('window.__tones')==4
  data['records'].append(scan('present',2,'06:40:20'));page.clock.fast_forward(15000);page.wait_for_selector('.live-absence-card',state='hidden')
  data['records'].append(scan('absent',2,'06:41:00'));page.clock.fast_forward(45000);page.wait_for_selector('.live-absence-card');page.wait_for_function('window.__tones===6')
