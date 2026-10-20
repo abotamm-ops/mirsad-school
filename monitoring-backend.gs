@@ -4,7 +4,7 @@ function configureMonitoringService(){var p=PropertiesService.getScriptPropertie
 function monitorToday_(){return Utilities.formatDate(new Date(),'Asia/Riyadh','yyyy-MM-dd')}
 function monitorName_(v){return String(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim()}
 function monitorEqual_(a,b){a=String(a||'');b=String(b||'');var diff=a.length^b.length;for(var i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return !!a.length&&diff===0}
-function monitorPrivate_(folder){var access=folder.getSharingAccess();if(access===DriveApp.Access.ANYONE||access===DriveApp.Access.ANYONE_WITH_LINK)throw new Error('المجلد متاح للعامة. اجعل الوصول مقيّدًا بحسابات المدرسة أولًا.');return folder}
+function monitorPrivate_(folder){var access=folder.getSharingAccess();if(access===DriveApp.Access.ANYONE||access===DriveApp.Access.ANYONE_WITH_LINK)throw new Error('الوصول العام غير مقبول: '+folder.getName()+' — '+String(access)+'. إذا كان الوصول موروثًا من مجلد أب، شغّل createPrivateMonitoringFolder بحساب المالك لتجهيز مجلد خاص مستقل.');return folder}
 function monitorFile_(folder,name){var it=folder.getFilesByName(name);return it.hasNext()?it.next():null}
 function monitorRead_(file,fallback){return file?JSON.parse(file.getBlob().getDataAsString()):fallback}
 function monitorWrite_(folder,name,data){var text=JSON.stringify(data),file=monitorFile_(folder,name);if(file)file.setContent(text);else file=folder.createFile(name,text,'application/json');return file}
@@ -57,3 +57,16 @@ function monitorRequest_(p){
  throw new Error('طلب غير مدعوم');
 }
 function doPost(e){var result,lock=LockService.getScriptLock();try{var p=JSON.parse(e.postData.contents);lock.waitLock(30000);result={ok:true,...monitorRequest_(p)}}catch(error){result={ok:false,error:String(error.message||error)}}finally{if(lock.hasLock())lock.releaseLock()}return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON)}
+
+// Optional owner-run provisioning. Creates a dedicated My Drive folder, never edits the old folder.
+MONITOR_ROOT = PropertiesService.getScriptProperties().getProperty('MONITOR_PRIVATE_ROOT_ID') || MONITOR_ROOT;
+function createPrivateMonitoringFolder() {
+  var props = PropertiesService.getScriptProperties();
+  var existing = props.getProperty('MONITOR_PRIVATE_ROOT_ID');
+  var folder = existing ? DriveApp.getFolderById(existing) : DriveApp.createFolder('توثيق غياب مرصاد');
+  monitorPrivate_(folder);
+  props.setProperty('MONITOR_PRIVATE_ROOT_ID', folder.getId());
+  MONITOR_ROOT = folder.getId();
+  console.log('مجلد التوثيق الخاص: ' + folder.getUrl());
+  return folder.getUrl();
+}
