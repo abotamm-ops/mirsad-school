@@ -73,7 +73,7 @@
     const names = [...document.querySelectorAll("#body tr[data-teacher]")]
       .map(tr => (tr.getAttribute("data-teacher") || "").trim())
       .filter(Boolean);
-    banner.href = "https://mirsad-school-absence.onrender.com/?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
+    banner.href = "/absence/?teachers=" + encodeURIComponent([...new Set(names)].join("|"));
     banner.target = "_self";
   }
 

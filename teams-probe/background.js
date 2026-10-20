@@ -2,7 +2,8 @@ importScripts("schedule-core.js","monitor-model.js","drive-sync.js","local-backu
 const scheduleCore = globalThis.MirsadScheduleCore;
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
-const SCAN_TIMEOUT_MS=30000;
+// Watchdog includes Teams loading/joining; successful scans still finish immediately.
+const SCAN_TIMEOUT_MS=90000;
 const RECONNECT_RETRY_MS=15000;
 const DEFAULT_SCHEDULE_SETTINGS={manualStart:"06:30",periodDuration:45,manualGapMinutes:1,periodCount:7,scanDelay:1,roundCount:2,roundGapMinutes:5};
 let scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS};
@@ -268,7 +269,7 @@ async function navigateCurrent(run){
  const item=run.periodItems[run.index];
  if(!item.url){const record={teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:"",status:"no-link",detail:"لا يوجد رابط Teams لهذه الحصة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle||0};run.results.push(record);if(!run.testMode&&!run.backtestMode)await appendDailyReport(record);run.index++;run.current=null;await saveRun(run);await setStatus("الحصة "+p.n+" — "+item.teacher+": لا يوجد رابط Teams؛ يتابع مرصاد المعلم التالي.",{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle,last:record});await navigateCurrent(run);return}
  if(!isTeamsMeetingUrl(item.url)){run.results.push({teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",status:"unresolved",detail:"تجاوز مرصاد رابطًا لا يطابق نطاقات Teams المسموحة؛ لم يفتحه.",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run);return}
- run.current={...item,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())};await saveRun(run);
+ run.current={...item,scanDeadlineAt:Date.now()+SCAN_TIMEOUT_MS,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())};await saveRun(run);
  await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+SCAN_TIMEOUT_MS});
  await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle,{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
  try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:true});void MirsadScanActivity.open(tabId,run).catch(()=>{})}
@@ -317,14 +318,24 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
  if(alarm.name===SCAN_TIMEOUT_ALARM){
   if(!run.current)return;
   const item=run.current;
+  if(Number.isFinite(item.scanDeadlineAt)&&Date.now()<item.scanDeadlineAt){await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:item.scanDeadlineAt});return}
+  const proofStore=await chrome.storage.local.get('mirsadEvidenceRecords');
+  const proof=(proofStore.mirsadEvidenceRecords||[]).find(e=>e.scanId===item.scanId&&e.status==='absent'&&e.evidenceVerified===true&&Number(e.period)===Number(run.period));
+  if(proof){await receiveResult({scanId:item.scanId,result:{status:'absent',teacher:proof.teacher,evidenceTeacher:proof.teacher,detail:'غائب: حُفظ إثبات متحقق منه لاسم المنظّم ضمن المدعوين؛ اعتمدت اللقطة المحفوظة رغم تأخر وصول رسالة Teams النهائية.'}});return}
   if(typeof navigator!=="undefined"&&navigator.onLine===false){
    run.current=null;run.waitingForReconnect=true;await saveRun(run);await closeProbeTab(run);
    await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+RECONNECT_RETRY_MS});
    await setStatus("انقطع اتصال الإنترنت أثناء الحصة "+run.period+"؛ أوقف مرصاد تسجيل نتيجة مؤقتة وسيعيد قائمة الحصة من أولها عند عودة الاتصال.",{period:run.period,waiting:true,waitingForReconnect:true});return;
   }
-  const timeoutRecord={teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status:"unresolved",detail:"انتهت مهلة انتظار Teams دون نتيجة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle||0};
+  const diagnostic=await captureTimeoutDiagnostic(run,item);
+  const latest=await getRun();if(!latest?.running||latest.current?.scanId!==item.scanId)return;
+  // A conclusive result may have arrived while the diagnostic screenshot was saving.
+  const afterCapture=await chrome.storage.local.get('mirsadEvidenceRecords');
+  const lateProof=(afterCapture.mirsadEvidenceRecords||[]).find(e=>e.scanId===item.scanId&&e.status==='absent'&&e.evidenceVerified===true&&Number(e.period)===Number(run.period));
+  if(lateProof){await receiveResult({scanId:item.scanId,result:{status:'absent',teacher:lateProof.teacher,evidenceTeacher:lateProof.teacher,detail:'غائب: إثبات المنظّم ضمن المدعوين محفوظ ومتحقق منه لنفس الفحص.'}});return}
+  const timeoutRecord={scanId:item.scanId,teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status:"unresolved",detail:'تعذر إكمال فحص Teams خلال مهلة التحميل والانضمام (90 ثانية). '+(diagnostic.ok?'حُفظت صورة تشخيصية باسم المعلم والحصة.':'تعذر حفظ الصورة التشخيصية: '+diagnostic.error),scannedAt:Date.now(),cycle:run.cycle||0};
   run.results.push(timeoutRecord);
-  if(!run.testMode&&!run.backtestMode)await appendDailyReport(timeoutRecord);
+  if(!run.testMode&&!run.backtestMode){await appendDailyReport(timeoutRecord);await LocalBackup.enqueue(timeoutRecord).catch(()=>{});await CloudMonitoring.record(run,timeoutRecord).catch(()=>{})}
   run.index++;run.current=null;
   if(run.testMode&&!run.backtestMode){run.running=false;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await closeProbeTab(run);await setStatus("انتهت مهلة الاختبار المباشر دون نتيجة من Teams. أُغلقت صفحة الاختبار تلقائيًا؛ لم يُسجّل غياب.",{testMode:true,last:run.results[run.results.length-1]});return}
   await saveRun(run);
@@ -385,6 +396,73 @@ async function waitForEvidenceDownload(downloadId){
  throw new Error("Evidence download did not complete");
 }
 
+async function captureTimeoutDiagnostic(run,item){
+ const ids=[...new Set([...(run.probeTabIds||[]),run.tabId].filter(Number.isInteger))];
+ for(const id of ids){try{const tab=await chrome.tabs.get(id);const active=(await chrome.tabs.query({active:true,windowId:tab.windowId}))[0];if(active?.id!==id)continue;if(!/^https:\/\/(?:teams\.microsoft\.com|teams\.live\.com)\//i.test(tab.url||''))continue;return await captureEvidenceForScan({scanId:item.scanId,teacher:item.teacher,period:run.period,status:'unresolved',detail:'مهلة Teams انتهت دون اكتمال التحقق؛ لقطة تشخيصية وليست دليل غياب.'},{tab})}catch{}}
+ return {ok:false,error:'لم يتوفر تبويب Teams نشط تابع لهذا الفحص؛ لم تُصوّر صفحة أخرى'};
+}
+
+const evidenceCaptureQueues=new Map();
+function captureEvidenceForScan(message,sender){
+ const key=String(message.scanId||'');
+ const task=(evidenceCaptureQueues.get(key)||Promise.resolve()).catch(()=>{}).then(()=>performEvidenceCapture(message,sender));
+ evidenceCaptureQueues.set(key,task);const cleanup=()=>{if(evidenceCaptureQueues.get(key)===task)evidenceCaptureQueues.delete(key)};task.then(cleanup,cleanup);return task;
+}
+async function performEvidenceCapture(message,sender){
+   const proof=message.evidence;
+   const isAbsence=message.status==="absent",isDiagnostic=message.status==="unresolved";
+   if((!isAbsence&&!isDiagnostic)||!sender.tab?.id||!sender.tab?.windowId||(isAbsence&&(proof?.verified!==true||proof?.teacherInInvitees!==true||proof?.teacherNotPresent!==true||proof?.inviteesReadable!==true))) {return {ok:false}}
+   try{
+    const run=await getRun();
+    if(!run?.running||run.current?.scanId!==message.scanId||![run.tabId,...(run.probeTabIds||[])].includes(sender.tab.id)){return {ok:false,error:"Stale or unrelated scan"}}
+    if(isDiagnostic){const saved=await chrome.storage.local.get('mirsadEvidenceRecords');const proof=(saved.mirsadEvidenceRecords||[]).find(e=>e.scanId===message.scanId&&e.status==='absent'&&e.evidenceVerified===true&&Number(e.period)===Number(message.period));if(proof)return {ok:true,filename:proof.filename,proofAlreadySaved:true}}
+    const [activeTab,sourceTab]=await Promise.all([
+     chrome.tabs.query({active:true,windowId:sender.tab.windowId}).then(tabs=>tabs[0]),
+     chrome.tabs.get(sender.tab.id)
+    ]);
+    if(activeTab?.id!==sender.tab.id||!/^https:\/\/(?:teams\.microsoft\.com|teams\.live\.com)\//i.test(sourceTab.url||"")){return {ok:false,error:"Teams tab is not active"}}
+    const screenshot=await chrome.tabs.captureVisibleTab(sender.tab.windowId,{format:"png"});
+    const dataUrl=await labelEvidenceCapture(screenshot,message.teacher,message.status,message.period,run.cycle);
+    const now=Date.now();
+    const safeName=String(message.teacher||"معلم").replace(/[\\/:*?"<>|]/g,"_").slice(0,70);
+    const filename="Data Copy/توثيق غياب "+MirsadMonitorModel.day(new Date(now))+"/"+safeName+"_"+(isAbsence?"غائب":"غير_محسوم")+"_ح"+String(message.period||"").replace(/[^0-9]/g,"")+"_"+new Date(now).toISOString().replace(/[:.]/g,"-")+".png";
+    await LocalBackup.enqueue({scanId:message.scanId,teacher:message.teacher,scheduledTeacher:run.current.teacher,period:run.period,cycle:run.cycle,status:message.status,detail:message.detail||"",scannedAt:now},dataUrl,filename.split("/").pop(),true);
+    const savedFilename=filename;
+    const evidenceKey="mirsadEvidenceRecords";
+    const saved=await chrome.storage.local.get(evidenceKey);
+    const records=Array.isArray(saved[evidenceKey])?saved[evidenceKey]:[];
+    records.push({teacher:message.teacher||"",period:message.period||"",status:message.status,detail:message.detail||"",capturedAt:now,filename:savedFilename,localBackupPending:true,scanId:message.scanId||"",evidenceVerified:isAbsence,tabId:sender.tab.id,tabUrl:sourceTab.url});
+    await chrome.storage.local.set({[evidenceKey]:records.slice(-1000)});
+    void LocalBackup.flush().catch(()=>{});
+    await CloudMonitoring.capture(run,message,dataUrl,now,savedFilename).catch(()=>{});
+    return {ok:true,filename:"تخزين الإضافة الآمن؛ النسخ إلى G وK: "+savedFilename};
+   }catch(error){return {ok:false,error:String(error?.message||error)}}
+
+}
+
+async function pauseMonitoring(){
+ const run=await getRun();if(!run?.running)return {ok:false,error:"الرصد غير مشغّل"};
+ const pending=await chrome.alarms.get(NEXT_ALARM);
+ run.paused=true;run.running=false;run.pauseAutoResume=run.autoResume;run.autoResume=false;
+ run.pausedNextAt=pending?.scheduledTime||null;run.current=null;
+ await saveRun(run);await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await closeProbeTab(run);
+ await setStatus("الرصد متوقف مؤقتًا؛ اضغط استئناف للمتابعة من نفس المعلم والدورة.");return {ok:true};
+}
+async function resumeMonitoring(){
+ await refreshScheduleSettings();const run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};
+ run.paused=false;run.running=true;run.autoResume=run.pauseAutoResume!==false;run.current=null;await saveRun(run);
+ await setStatus("تم استئناف الرصد من موضع التوقف، مع مراعاة وقت الحصة الحالية.");
+ if(run.pausedNextAt){const when=Math.max(Date.now()+1000,run.pausedNextAt);run.pausedNextAt=null;await saveRun(run);await chrome.alarms.create(NEXT_ALARM,{when})}
+ else if(run.period)await navigateCurrent(run);
+ else {const active=periodNow();if(active)await beginPeriod(run,active.n);else await chrome.alarms.create(NEXT_ALARM,{when:nextPeriod().when})}
+ return {ok:true};
+}
+async function stopAndResetMonitoring(){
+ const run=await getRun();if(run){Object.assign(run,{running:false,paused:false,autoResume:false,current:null,period:null,periodItems:[],index:0,cycle:1,results:[],waitingForCycle2:false,waitingForReconnect:false,nextCycleAt:null,pausedNextAt:null,suspendedRun:null,suspendedNextAt:null});await saveRun(run);await closeProbeTab(run)}
+ await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
+ await setStatus("تم إيقاف الرصد وتصفير تقدّم التشغيل؛ التشغيل التالي يبدأ من البداية. الأرشيف والصور محفوظة.");return {ok:true};
+}
+
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==='MIRSAD_DASHBOARD_ROUNDS'){
   (async()=>{const count=Number(message.count),gap=Number(message.gap);if(!Number.isInteger(count)||count<1||count>3||!Number.isInteger(gap)||gap<1||gap>10)throw new Error('الدورات 1–3 والفاصل 1–10 دقائق');const run=await getRun();if(run?.running)throw new Error('أوقف الرصد قبل تغيير الإعدادات');const frozen=(await chrome.storage.local.get('mirsadDriveDay')).mirsadDriveDay;if(frozen?.date===MirsadMonitorModel.day()&&frozen.snapshot.roundCount!==count)throw new Error('عدد الدورات مثبت في أرشيف اليوم؛ غيّره قبل بداية يوم جديد');await refreshScheduleSettings();scheduleSettings={...scheduleSettings,roundCount:count,roundGapMinutes:gap};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:scheduleSettings});sendResponse({ok:true})})().catch(e=>sendResponse({ok:false,error:e.message}));return true
@@ -400,7 +478,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 
  if(message?.type==="MIRSAD_START"){startMonitoring(false).then(()=>sendResponse({ok:true})).catch(async error=>{await setStatus("لم يبدأ الرصد: "+String(error.message));sendResponse({ok:false,error:String(error.message)})});return true}
  if(message?.type==="MIRSAD_START_NOW"){startMonitoring(true).then(()=>sendResponse({ok:true})).catch(()=>sendResponse({ok:false}));return true}
- if(message?.type==="MIRSAD_STOP"){getRun().then(async run=>{if(run){run.running=false;run.autoResume=false;await saveRun(run);await closeProbeTab(run)}await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await setStatus("تم إيقاف المراقبة بناءً على طلبك؛ لن تُستأنف تلقائيًا.");sendResponse({ok:true})});return true}
+ if(["MIRSAD_PAUSE","MIRSAD_RESUME","MIRSAD_STOP"].includes(message?.type)){const action=message.type==="MIRSAD_PAUSE"?pauseMonitoring:message.type==="MIRSAD_RESUME"?resumeMonitoring:stopAndResetMonitoring;action().then(sendResponse).catch(error=>sendResponse({ok:false,error:String(error.message)}));return true}
  if(message?.type==="MIRSAD_STATUS"){Promise.all([chrome.storage.local.get(STATUS_KEY),getRun()]).then(([s,r])=>sendResponse({status:s[STATUS_KEY]||{text:"لا توجد حالة"},run:r}));return true}
  if(message?.type==="MIRSAD_GET_LIVE_REPORT"){
   (async()=>{
@@ -431,35 +509,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  }
  if(message?.type==="MIRSAD_PAGE_READY"){getRun().then(run=>sendResponse(run?.running&&run.current?{active:true,teacher:run.current.teacher,period:run.period,index:run.index,scanId:run.current.scanId}:{active:false}));return true}
  if(message?.type==="MIRSAD_CAPTURE_EVIDENCE"){
-  (async()=>{
-   const proof=message.evidence;
-   const isAbsence=message.status==="absent",isDiagnostic=message.status==="unresolved";
-   if((!isAbsence&&!isDiagnostic)||!sender.tab?.id||!sender.tab?.windowId||(isAbsence&&(proof?.verified!==true||proof?.teacherInInvitees!==true||proof?.teacherNotPresent!==true||proof?.inviteesReadable!==true))) {sendResponse({ok:false});return}
-   try{
-    const run=await getRun();
-    if(!run?.running||run.current?.scanId!==message.scanId||![run.tabId,...(run.probeTabIds||[])].includes(sender.tab.id)){sendResponse({ok:false,error:"Stale or unrelated scan"});return}
-    const [activeTab,sourceTab]=await Promise.all([
-     chrome.tabs.query({active:true,windowId:sender.tab.windowId}).then(tabs=>tabs[0]),
-     chrome.tabs.get(sender.tab.id)
-    ]);
-    if(activeTab?.id!==sender.tab.id||!/^https:\/\/(?:teams\.microsoft\.com|teams\.live\.com)\//i.test(sourceTab.url||"")){sendResponse({ok:false,error:"Teams tab is not active"});return}
-    const screenshot=await chrome.tabs.captureVisibleTab(sender.tab.windowId,{format:"png"});
-    const dataUrl=await labelEvidenceCapture(screenshot,message.teacher,message.status,message.period,run.cycle);
-    const now=Date.now();
-    const safeName=String(message.teacher||"معلم").replace(/[\\/:*?"<>|]/g,"_").slice(0,70);
-    const filename="Data Copy/توثيق غياب "+MirsadMonitorModel.day(new Date(now))+"/"+safeName+"_"+(isAbsence?"غائب":"غير_محسوم")+"_ح"+String(message.period||"").replace(/[^0-9]/g,"")+"_"+new Date(now).toISOString().replace(/[:.]/g,"-")+".png";
-    await LocalBackup.enqueue({scanId:message.scanId,teacher:message.teacher,scheduledTeacher:run.current.teacher,period:run.period,cycle:run.cycle,status:message.status,detail:message.detail||"",scannedAt:now},dataUrl,filename.split("/").pop(),true);
-    const savedFilename=filename;
-    const evidenceKey="mirsadEvidenceRecords";
-    const saved=await chrome.storage.local.get(evidenceKey);
-    const records=Array.isArray(saved[evidenceKey])?saved[evidenceKey]:[];
-    records.push({teacher:message.teacher||"",period:message.period||"",status:message.status,detail:message.detail||"",capturedAt:now,filename:savedFilename,localBackupPending:true,scanId:message.scanId||"",evidenceVerified:isAbsence,tabId:sender.tab.id,tabUrl:sourceTab.url});
-    await chrome.storage.local.set({[evidenceKey]:records.slice(-1000)});
-    void LocalBackup.flush().catch(()=>{});
-    await CloudMonitoring.capture(run,message,dataUrl,now,savedFilename).catch(()=>{});
-    sendResponse({ok:true,filename:"تخزين الإضافة الآمن؛ النسخ إلى G وK: "+savedFilename});
-   }catch(error){sendResponse({ok:false,error:String(error?.message||error)})}
-  })();return true
+  captureEvidenceForScan(message,sender).then(sendResponse).catch(error=>sendResponse({ok:false,error:String(error.message)}));return true
  }
  if(message?.type==="MIRSAD_SCAN_RESULT"){receiveResult(message).catch(()=>{});sendResponse({ok:true});return false}
 });

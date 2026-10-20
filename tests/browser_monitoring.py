@@ -37,7 +37,7 @@ with sync_playwright() as p:
  result=json.loads(post({'key':'r'*40,'action':'day','date':'2026-10-20'}));assert len(result['records'])==8,result
  # Use the real dashboard without the test extension stubs.
  page=ctx.new_page();page.clock.install(time=datetime(2026,10,20,10,tzinfo=timezone.utc));errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto('http://127.0.0.1:8001/automatic-monitoring.html')
- page.locator('#endpoint').fill(API);page.locator('#readerKey').fill('r'*40);page.locator('#connect button[type=submit]').click();page.wait_for_selector('#todayTable tbody tr')
+ page.locator('.connection-advanced summary').click();page.locator('#endpoint').fill(API);page.locator('#readerKey').fill('r'*40);page.locator('#connect button[type=submit]').click();page.wait_for_selector('#todayTable tbody tr')
  assert page.locator('#todayTable tbody tr').count()==4
  assert page.locator('#todayTable .present').count()==1
  assert page.locator('#todayTable .absent').count()==2
@@ -73,7 +73,22 @@ with sync_playwright() as p:
  page.evaluate("window.postMessage({source:'mirsad-monitor-extension',type:'changed'},location.origin)")
  page.wait_for_function("document.querySelectorAll('#todayTable .unresolved').length===2")
  print('PASS live upload notification refreshes dashboard from authenticated service')
+ # Device login survives reload and a legacy reader key never overwrites the manual archive password.
+ page.evaluate("localStorage.setItem('mirsad_archive_password_v1','fixture-existing-archive-password')")
+ page.reload();page.wait_for_selector('#todayTable tbody tr');assert page.locator('#connect').is_hidden()
+ assert page.evaluate("localStorage.getItem('mirsad_archive_password_v1')")=='fixture-existing-archive-password'
  page.locator('#logout').click();assert page.locator('#todayTable tbody tr').count()==0
+ assert page.evaluate("localStorage.getItem('mirsad-monitor-reader-key')") is None
+ assert page.evaluate("localStorage.getItem('mirsad_archive_password_v1')") is None
+ # The remembered manual archive password opens monitoring directly on the shared origin.
+ page.evaluate("localStorage.setItem('mirsad_archive_password_v1','fixture-existing-archive-password')")
+ page.reload();page.wait_for_selector('#todayTable tbody tr');assert page.locator('#connect').is_hidden()
+ assert page.evaluate("localStorage.getItem('mirsad-monitor-reader-key')")=='fixture-existing-archive-password'
+ page.locator('#logout').click()
+ page.evaluate("localStorage.setItem('mirsad-monitor-reader-key','invalid-password')")
+ page.reload();page.wait_for_selector('#connect',state='visible')
+ page.wait_for_function("localStorage.getItem('mirsad-monitor-reader-key')===null")
+ print('PASS remembered login survives reload, shares manual archive password, logs out, and rejects invalid saved passwords')
  assert not errors,errors
  print('PASS dashboard: 7-period table, four teachers, colors, Drive evidence links, archive, two-bar statistics, logout')
  page=ctx.new_page();page.goto('http://127.0.0.1:8001/');assert page.locator('.home-banners a').count()==3

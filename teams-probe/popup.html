@@ -28,7 +28,8 @@
   </section><section data-panel="run"><div class="intro"><strong>يوم دراسي موثّق، بخطوات واضحة</strong><p>شغّل الرصد؛ يُجهّز مجلد اليوم تلقائيًا ويرسل النتائج إلى موقع مرصاد.</p></div>
   <button id="start">▶ تشغيل الرصد المجدول</button>
   <button id="start-now" class="now">فحص فوري تشخيصي</button>
-  <button id="stop" class="stop">إيقاف الرصد</button>
+  <button id="pause-resume" disabled>إيقاف مؤقت / استئناف</button>
+  <button id="stop" class="stop">إيقاف وإعادة ضبط</button>
 <p class="hint">صور إثبات للغائب وغير المحسوم؛ الحاضر دون تصوير.</p></section><section data-panel="tools" hidden>  <section class="link-picker">
     <label for="link-period">عرض روابط Teams المكتشفة في</label>
     <select id="link-period"><option value="1">الحصة الأولى</option><option value="2">الحصة الثانية</option><option value="3">الحصة الثالثة</option><option value="4">الحصة الرابعة</option><option value="5">الحصة الخامسة</option><option value="6">الحصة السادسة</option><option value="7">الحصة السابعة</option></select>
@@ -39,7 +40,7 @@
   <button id="diagnose" class="diagnose">فحص ربط الحصص والروابط</button>
   <button id="export" class="export">تنزيل تقرير الرصد CSV</button>
 </section><div id="local-backup-summary" class="backup-summary" role="status">جارٍ التحقق من الصور والنسخ المحلي…</div><div class="status-label">حالة الرصد</div>  <div id="status" role="status">لم تبدأ دورة الرصد بعد.</div>
-</main><footer>مرصاد · 0.6.6 <span>روابط مدرستك، وتوثيق يومك</span></footer>
+</main><footer>مرصاد · 0.6.7 <span>روابط مدرستك، وتوثيق يومك</span></footer>
   <script src="schedule-core.js"></script>
   <script src="popup.js"></script><script src="popup-layout.js"></script><script src="local-backup-ui.js"></script>
 </body>
