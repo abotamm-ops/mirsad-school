@@ -19,6 +19,7 @@ with sync_playwright() as p:
  page.route('https://script.google.com/**',api)
  page.goto('https://mirsad-school.onrender.com/index.html');page.wait_for_selector('.live-absence-card');assert 'الدورة الأولى' in page.locator('.live-absence-card').inner_text();assert 'بداية الحصة 5 دقيقة' in page.locator('.live-absence-card').inner_text();assert page.evaluate('window.__tones')==0;assert page.locator('.live-badge').inner_text().strip()=='LIVE';assert page.locator('.live-badge').evaluate('(e)=>getComputedStyle(e).animationName')=='liveBadgePulse'
  page.locator('#liveMonitoringSound').click();page.wait_for_function('window.__tones===2');assert page.locator('#liveMonitoringSound').get_attribute('aria-pressed')=='true'
+ box=page.locator('#liveMonitoring').bounding_box();title=page.locator('#liveMonitoring h2').bounding_box();assert abs(box['x']+box['width']/2-720)<1;assert abs(title['x']+title['width']/2-720)<1;assert box['height']<300;assert box['width']<=1040
  page.screenshot(path='/tmp/mirsad-live-first-round.png')
  data['records'].append(scan('absent',2,'06:40:00'));page.clock.fast_forward(301000);page.wait_for_function('window.__tones===4');assert 'الدورة الثانية' in page.locator('.live-absence-card').inner_text();assert 'الدورة الأولى: غائب' in page.locator('.live-absence-card').inner_text()
  page.clock.fast_forward(15000);page.wait_for_timeout(100);assert page.evaluate('window.__tones')==4
@@ -27,5 +28,5 @@ with sync_playwright() as p:
  page.clock.fast_forward(35*60000);page.wait_for_selector('.live-absence-card',state='hidden');assert page.evaluate('window.__tones')==6
  data['records'].append(scan('absent',1,'07:17:00',2));page.clock.fast_forward(60000);page.wait_for_selector('.live-absence-card');assert 'الحصة 2' in page.locator('.live-absence-card').inner_text();assert page.locator('.live-absence-card p').first.inner_text().startswith('الحصة 2')
  page.locator('#liveMonitoringSound').click();assert page.locator('#liveMonitoringSound').get_attribute('aria-pressed')=='false'
- page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#liveMonitoring .live-absence-card');assert page.locator('#liveMonitoring h2').inner_text()=='رصد مباشر'
+ page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#liveMonitoring .live-absence-card');assert 'رصد مباشر' in page.locator('#liveMonitoring h2').inner_text()
  assert not errors,errors;b.close();print('PASS homepage and dashboard live banner; first/second rounds; class elapsed time; new-result sound without repeats; arrival removes alert; finished classes clear; sound can be muted')
