@@ -23,10 +23,10 @@ try:
   page.route('https://mirsad-school.onrender.com/**',lambda r:r.fulfill(path=str(R/r.request.url.split('mirsad-school.onrender.com/')[1].split('?')[0])))
   page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable tbody tr')
   assert page.locator('#connection').is_hidden();assert page.locator('#todayTable .absent').count()==4
-  assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==0
+  assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==4
   widths=page.locator('#todayTable tbody tr').first.locator('td').evaluate_all('(els)=>els.map(e=>e.getBoundingClientRect().width)');assert max(widths)-min(widths)<1
   page.screenshot(path='/tmp/mirsad-report-redesign.png',full_page=True)
-  page.locator('#toggleAdministration').click();page.locator('#todayTable .edit-lesson').first.click()
+  page.locator('#todayTable .edit-lesson').first.click()
   form=page.locator('.edit-lesson-form');form.locator('select').select_option('present');form.locator('input[type=password]').fill('wrong');form.locator('button').click();page.wait_for_function("document.querySelector('.edit-lesson-form').textContent.includes('غير صحيح')")
   form.locator('input[type=password]').fill(PIN);form.locator('input[aria-label="سبب التعديل"]').fill('حضور مثبت إداريًا');form.locator('button').click();page.wait_for_selector('#details',state='hidden')
   assert page.locator('#todayTable .present').count()==1

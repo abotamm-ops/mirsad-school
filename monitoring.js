@@ -22,12 +22,12 @@ function detail(cell,date){
  const effective=text('p','المعتمد في التقرير: '+(cell.reset?'لم يبدأ الرصد':stateLabel[cell.state]));effective.className='effective-state '+cell.state;root.append(effective);
  if(cell.override)root.append(text('p','عُدّلت الحالة يدويًا في '+dateText(cell.override.at)+(cell.override.note?' — '+cell.override.note:'')));
  if(cell.inferred)root.append(text('p',cell.url===''?'احتُسب الغياب بعد انتهاء الحصة لعدم وجود رابط تيمز.':'احتُسب الغياب بعد انتهاء الحصة لعدم وصول أي نتيجة رصد.'));
- if(administrationMode){
+ {
   const form=document.createElement('form');form.className='edit-lesson-form';
-  const title=text('h3','تعديل نتيجة الحصة');const choice=document.createElement('select');choice.setAttribute('aria-label','الحالة المعتمدة');choice.append(new Option('حاضر — استبعاد غياب الحصة من التقرير','present'),new Option('غائب — احتساب غياب الحصة','absent'),new Option('غير محسوم — استبعاد الحصة من الغياب','unresolved'));choice.value=['present','absent','unresolved'].includes(cell.state)?cell.state:'unresolved';
+  const title=text('h3','تعديل نتيجة الحصة');const choice=document.createElement('select');choice.setAttribute('aria-label','الحالة المعتمدة');choice.append(new Option('حاضر','present'),new Option('غائب','absent'),new Option('غير محسوم','unresolved'));choice.value=['present','absent','unresolved'].includes(cell.state)?cell.state:'unresolved';
   const note=document.createElement('input');note.placeholder='سبب التعديل (اختياري)';note.maxLength=1000;note.setAttribute('aria-label','سبب التعديل');
   const pin=document.createElement('input');pin.type='password';pin.inputMode='numeric';pin.autocomplete='off';pin.required=true;pin.placeholder='الرقم السري للإدارة';pin.setAttribute('aria-label','الرقم السري للإدارة');
-  const save=text('button','اعتماد التعديل');save.type='submit';const feedback=text('p','');feedback.setAttribute('role','status');
+  const save=text('button','حفظ التعديل');save.type='submit';const feedback=text('p','');feedback.setAttribute('role','status');
   form.append(title,choice,note,pin,save,feedback,text('small','التعديل يغيّر التقرير فقط؛ تبقى الصور ونتائج الرصد الأصلية محفوظة.'));
   form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{await api('override',{date,teacherId:cell.teacherId,period:cell.period,status:choice.value,note:note.value,adminPin:pin.value,requestId:crypto.randomUUID()});pin.value='';await reloadReport(date);$('details').close();status('تم اعتماد تعديل الحصة؛ التوثيق الأصلي محفوظ')}catch(error){feedback.textContent=readableDetail(error.message);pin.value=''}finally{save.disabled=false}};
   root.append(form);
@@ -54,7 +54,7 @@ function renderTable(target,data){
     const button=text('button',cell.reset?'لم يبدأ الرصد':stateLabel[cell.state]);button.className='lesson-state '+cell.state;button.title='عرض تفاصيل الحصة '+period+' — '+teacher.name;button.onclick=()=>detail(cell,data.snapshot.date);td.append(button);
     const tools=text('div','');tools.className='cell-tools';
     const links=cell.evidence.filter(r=>safeDrive(r.evidenceUrl));if(links.length===1){const link=text('a','الصورة');link.href=safeDrive(links[0].evidenceUrl);link.target='_blank';link.rel='noopener noreferrer';tools.append(link)}else if(links.length){const photos=text('button','الصور ('+links.length+')');photos.onclick=()=>detail(cell,data.snapshot.date);tools.append(photos)}
-    if(administrationMode){const edit=text('button','تعديل');edit.className='edit-lesson';edit.onclick=()=>detail(cell,data.snapshot.date);tools.append(edit)}td.append(tools);
+    {const edit=text('button','تعديل الحالة');edit.className='edit-lesson';edit.onclick=()=>detail(cell,data.snapshot.date);tools.append(edit)}td.append(tools);
     if(cell.override)td.append(text('small','معتمد يدويًا'));else if(cell.inferred)td.append(text('small',cell.url===''?'لا يوجد رابط · انتهت الحصة':'لم يصل رصد · انتهت الحصة'));else if(cell.reset)td.append(text('small','تم تصفير التقرير · التوثيق محفوظ'));else if(cell.pendingRounds||cell.failedRounds){const notes=[];if(cell.pendingRounds)notes.push('بانتظار '+cell.pendingRounds+' دورة');if(cell.failedRounds)notes.push('تعذّر فحص '+cell.failedRounds+' دورة');td.append(text('small',notes.join(' — ')))}
    }else{td.append(text('span','لا توجد حصة'));td.className='no-lesson'}row.append(td)
   }body.append(row)
