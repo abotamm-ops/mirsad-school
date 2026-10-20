@@ -49,7 +49,7 @@
   const alerts=[];for(const cell of cells(data,{now}).filter(c=>c.period===period)){
    const history=scans.filter(r=>r.teacherId===cell.teacherId).sort((a,b)=>a.scannedAt-b.scannedAt||a.cycle-b.cycle),conclusive=history.filter(r=>['present','absent'].includes(r.status)),latest=conclusive[conclusive.length-1];
    if(cell.override?cell.override.status!=='absent':latest?.status!=='absent')continue;
-   alerts.push({teacherId:cell.teacherId,teacher:cell.teacherName,period,cycle:cell.override?null:latest.cycle,scannedAt:cell.override?cell.override.at:latest.scannedAt,manual:!!cell.override,cycles:cycles.map(c=>{const rows=history.filter(r=>r.cycle===c.cycle),last=rows[rows.length-1];return {cycle:c.cycle,status:last?.status||'pending',scannedAt:last?.scannedAt||null}})});
+   alerts.push({teacherId:cell.teacherId,teacher:cell.teacherName,period,cycle:cell.override?null:latest.cycle,scannedAt:cell.override?cell.override.at:latest.scannedAt,manual:!!cell.override,evidenceUrl:latest?.status==='absent'?(latest.evidenceUrl||null):null,evidenceCycle:latest?.status==='absent'?latest.cycle:null,evidenceAt:latest?.status==='absent'?latest.scannedAt:null,cycles:cycles.map(c=>{const rows=history.filter(r=>r.cycle===c.cycle),last=rows[rows.length-1];return {cycle:c.cycle,status:last?.status||'pending',scannedAt:last?.scannedAt||null}})});
   }
   alerts.sort((a,b)=>a.scannedAt-b.scannedAt);
   return {date,period,startedAt,endAt,minutesIntoPeriod:Math.floor((now.getTime()-startedAt)/60000),alerts,cycles,latestScanAt:scans.length?Math.max(...scans.map(r=>r.scannedAt)):null};

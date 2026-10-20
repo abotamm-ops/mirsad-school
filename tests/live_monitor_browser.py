@@ -37,4 +37,12 @@ with sync_playwright() as p:
  data['records'].append(scan('absent',2,'21:00:00',4));page.clock.fast_forward(stamp('21:00:01')-page.evaluate('Date.now()'));page.wait_for_function("document.querySelector('.live-absence-card').textContent.includes('الدورة الثانية')")
  page.clock.fast_forward(stamp('21:33:00')-page.evaluate('Date.now()'));page.wait_for_selector('.live-absence-card',state='hidden')
  data['records'].append(scan('absent',1,'21:35:00',5));page.clock.fast_forward(stamp('21:35:01')-page.evaluate('Date.now()'));page.wait_for_selector('.live-absence-card');assert 'الحصة الخامسة' in page.locator('#liveMonitoringContext').inner_text()
+
+ page.route('https://drive.google.com/**',lambda r:r.fulfill(content_type='text/html',body='<p>صورة التوثيق</p>'))
+ data['snapshot']['teachers']=[];data['snapshot']['lessons']=[];data['records']=[]
+ for i in range(13):
+  tid='t'+str(i);data['snapshot']['teachers'].append({'id':tid,'name':'المعلم '+str(i)});data['snapshot']['lessons'].append({'teacherId':tid,'teacherName':'المعلم '+str(i),'period':5,'url':'https://teams.microsoft.com/test'});data['records'].append({**scan('absent',1,'21:35:00',5),'teacherId':tid,'evidenceUrl':'https://drive.google.com/file/d/proof_'+str(i)+'/view?resourcekey=test'})
+ page.clock.fast_forward(6000);page.wait_for_function("document.querySelectorAll('.live-absence-card').length===13")
+ page.locator('[data-teacher-id="t12"] .live-absence-name').click();dialog=page.locator('.live-photo-dialog');assert dialog.is_visible();assert dialog.locator('h2').inner_text()=='المعلم 12';assert dialog.locator('iframe').get_attribute('src')=='https://drive.google.com/file/d/proof_12/preview?resourcekey=test';assert dialog.locator('a').get_attribute('href')=='https://drive.google.com/file/d/proof_12/view?resourcekey=test';dialog.locator('button').click()
+ data['records'][0]['evidenceUrl']='javascript:alert(1)';page.clock.fast_forward(6000);page.locator('[data-teacher-id="t0"] .live-absence-name').click();assert dialog.locator('iframe').count()==0;assert 'لم تصل صورة' in dialog.inner_text();page.keyboard.press('Escape');assert not dialog.is_visible()
  assert not errors,errors;b.close();print('PASS homepage and dashboard live banner; first/second rounds; class elapsed time; new-result sound without repeats; arrival removes alert; finished classes clear; sound can be muted')
