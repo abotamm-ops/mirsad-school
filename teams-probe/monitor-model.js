@@ -31,5 +31,24 @@
   });
  }
  function stats(days,options={}){const map=new Map();for(const data of days){const rows=cells(data,options);for(const teacher of data.snapshot?.teachers||[]){let stat=map.get(teacher.id)||{...teacher,scheduled:0,absentLessons:0,absentDays:0,present:0,unknown:0,partial:0,late:0};const lessons=rows.filter(x=>x.teacherId===teacher.id);stat.scheduled+=lessons.length;for(const x of lessons){stat.absentLessons+=Number(x.state==='absent');stat.present+=Number(['present','partial'].includes(x.state));stat.unknown+=Number(x.state==='unresolved');stat.partial+=Number(x.state==='partial');stat.late+=Number(x.late)}stat.absentDays+=Number(lessons.length>0&&lessons.every(x=>x.state==='absent'));stat.percent=stat.scheduled?Math.round(stat.absentLessons/stat.scheduled*1000)/10:0;map.set(teacher.id,stat)}}return [...map.values()]}
- const api={normalize,day,state,cells,stats,lessonEnded,defaultSchedule};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
+ function live(data,options={}){
+  const now=options.now||new Date(),date=day(now),empty={date,period:null,alerts:[],cycles:[],latestScanAt:null};
+  if(!data?.snapshot||data.snapshot.date!==date)return empty;
+  const schedule={...defaultSchedule,...data.snapshot.scheduleSettings,...data.reportSchedule},match=/^(\d{2}):(\d{2})$/.exec(schedule.manualStart||'');
+  if(!match)return empty;const duration=Number(schedule.periodDuration),gap=Number(schedule.manualGapMinutes);if(!Number.isFinite(duration)||duration<1||!Number.isFinite(gap)||gap<0)return empty;
+  const base=new Date(date+'T00:00:00+03:00').getTime()+(Number(match[1])*60+Number(match[2]))*60000;
+  let period=null,startedAt,endAt;for(let p=1;p<=7;p++){const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
+  if(!period)return empty;
+  const reset=[...(data.adjustments||[])].reverse().find(a=>a.type==='reset'),cutoff=reset?.at||0;
+  const scans=(data.records||[]).filter(r=>Number(r.period)===period&&r.scannedAt>=startedAt&&r.scannedAt<=now.getTime()&&r.scannedAt>cutoff);
+  const cycles=Array.from({length:data.snapshot.roundCount},(_,i)=>{const rows=scans.filter(r=>r.cycle===i+1);return {cycle:i+1,count:rows.length,firstResultAt:rows.length?Math.min(...rows.map(r=>r.scannedAt)):null,lastResultAt:rows.length?Math.max(...rows.map(r=>r.scannedAt)):null}});
+  const alerts=[];for(const cell of cells(data,{now}).filter(c=>c.period===period)){
+   const history=scans.filter(r=>r.teacherId===cell.teacherId).sort((a,b)=>a.scannedAt-b.scannedAt||a.cycle-b.cycle),conclusive=history.filter(r=>['present','absent'].includes(r.status)),latest=conclusive[conclusive.length-1];
+   if(cell.override?cell.override.status!=='absent':latest?.status!=='absent')continue;
+   alerts.push({teacherId:cell.teacherId,teacher:cell.teacherName,period,cycle:cell.override?null:latest.cycle,scannedAt:cell.override?cell.override.at:latest.scannedAt,manual:!!cell.override,cycles:cycles.map(c=>{const rows=history.filter(r=>r.cycle===c.cycle),last=rows[rows.length-1];return {cycle:c.cycle,status:last?.status||'pending',scannedAt:last?.scannedAt||null}})});
+  }
+  alerts.sort((a,b)=>a.scannedAt-b.scannedAt);
+  return {date,period,startedAt,endAt,minutesIntoPeriod:Math.floor((now.getTime()-startedAt)/60000),alerts,cycles,latestScanAt:scans.length?Math.max(...scans.map(r=>r.scannedAt)):null};
+ }
+ const api={normalize,day,state,cells,stats,lessonEnded,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
 })(globalThis);
