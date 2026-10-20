@@ -23,3 +23,5 @@ input[type=url]{direction:ltr;text-align:left}
 #todayTable td>span,#archiveTable td>span{display:block;height:44px;overflow:auto;font-size:12px;line-height:22px}
 #todayTable .lesson-state,#archiveTable .lesson-state{min-height:40px;display:flex;align-items:center;justify-content:center}
 .scanning-cell .lesson-state{display:none!important}
+
+nav [aria-selected=true]{background:#155e75;color:#fff;border-color:#155e75}#today,#archive,#stats{scroll-margin-top:100px}
