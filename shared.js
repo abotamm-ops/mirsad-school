@@ -8,7 +8,7 @@
   function showStatus(message, warning) {
     let node = document.getElementById("mirsad-shared-status");
     if (!node) { node = document.createElement("div"); node.id = "mirsad-shared-status"; document.querySelector("main")?.prepend(node); }
-    if (node) { node.textContent = message; node.style.cssText = "background:" + (warning ? "#fff7df;color:#854d0e" : "#e0f2fe;color:#075985") + ";padding:8px 10px;border-radius:8px;margin:8px 0;font:12px Tahoma;direction:rtl"; }
+    if (node) { node.textContent = message; node.className = "sync-status" + (warning ? " is-warning" : ""); node.setAttribute("role", "status"); }
   }
   function applyPayload(payload) {
     const tableBody = document.getElementById("body");
@@ -25,7 +25,7 @@
           const classroom = item.class || item.lesson || item.className || "";
           const time = item.time || "";
           const teams = item.teams || item.teamsUrl || "";
-          return '<div class="lesson"><div class="lesson-title">' + esc(title) + '</div>' + (classroom ? '<div class="class">' + esc(classroom) + '</div>' : '') + (time ? '<div class="class">' + esc(time) + '</div>' : '') + (teams ? '<a class="teams" href="' + esc(teams) + '" target="_blank" rel="noopener noreferrer">🎥 Teams</a>' : '<span class="no-link">لا يوجد رابط Teams</span>') + '</div>';
+          return '<div class="lesson"><div class="lesson-title">' + esc(title) + '</div>' + (classroom ? '<div class="class">' + esc(classroom) + '</div>' : '') + (time ? '<div class="class">' + esc(time) + '</div>' : '') + (teams ? '<a class="teams" href="' + esc(teams) + '" target="_blank" rel="noopener noreferrer">فتح تيمز</a>' : '<span class="no-link">لا يوجد رابط تيمز</span>') + '</div>';
         }).join("") : '<span class="empty">—</span>';
         return '<td data-period="' + indexes[periodIndex] + '">' + inner + '</td>';
       }).join("");
@@ -36,7 +36,7 @@
     const search = document.getElementById("search");
     if (search) { const q = search.value.trim().toLocaleLowerCase("ar"); tableBody.querySelectorAll("tr").forEach(tr => { tr.hidden = !tr.innerText.toLocaleLowerCase("ar").includes(q); }); }
     const date = payload.selectedDate || payload.scheduleDate || payload.date || payload.dayDate || payload.selectedDay || payload.dayName || payload.day || "";
-    showStatus("تم تحميل آخر تقرير رفعته من نقار" + (date ? " — تاريخ التقرير: " + date : " — تاريخ التقرير غير محدد في المصدر") + " — وقت الرفع: " + (payload.updatedAt ? new Date(payload.updatedAt).toLocaleString("ar-SA") : "غير معروف") + " — " + lessons.length + " حصة — يفحص التحديث كل 15 ثانية", false);
+    showStatus("تم تحميل آخر تقرير رفعته من نقار" + (date ? " — تاريخ التقرير: " + date : " — تاريخ التقرير غير محدد في المصدر") + " — وقت الرفع: " + (payload.updatedAt ? new Date(payload.updatedAt).toLocaleString("ar-SA") : "غير معروف") + " — " + lessons.length + " حصة — يتحدّث تلقائيًا", false);
   }
   function syncOnce() {
     if (busy) return;
