@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>مرصاد</title>
+  <style>
+    body{font:14px/1.7 Tahoma,Arial,sans-serif;width:390px;margin:0;padding:14px;color:#17202a;background:#f7fafc}
+    h2{margin:0 0 8px;font-size:18px}p{margin:6px 0 12px;color:#475569}
+    button{width:100%;padding:10px;border:0;border-radius:8px;background:#0f766e;color:#fff;font:inherit;font-weight:bold;cursor:pointer;margin-top:8px}
+    button:disabled{opacity:.65;cursor:wait}.stop{background:#9f1239}.diagnose{background:#475569}.export{background:#1d4ed8}.now{background:#7c3aed}
+    #status{padding:10px;margin-top:10px;border-radius:8px;background:#e2e8f0;white-space:pre-wrap;overflow-wrap:anywhere}
+    small{display:block;color:#64748b;margin-top:8px}.settings{padding:12px;background:#fff;border:1px solid #dbe3ea;border-radius:9px;margin:10px 0}
+    .settings label{display:block;font-weight:bold;margin-bottom:5px}.settings input,.settings select{width:100%;box-sizing:border-box;font:inherit;padding:8px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:9px}
+    .preview{font-size:12px;white-space:pre-line;color:#334155;background:#f1f5f9;padding:8px;border-radius:6px;margin-bottom:8px}
+    .link-picker{padding:12px;background:#fff;border:1px solid #dbe3ea;border-radius:9px;margin:10px 0}.link-picker label{display:block;font-weight:bold;margin-bottom:5px}.link-picker select{width:100%;box-sizing:border-box;font:inherit;padding:8px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:4px}.link-summary{font-size:12px;color:#475569;white-space:pre-wrap;margin-top:8px}.link-list{max-height:260px;overflow:auto;margin-top:8px}.link-row{padding:8px;border-bottom:1px solid #e2e8f0}.link-row strong{display:block}.link-row a{display:block;direction:ltr;text-align:left;overflow-wrap:anywhere;font-size:11px}
+  </style>
+</head>
+<body>
+  <h2>مرصاد | الرصد الآلي</h2>
+  <p>توقيت الرصد يُحسب من ساعة الجهاز والإعدادات أدناه. يقرأ الجدول أسماء المعلمين وروابطهم وأرقام الحصص فقط.</p>
+  <section class="settings"><h3>توثيق اليوم في Drive</h3><label for="driveUrl">رابط خدمة الحفظ</label><input id="driveUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec"><label for="driveKey">رمز الرفع</label><input id="driveKey" type="password" autocomplete="off" placeholder="اتركه فارغًا للاحتفاظ بالرمز المحفوظ"><button id="save-drive">حفظ الربط</button><button id="begin-day" style="margin-top:8px">📁 بداية اليوم</button><button id="retry-drive" style="margin-top:8px;background:#334155">إعادة محاولة المزامنة</button><p id="drive-status" role="status"></p><a id="drive-folder" target="_blank" rel="noopener noreferrer" hidden>فتح مجلد توثيق اليوم</a></section><section class="settings">
+    <label for="manualStart">بداية الحصة الأولى</label>
+    <input id="manualStart" type="time" value="06:30">
+    <label for="periodDuration">مدة الحصة (دقيقة)</label>
+    <input id="periodDuration" type="number" min="1" max="180" step="1" value="45">
+    <label for="manualGapMinutes">الفاصل بين الحصص (دقيقة)</label>
+    <input id="manualGapMinutes" type="number" min="0" max="60" step="1" value="1">
+    <label for="scanDelay">الدخول بعد بداية الحصة (دقيقة)</label>
+    <input id="scanDelay" type="number" min="1" max="10" step="1" value="1">
+    <label for="roundCount">عدد دورات الرصد للحصة (1 إلى 3)</label>
+    <input id="roundCount" type="number" min="1" max="3" step="1" value="2">
+    <label for="roundGapMinutes">الفاصل بين الدورات (دقيقة، 1 إلى 10)</label>
+    <input id="roundGapMinutes" type="number" min="1" max="10" step="1" value="5">
+    <div id="preview" class="preview">جارٍ تحميل الإعدادات…</div>
+    <button id="save-time" type="button" style="background:#334155">حفظ وتحديث التوقيت</button>
+  </section>
+  <p>يلتقط مرصاد صورة دليل الغياب من Teams فقط. قد يطلب Chrome صلاحية المواقع عند تحديث الإضافة.</p>
+  <button id="start">تشغيل المراقبة حسب الجدول المحفوظ</button>
+  <button id="start-now" class="now">ابدأ الرصد الآن</button>
+  <button id="stop" class="stop">إيقاف المراقبة</button>
+  <section class="link-picker">
+    <label for="link-period">عرض روابط Teams المكتشفة في</label>
+    <select id="link-period"><option value="1">الحصة الأولى</option><option value="2">الحصة الثانية</option><option value="3">الحصة الثالثة</option><option value="4">الحصة الرابعة</option><option value="5">الحصة الخامسة</option><option value="6">الحصة السادسة</option><option value="7">الحصة السابعة</option></select>
+    <button id="show-links" type="button" class="diagnose">اعرض روابط الحصة</button>
+    <div id="link-summary" class="link-summary" aria-live="polite"></div>
+    <div id="link-list" class="link-list"></div>
+  </section>
+  <button id="diagnose" class="diagnose">فحص ربط الحصص والروابط</button>
+  <button id="export" class="export">تنزيل تقرير الرصد CSV</button>
+  <div id="status">لم تبدأ دورة الرصد بعد.</div>
+  <small>لا تُقرأ أوقات رؤوس الجدول أو أوقات اجتماع Teams. عند غموض رقم الحصة لا يُفتح أي رابط.</small>
+  <script src="schedule-core.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

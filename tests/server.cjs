@@ -1,0 +1,2 @@
+const http=require('node:http'),backend=require('./backend-fixture.cjs')();
+const server=http.createServer((req,res)=>{let body='';req.on('data',chunk=>body+=chunk);req.on('end',()=>{try{const result=backend.api(JSON.parse(body));res.setHeader('Content-Type','application/json');res.end(JSON.stringify(result))}catch(e){res.statusCode=500;res.end(JSON.stringify({ok:false,error:e.message}))}})});server.listen(8766,'127.0.0.1',()=>console.log('Fixture API ready on 8766'));
