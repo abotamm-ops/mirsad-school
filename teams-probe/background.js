@@ -1,4 +1,4 @@
-importScripts("schedule-core.js","monitor-model.js","drive-sync.js","local-backup.js");
+importScripts("schedule-core.js","monitor-model.js","drive-sync.js","local-backup.js","action-status.js");
 const scheduleCore = globalThis.MirsadScheduleCore;
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
