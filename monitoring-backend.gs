@@ -4,7 +4,7 @@ function configureMonitoringService(){var p=PropertiesService.getScriptPropertie
 function monitorToday_(){return Utilities.formatDate(new Date(),'Asia/Riyadh','yyyy-MM-dd')}
 function monitorName_(v){return String(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim()}
 function monitorEqual_(a,b){a=String(a||'');b=String(b||'');var diff=a.length^b.length;for(var i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return !!a.length&&diff===0}
-function monitorPrivate_(folder){var access=folder.getSharingAccess();if(access===DriveApp.Access.ANYONE||access===DriveApp.Access.ANYONE_WITH_LINK)throw new Error('الوصول العام غير مقبول: '+folder.getName()+' — '+String(access)+'. إذا كان الوصول موروثًا من مجلد أب، شغّل createPrivateMonitoringFolder بحساب المالك لتجهيز مجلد خاص مستقل.');return folder}
+function monitorPrivate_(folder){if(PropertiesService.getScriptProperties().getProperty('MONITOR_PUBLIC_READ')==='true')return folder;var access=folder.getSharingAccess();if(access===DriveApp.Access.ANYONE||access===DriveApp.Access.ANYONE_WITH_LINK)throw new Error('الوصول العام غير مقبول: '+folder.getName()+' — '+String(access)+'. إذا كان الوصول موروثًا من مجلد أب، شغّل createPrivateMonitoringFolder بحساب المالك لتجهيز مجلد خاص مستقل.');return folder}
 function monitorFile_(folder,name){var it=folder.getFilesByName(name);return it.hasNext()?it.next():null}
 function monitorRead_(file,fallback){return file?JSON.parse(file.getBlob().getDataAsString()):fallback}
 function monitorWrite_(folder,name,data){var text=JSON.stringify(data),file=monitorFile_(folder,name);if(file)file.setContent(text);else file=folder.createFile(name,text,'application/json');return file}
@@ -23,10 +23,11 @@ function monitorRequest_(p){
  var props=PropertiesService.getScriptProperties(),writeKey=props.getProperty('MONITOR_API_KEY'),readKey=props.getProperty('MONITOR_READER_KEY'),sitePassword=props.getProperty('MONITOR_SITE_PASSWORD');
  var writer=String(writeKey||'').length>=32&&monitorEqual_(p.key,writeKey),reader=String(readKey||'').length>=32&&monitorEqual_(p.key,readKey);
  var siteReader=!!sitePassword&&monitorEqual_(p.key,sitePassword);
- if(!writer&&!reader&&!siteReader)throw new Error('غير مصرح بالدخول');
+ var publicRead=props.getProperty('MONITOR_PUBLIC_READ')==='true';
+ if(!writer&&!reader&&!siteReader&&!publicRead)throw new Error('غير مصرح بالدخول');
  var reading=['dates','day'].indexOf(p.action)>=0;if(!reading&&!writer)throw new Error('صلاحية القراءة لا تسمح بالرفع');
  var root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT));
- if(p.action==='dates'){var dates=[],it=root.getFolders();while(it.hasNext()){var f=it.next(),m=/^توثيق غياب (\d{4}-\d{2}-\d{2})$/.exec(f.getName());if(m&&monitorFile_(f,'attendance.json'))dates.push(m[1])}return {dates:dates.sort().reverse(),authMode:siteReader?'site-password':'access-key'}}
+ if(p.action==='dates'){var dates=[],it=root.getFolders();while(it.hasNext()){var f=it.next(),m=/^توثيق غياب (\d{4}-\d{2}-\d{2})$/.exec(f.getName());if(m&&monitorFile_(f,'attendance.json'))dates.push(m[1])}return {dates:dates.sort().reverse(),authMode:publicRead?'public':siteReader?'site-password':'access-key'}}
  var date=p.date||monitorToday_();if(p.action==='startDay'&&date!==monitorToday_())throw new Error('بداية اليوم تكون لتاريخ اليوم في السعودية فقط');var folder=monitorDay_(root,date,p.action==='startDay');
  var file=monitorFile_(folder,'attendance.json'),data=monitorRead_(file,null);
  if(p.action==='startDay'){
@@ -48,7 +49,7 @@ function monitorRequest_(p){
   var name=safe(record.teacher||lesson.teacherName)+'_ح'+record.period+'_د'+record.cycle+'_'+(record.status==='absent'?'غائب':'غير محسوم')+'_'+safe(record.scanId)+'.png';
   if(record.localName){if(typeof record.localName!=='string'||record.localName.length>220||/[\\/:*?"<>|\u0000-\u001f]/.test(record.localName)||!record.localName.endsWith('.png'))throw new Error('اسم ملف غير صالح');name=record.localName;}
   var image=monitorFile_(folder,name)||folder.createFile(Utilities.newBlob(bytes,'image/png',name));
-  monitorPrivate_(image);
+  if(publicRead)image.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);else monitorPrivate_(image);
   var evidence={fileId:image.getId(),url:image.getUrl(),name:name};data.evidence[record.scanId]=evidence;monitorWrite_(folder,'attendance.json',data);return evidence;
  }
  if(p.action==='record'){
@@ -70,4 +71,20 @@ function createPrivateMonitoringFolder() {
   MONITOR_ROOT = folder.getId();
   console.log('مجلد التوثيق الخاص: ' + folder.getUrl());
   return folder.getUrl();
+}
+
+// Run once as the owner to enable the link-sharing requested for this monitoring archive.
+function enablePublicMonitoringSharing(){
+ var props=PropertiesService.getScriptProperties(),root=DriveApp.getFolderById(MONITOR_ROOT);
+ root.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
+ var folders=root.getFolders(),count=0;
+ while(folders.hasNext()){
+  var folder=folders.next();if(!/^توثيق غياب \d{4}-\d{2}-\d{2}$/.test(folder.getName()))continue;
+  folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
+  var data=monitorRead_(monitorFile_(folder,'attendance.json'),null);
+  if(data)Object.keys(data.evidence||{}).forEach(function(id){DriveApp.getFileById(data.evidence[id].fileId).setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);count++});
+ }
+ props.setProperty('MONITOR_PUBLIC_READ','true');
+ console.log('تم فتح قراءة الرصد والصور لأي شخص لديه الرابط. الصور السابقة: '+count);
+ return root.getUrl();
 }
