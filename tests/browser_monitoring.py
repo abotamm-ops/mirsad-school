@@ -3,7 +3,7 @@ import json,urllib.request
 from datetime import datetime,timezone
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1];API='https://script.google.com/macros/s/test/exec';offline=False
-ITEMS=[{'teacher':'المعلم الأول','period':1,'subject':'الرياضيات','className':'أول أ','hasLesson':True},{'teacher':'المعلم الأول','period':2,'subject':'الرياضيات','className':'ثاني أ','hasLesson':True},{'teacher':'المعلم الثاني','period':1,'subject':'العلوم','className':'ثالث أ','hasLesson':True},{'teacher':'المعلم الثالث','period':1,'subject':'اللغة','className':'أول ب','hasLesson':True}]
+ITEMS=[{'teacher':'المعلم الأول','period':1,'subject':'الرياضيات','className':'أول أ','hasLesson':True,'url':'https://teams.microsoft.com/l/meetup-join/fixture'},{'teacher':'المعلم الأول','period':2,'subject':'الرياضيات','className':'ثاني أ','hasLesson':True,'url':'https://teams.microsoft.com/l/meetup-join/fixture'},{'teacher':'المعلم الثاني','period':1,'subject':'العلوم','className':'ثالث أ','hasLesson':True,'url':'https://teams.microsoft.com/l/meetup-join/fixture'},{'teacher':'المعلم الثالث','period':1,'subject':'اللغة','className':'أول ب','hasLesson':True,'url':'https://teams.microsoft.com/l/meetup-join/fixture'}]
 def post(data):
  req=urllib.request.Request('http://127.0.0.1:8766',data=json.dumps(data).encode(),headers={'Content-Type':'application/json'})
  return urllib.request.urlopen(req).read().decode()
@@ -91,7 +91,7 @@ with sync_playwright() as p:
  print('PASS remembered login survives reload, shares manual archive password, logs out, and rejects invalid saved passwords')
  assert not errors,errors
  print('PASS dashboard: 7-period table, four teachers, colors, Drive evidence links, archive, two-bar statistics, logout')
- page=ctx.new_page();page.goto('http://127.0.0.1:8001/');assert page.locator('.home-banners a').count()==3
+ page=ctx.new_page();page.goto('http://127.0.0.1:8001/');assert page.locator('.home-banners a').count()==2
  page.locator('#search').fill('zzzz_no_match');assert page.locator('#body tr:visible').count()==0
- print('PASS homepage: three banners and existing timetable search preserved')
+ print('PASS homepage: two banners and existing timetable search preserved')
  ctx.close();b.close()

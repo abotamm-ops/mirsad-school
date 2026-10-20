@@ -25,7 +25,9 @@ function monitorRequest_(p){
  var siteReader=!!sitePassword&&monitorEqual_(p.key,sitePassword);
  var publicRead=props.getProperty('MONITOR_PUBLIC_READ')==='true';
  if(!writer&&!reader&&!siteReader&&!publicRead)throw new Error('غير مصرح بالدخول');
- var reading=['dates','day'].indexOf(p.action)>=0;if(!reading&&!writer)throw new Error('صلاحية القراءة لا تسمح بالرفع');
+ var administrative=['override','resetReport','reportSchedule'].indexOf(p.action)>=0;
+ if(administrative){var supplied=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(p.adminPin||''),Utilities.Charset.UTF_8).map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2)}).join('');var expected=props.getProperty('MONITOR_ADMIN_PIN_HASH')||'0e3dc69daef679ae76ca56039591a2002c71041a945a57db4460ee22db2259e5';if(!monitorEqual_(supplied,expected))throw new Error('الرقم السري للإدارة غير صحيح')}
+ var reading=['dates','day'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
  var root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT));
  if(p.action==='dates'){var dates=[],it=root.getFolders();while(it.hasNext()){var f=it.next(),m=/^توثيق غياب (\d{4}-\d{2}-\d{2})$/.exec(f.getName());if(m&&monitorFile_(f,'attendance.json'))dates.push(m[1])}return {dates:dates.sort().reverse(),authMode:publicRead?'public':siteReader?'site-password':'access-key'}}
  var date=p.date||monitorToday_();if(p.action==='startDay'&&date!==monitorToday_())throw new Error('بداية اليوم تكون لتاريخ اليوم في السعودية فقط');var folder=monitorDay_(root,date,p.action==='startDay');
@@ -36,6 +38,23 @@ function monitorRequest_(p){
   return {snapshot:data.snapshot,folderUrl:folder.getUrl()};
  }
  if(!data)throw new Error('جدول اليوم غير محفوظ');
+ if(administrative){
+  if(typeof p.requestId!=='string'||!/^[A-Za-z0-9_-]{8,120}$/.test(p.requestId))throw new Error('معرّف العملية غير صالح');
+  data.adjustments=data.adjustments||[];
+  if(data.adjustments.some(function(a){return a.id===p.requestId}))return {saved:true};
+  var entry={id:p.requestId,sequence:data.adjustments.length+1,at:Date.now(),type:p.action==='resetReport'?'reset':p.action};
+  if(p.action==='override'){
+   var selected=data.snapshot.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
+   if(!selected||!['present','absent'].includes(p.status))throw new Error('اختر حصة وحالة صحيحتين');
+   entry.teacherId=selected.teacherId;entry.period=selected.period;entry.status=p.status;entry.note=String(p.note||'').slice(0,1000);
+  }
+  if(p.action==='reportSchedule'){
+   var schedule=p.schedule||{},start=/^(\d{2}):(\d{2})$/.exec(schedule.manualStart||''),duration=Number(schedule.periodDuration),gap=Number(schedule.manualGapMinutes);
+   if(!start||Number(start[1])>23||Number(start[2])>59||!Number.isInteger(duration)||duration<1||duration>180||!Number.isInteger(gap)||gap<0||gap>60)throw new Error('توقيت الحصص غير صالح');
+   entry.schedule={manualStart:schedule.manualStart,periodDuration:duration,manualGapMinutes:gap};data.reportSchedule=entry.schedule;
+  }
+  data.adjustments.push(entry);monitorWrite_(folder,'attendance.json',data);return {saved:true,adjustment:entry};
+ }
  if(p.action==='day'){var result=JSON.parse(JSON.stringify(data));result.records.forEach(function(r){r.evidenceUrl=result.evidence[r.scanId]?.url||null});delete result.evidence;return result}
  var record=p.record||{},lesson=data.snapshot.lessons.find(function(l){return monitorName_(l.teacherName)===monitorName_(record.scheduledTeacher)&&l.period===Number(record.period)});
  if(!lesson||typeof record.scanId!=='string'||record.scanId.length>200||!record.scanId)throw new Error('النتيجة لا تطابق جدول اليوم المحفوظ');
