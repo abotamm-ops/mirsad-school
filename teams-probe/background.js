@@ -1,4 +1,4 @@
-importScripts("schedule-core.js","monitor-model.js","drive-sync.js","local-backup.js","action-status.js");
+importScripts("schedule-core.js","monitor-model.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js");
 const scheduleCore = globalThis.MirsadScheduleCore;
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
@@ -271,7 +271,7 @@ async function navigateCurrent(run){
  run.current={...item,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())};await saveRun(run);
  await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+SCAN_TIMEOUT_MS});
  await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle,{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
- try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:true})}
+ try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:true});void MirsadScanActivity.open(tabId,run).catch(()=>{})}
  catch(_){run.results.push({teacher:item.teacher,scheduledTeacher:item.teacher,period:p.n,subject:item.subject||"",className:item.className||"",status:"unresolved",detail:"تعذر فتح الرابط",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run)}
 }
 async function advancePeriod(run,after){
@@ -389,6 +389,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==='MIRSAD_DASHBOARD_ROUNDS'){
   (async()=>{const count=Number(message.count),gap=Number(message.gap);if(!Number.isInteger(count)||count<1||count>3||!Number.isInteger(gap)||gap<1||gap>10)throw new Error('الدورات 1–3 والفاصل 1–10 دقائق');const run=await getRun();if(run?.running)throw new Error('أوقف الرصد قبل تغيير الإعدادات');const frozen=(await chrome.storage.local.get('mirsadDriveDay')).mirsadDriveDay;if(frozen?.date===MirsadMonitorModel.day()&&frozen.snapshot.roundCount!==count)throw new Error('عدد الدورات مثبت في أرشيف اليوم؛ غيّره قبل بداية يوم جديد');await refreshScheduleSettings();scheduleSettings={...scheduleSettings,roundCount:count,roundGapMinutes:gap};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:scheduleSettings});sendResponse({ok:true})})().catch(e=>sendResponse({ok:false,error:e.message}));return true
  }
+ if(message?.type==='MIRSAD_SCAN_ACTIVITY'){MirsadScanActivity.info().then(sendResponse).catch(()=>sendResponse({ok:false}));return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_INFO'){LocalBackup.info().then(sendResponse);return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_CHECK'){LocalBackup.check().then(sendResponse);return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_RETRY'){LocalBackup.flush().then(()=>LocalBackup.info()).then(sendResponse);return true}

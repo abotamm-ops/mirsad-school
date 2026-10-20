@@ -42,6 +42,25 @@ with sync_playwright() as p:
  assert page.locator('#todayTable .present').count()==1
  assert page.locator('#todayTable .absent').count()==2
  assert page.locator('#todayTable .unresolved').count()==1
+ active={'active':True,'teacherId':result['snapshot']['teachers'][0]['id'],'teacher':result['snapshot']['teachers'][0]['name'],'period':1,'cycle':1,'scanId':'pulse-1','date':'2026-10-20'}
+ page.evaluate("activity=>window.postMessage({source:'mirsad-monitor-extension',type:'activity',payload:{ok:true,activity}},location.origin)",active)
+ page.wait_for_selector('#todayTable .scanning-row')
+ assert page.locator('#todayTable .scanning-cell').count()==1
+ assert page.locator('#todayTable .scanning-cell').get_attribute('data-period')=='1'
+ assert page.locator('#todayTable .scanning-cell .lesson-state').is_hidden()
+ assert page.locator('#todayTable .scanning-cell').evaluate("el=>getComputedStyle(el).animationName")=='scanOrangeCell'
+ assert page.locator('#todayTable .scanning-row').get_attribute('data-teacher-id')==active['teacherId']
+ page.screenshot(path='/tmp/mirsad-live-pulse.png',full_page=True)
+ active.update(teacherId=result['snapshot']['teachers'][1]['id'],teacher=result['snapshot']['teachers'][1]['name'],scanId='pulse-2')
+ page.evaluate("activity=>window.postMessage({source:'mirsad-monitor-extension',type:'activity',payload:{ok:true,activity}},location.origin)",active)
+ page.wait_for_function("id=>document.querySelector('.scanning-row').dataset.teacherId===id",arg=active['teacherId'])
+ assert page.locator('#todayTable .scanning-cell').count()==1
+ page.evaluate("window.postMessage({source:'mirsad-monitor-extension',type:'activity',payload:{ok:true,activity:null}},location.origin)")
+ page.wait_for_function("document.querySelectorAll('.scanning-row,.scanning-cell').length===0")
+ assert page.locator('#todayTable .absent').count()==2
+ assert page.locator('#todayTable .present').count()==1
+ assert page.locator('#todayTable .unresolved').count()==1
+ print('PASS orange name/period pulse moves between teachers and leaves final attendance colors unchanged')
  page.locator('#todayTable .absent').first.click();assert page.locator('dialog[open] a').count()==2
  assert all('drive.google.com/file/d/' in a for a in page.locator('dialog[open] a').evaluate_all('(els)=>els.map(x=>x.href)'))
  page.locator('#closeDetails').click();page.locator('[data-view=archive]').click();page.locator('#archiveDate').select_option('2026-10-20');page.wait_for_selector('#archiveTable tbody tr');assert page.locator('#archiveTable tbody tr').count()==4
