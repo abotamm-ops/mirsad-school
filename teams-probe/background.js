@@ -390,7 +390,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   (async()=>{const count=Number(message.count),gap=Number(message.gap);if(!Number.isInteger(count)||count<1||count>3||!Number.isInteger(gap)||gap<1||gap>10)throw new Error('الدورات 1–3 والفاصل 1–10 دقائق');const run=await getRun();if(run?.running)throw new Error('أوقف الرصد قبل تغيير الإعدادات');const frozen=(await chrome.storage.local.get('mirsadDriveDay')).mirsadDriveDay;if(frozen?.date===MirsadMonitorModel.day()&&frozen.snapshot.roundCount!==count)throw new Error('عدد الدورات مثبت في أرشيف اليوم؛ غيّره قبل بداية يوم جديد');await refreshScheduleSettings();scheduleSettings={...scheduleSettings,roundCount:count,roundGapMinutes:gap};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:scheduleSettings});sendResponse({ok:true})})().catch(e=>sendResponse({ok:false,error:e.message}));return true
  }
  if(message?.type==='MIRSAD_SCAN_ACTIVITY'){MirsadScanActivity.info().then(sendResponse).catch(()=>sendResponse({ok:false}));return true}
- if(message?.type==='MIRSAD_LOCAL_BACKUP_INFO'){LocalBackup.info().then(sendResponse);return true}
+ if(message?.type==='MIRSAD_LOCAL_BACKUP_INFO'){LocalBackup.info().then(sendResponse).catch(e=>sendResponse({ok:false,error:String(e.message)}));return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_CHECK'){LocalBackup.check().then(sendResponse);return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_RETRY'){LocalBackup.flush().then(()=>LocalBackup.info()).then(sendResponse);return true}
  if(message?.type==='MIRSAD_DRIVE_CONFIG'){CloudMonitoring.configure(String(message.url||''),String(message.key||'')).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
