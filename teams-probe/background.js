@@ -302,7 +302,7 @@ async function receiveResult(message){
  const resultRecord={scanId:item.scanId,teacher:resultTeacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status,detail,scannedAt,cycle:run.cycle||0};
  run.results.push(resultRecord);
  if(!run.testMode&&!run.backtestMode){await appendDailyReport(resultRecord);await CloudMonitoring.record(run,resultRecord).catch(()=>{})}
- 
+
  run.index++;run.current=null;
  if(run.testMode&&!run.backtestMode){run.running=false;await saveRun(run);await closeProbeTab(run);await setStatus("اكتمل الاختبار المباشر لرابط واحد: "+item.teacher+" — "+(message.result?.detail||message.result?.status||"غير محسوم")+". أُغلقت صفحة الاختبار تلقائيًا. النتيجة تشخيصية فقط.",{testMode:true,last:run.results[run.results.length-1]});return}
  await saveRun(run);
