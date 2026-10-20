@@ -1,0 +1,3 @@
+async function refreshLocalBackup(){try{const info=await chrome.runtime.sendMessage({type:'MIRSAD_LOCAL_BACKUP_INFO'});document.getElementById('local-backup-status').textContent=info.status?.text||'';document.getElementById('extension-id').textContent=info.extensionId||chrome.runtime.id}catch{document.getElementById('local-backup-status').textContent='تعذر قراءة حالة النسخ المحلي'}}
+document.getElementById('check-local-backup').onclick=async()=>{const b=document.getElementById('check-local-backup');b.disabled=true;try{await chrome.runtime.sendMessage({type:'MIRSAD_LOCAL_BACKUP_CHECK'});await refreshLocalBackup()}finally{b.disabled=false}};
+refreshLocalBackup();setInterval(refreshLocalBackup,5000);

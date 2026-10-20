@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="brand"><div class="brand-mark">م</div><div><h2>مرصاد</h2><span>الرصد الآلي للمعلمين</span></div><a href="https://mirsad-school.onrender.com/automatic-monitoring.html" target="_blank" rel="noopener noreferrer">فتح الموقع ↗</a></header><nav class="tabs" aria-label="أقسام الإضافة"><button data-tab="run" aria-selected="true">الرصد</button><button data-tab="timing" aria-selected="false">الإعدادات</button><button data-tab="drive" aria-selected="false">Drive</button><button data-tab="tools" aria-selected="false">الأدوات</button></nav><main>
-  <section data-panel="drive" hidden>
+  <section data-panel="drive" hidden><section class="settings"><h3>النسخة المحلية · Data Copy</h3><p class="hint">نسختان في G وK؛ وعند تعذر أحدهما تُحفظ نسخة في C. لا تُحفظ الصور تلقائيًا في التنزيلات.</p><p id="local-backup-status" role="status"></p><p class="hint">معرّف الإضافة للتثبيت: <span id="extension-id" dir="ltr"></span></p><button id="check-local-backup">فحص مساعد الحفظ وإعادة النسخ</button></section>
   <section class="settings"><h3>توثيق اليوم في Drive</h3><label for="driveUrl">رابط خدمة الحفظ</label><input id="driveUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec"><label for="driveKey">رمز الرفع</label><input id="driveKey" type="password" autocomplete="off" placeholder="اتركه فارغًا للاحتفاظ بالرمز المحفوظ"><p id="drive-key-state" role="status"></p><button id="save-drive">حفظ الربط</button><button id="begin-day" style="margin-top:8px">📁 بداية اليوم</button><button id="retry-drive" style="margin-top:8px;background:#334155">إعادة محاولة المزامنة</button><p id="drive-status" role="status"></p><a id="drive-folder" target="_blank" rel="noopener noreferrer" hidden>فتح مجلد توثيق اليوم</a></section></section><section data-panel="timing" hidden><section class="settings timing-grid"><h3>توقيت الحصص والدورات</h3>
     <label for="manualStart">بداية الحصة الأولى</label>
     <input id="manualStart" type="time" value="06:30">
@@ -25,7 +25,7 @@
     <div id="preview" class="preview">جارٍ تحميل الإعدادات…</div>
     <button id="save-time" type="button" style="background:#334155">حفظ وتحديث التوقيت</button>
   </section>
-  </section><section data-panel="run"><div class="intro"><strong>يوم دراسي موثّق، بخطوات واضحة</strong><p>ابدأ اليوم من تبويب Drive، ثم شغّل الرصد حسب توقيتك المحفوظ.</p></div>
+  </section><section data-panel="run"><div class="intro"><strong>يوم دراسي موثّق، بخطوات واضحة</strong><p>شغّل الرصد؛ يُجهّز مجلد اليوم تلقائيًا ويرسل النتائج إلى موقع مرصاد.</p></div>
   <button id="start">▶ تشغيل الرصد المجدول</button>
   <button id="start-now" class="now">فحص فوري تشخيصي</button>
   <button id="stop" class="stop">إيقاف الرصد</button>
@@ -39,8 +39,8 @@
   <button id="diagnose" class="diagnose">فحص ربط الحصص والروابط</button>
   <button id="export" class="export">تنزيل تقرير الرصد CSV</button>
 </section><div class="status-label">حالة الرصد</div>  <div id="status" role="status">لم تبدأ دورة الرصد بعد.</div>
-</main><footer>مرصاد · 0.6.2 <span>روابط مدرستك، وتوثيق يومك</span></footer>
+</main><footer>مرصاد · 0.6.3 <span>روابط مدرستك، وتوثيق يومك</span></footer>
   <script src="schedule-core.js"></script>
-  <script src="popup.js"></script><script src="popup-layout.js"></script>
+  <script src="popup.js"></script><script src="popup-layout.js"></script><script src="local-backup-ui.js"></script>
 </body>
 </html>

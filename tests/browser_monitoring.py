@@ -48,6 +48,12 @@ with sync_playwright() as p:
  page.locator('[data-view=stats]').click();page.locator('#loadStats').click();page.wait_for_selector('#chart svg rect');assert page.locator('#chart svg rect').count()==8
  rows=page.locator('#statsTable tbody tr').all_text_contents();assert any('المعلم الثاني' in row for row in rows)
  page.screenshot(path='/tmp/mirsad-monitoring-stats.png',full_page=True)
+ # A completed extension upload triggers a fresh read without waiting for the polling interval.
+ pushed={'scanId':'live-refresh','scheduledTeacher':'المعلم الثالث','teacher':'اسم Teams','period':1,'cycle':1,'status':'unresolved','scannedAt':1792490500000}
+ assert json.loads(post({'key':'w'*40,'action':'record','date':'2026-10-20','record':pushed}))['ok']
+ page.evaluate("window.postMessage({source:'mirsad-monitor-extension',type:'changed'},location.origin)")
+ page.wait_for_function("document.querySelectorAll('#todayTable .unresolved').length===2")
+ print('PASS live upload notification refreshes dashboard from authenticated service')
  page.locator('#logout').click();assert page.locator('#todayTable tbody tr').count()==0
  assert not errors,errors
  print('PASS dashboard: 7-period table, four teachers, colors, Drive evidence links, archive, two-bar statistics, logout')

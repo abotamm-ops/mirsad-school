@@ -8,7 +8,7 @@ with sync_playwright() as p:
   r.fulfill(path=str(file))
  ctx.route('https://mirsad-school.onrender.com/**',route)
  page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
- page.add_init_script('''window.chrome={runtime:{async sendMessage(m){return {ok:true,status:{text:'الرصد جاهز'},configured:true,scheduleSettings:{manualStart:'06:30',periodDuration:45,manualGapMinutes:1,scanDelay:1,roundCount:2,roundGapMinutes:5}}}},tabs:{async query(){return []}}};''')
+ page.add_init_script('''window.chrome={runtime:{onMessage:{addListener(){}},async sendMessage(m){return {ok:true,status:{text:'الرصد جاهز'},configured:true,scheduleSettings:{manualStart:'06:30',periodDuration:45,manualGapMinutes:1,scanDelay:1,roundCount:2,roundGapMinutes:5}}}},tabs:{async query(){return []}}};''')
  page.goto('https://mirsad-school.onrender.com/teams-probe/popup.html');assert page.locator('[data-panel]:visible').count()==1;assert page.locator('[data-panel=run]').is_visible()
  page.screenshot(path='/tmp/mirsad-popup-debug.png',full_page=True)
  assert page.evaluate('document.documentElement.scrollHeight')<=600, page.evaluate('({height:document.documentElement.scrollHeight,main:document.querySelector("main").offsetHeight,css:getComputedStyle(document.body).fontFamily})')
