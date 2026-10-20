@@ -63,7 +63,7 @@ function monitorRequest_(p){
   var entry={id:p.requestId,sequence:data.adjustments.length+1,at:Date.now(),type:p.action==='resetReport'?'reset':p.action};
   if(p.action==='override'){
    var selected=data.snapshot.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
-   if(!selected||!['present','absent'].includes(p.status))throw new Error('اختر حصة وحالة صحيحتين');
+   if(!selected||!['present','absent','unresolved'].includes(p.status))throw new Error('اختر حصة وحالة صحيحتين');
    entry.teacherId=selected.teacherId;entry.period=selected.period;entry.status=p.status;entry.note=String(p.note||'').slice(0,1000);
   }
   if(p.action==='reportSchedule'){

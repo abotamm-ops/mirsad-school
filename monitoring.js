@@ -24,7 +24,7 @@ function detail(cell,date){
  if(cell.inferred)root.append(text('p',cell.url===''?'احتُسب الغياب بعد انتهاء الحصة لعدم وجود رابط تيمز.':'احتُسب الغياب بعد انتهاء الحصة لعدم وصول أي نتيجة رصد.'));
  if(administrationMode){
   const form=document.createElement('form');form.className='edit-lesson-form';
-  const title=text('h3','تعديل نتيجة الحصة');const choice=document.createElement('select');choice.setAttribute('aria-label','الحالة المعتمدة');choice.append(new Option('حاضر — استبعاد غياب الحصة من التقرير','present'),new Option('غائب — احتساب غياب الحصة','absent'));choice.value=cell.state==='absent'?'absent':'present';
+  const title=text('h3','تعديل نتيجة الحصة');const choice=document.createElement('select');choice.setAttribute('aria-label','الحالة المعتمدة');choice.append(new Option('حاضر — استبعاد غياب الحصة من التقرير','present'),new Option('غائب — احتساب غياب الحصة','absent'),new Option('غير محسوم — استبعاد الحصة من الغياب','unresolved'));choice.value=['present','absent','unresolved'].includes(cell.state)?cell.state:'unresolved';
   const note=document.createElement('input');note.placeholder='سبب التعديل (اختياري)';note.maxLength=1000;note.setAttribute('aria-label','سبب التعديل');
   const pin=document.createElement('input');pin.type='password';pin.inputMode='numeric';pin.autocomplete='off';pin.required=true;pin.placeholder='الرقم السري للإدارة';pin.setAttribute('aria-label','الرقم السري للإدارة');
   const save=text('button','اعتماد التعديل');save.type='submit';const feedback=text('p','');feedback.setAttribute('role','status');
