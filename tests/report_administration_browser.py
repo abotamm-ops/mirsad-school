@@ -36,6 +36,12 @@ try:
   page.locator('#todayTable .edit-lesson').first.click();form=page.locator('.edit-lesson-form');form.locator('select').select_option('unresolved');form.locator('input[type=password]').fill(PIN);form.locator('button').click();page.wait_for_selector('#details',state='hidden')
   assert page.locator('#todayTable .unresolved').count()==1
   raw=post({'action':'day','date':'2026-10-20'});assert raw['records'][0]['status']=='absent';assert raw['records'][0]['evidenceUrl'];assert len(raw['adjustments'])==2
+  page.locator('[data-view=stats]').click();page.wait_for_selector('#statsTable tbody tr')
+  assert page.locator('#statsSummary .summary-card strong').all_text_contents()==['3','1','0','1']
+  assert page.locator('#chart [data-series=unknown][data-value="1"]').count()==1
+  assert page.locator('#chart [data-series=present]').count()==3
+  assert 'حضور الحصص' in page.locator('#statsTable thead').inner_text();assert 'غير محسوم' in page.locator('#chart .chart-legend').inner_text()
+  page.locator('[data-view=today]').click();page.wait_for_selector('#todayTable tbody tr')
   page.locator('[data-reset-target=todayTable]').click()
   page.locator('#resetPin').fill('wrong');page.locator('#resetForm button').click();page.wait_for_function("document.querySelector('#resetFeedback').textContent.includes('غير صحيح')")
   assert len(post({'action':'day','date':'2026-10-20'})['adjustments'])==2

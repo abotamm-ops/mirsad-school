@@ -64,7 +64,7 @@ with sync_playwright() as p:
  page.locator('#todayTable .absent').first.click();assert page.locator('dialog[open] a').count()==2
  assert all('drive.google.com/file/d/' in a for a in page.locator('dialog[open] a').evaluate_all('(els)=>els.map(x=>x.href)'))
  page.locator('#closeDetails').click();page.locator('[data-view=archive]').click();page.wait_for_selector('#archiveTable tbody tr');assert page.locator('#archiveDate').input_value()=='2026-10-20';assert page.locator('#archiveTable tbody tr').count()==4
- page.locator('[data-view=stats]').click();page.wait_for_selector('#chart svg rect');assert page.locator('#chart svg rect').count()==8
+ page.locator('[data-view=stats]').click();page.wait_for_selector('#chart svg rect');assert page.locator('#chart svg rect').count()==16
  rows=page.locator('#statsTable tbody tr').all_text_contents();assert any('المعلم الثاني' in row for row in rows)
  page.screenshot(path='/tmp/mirsad-monitoring-stats.png',full_page=True)
  # A completed extension upload triggers a fresh read without waiting for the polling interval.
