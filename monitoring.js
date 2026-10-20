@@ -1,5 +1,6 @@
 'use strict';
-const model=MirsadMonitorModel,$=id=>document.getElementById(id),cache=new Map();let dates=[],endpoint=localStorage.getItem('mirsad-monitor-url')||'https://script.google.com/macros/s/AKfycbxl9jFw4R8OPgKACyf2wFEsvAIaRF5s2czH4OHdTkF3gJuF9PhR-Br3bCxcsA7mJ-iC/exec',readerKey='',selectedDay=null,extensionReady=false,accessEpoch=0,settingsInitialized=false,settingsDirty=false,activeScan=null,lastFollowedScan='',lastActivityContact=0;
+const DEFAULT_MONITOR_ENDPOINT='https://script.google.com/macros/s/AKfycbyPULmkjNZ24jMbS5q7Iym5DQbV_EoDf2wMLAqZ_kYsKsuI3sekJfQdR2Euk9yt2wo7/exec',PREVIOUS_MONITOR_ENDPOINT='https://script.google.com/macros/s/AKfycbxl9jFw4R8OPgKACyf2wFEsvAIaRF5s2czH4OHdTkF3gJuF9PhR-Br3bCxcsA7mJ-iC/exec',savedMonitorEndpoint=localStorage.getItem('mirsad-monitor-url');
+const model=MirsadMonitorModel,$=id=>document.getElementById(id),cache=new Map();let dates=[],endpoint=savedMonitorEndpoint===PREVIOUS_MONITOR_ENDPOINT?DEFAULT_MONITOR_ENDPOINT:(savedMonitorEndpoint||DEFAULT_MONITOR_ENDPOINT),readerKey='',selectedDay=null,extensionReady=false,accessEpoch=0,settingsInitialized=false,settingsDirty=false,activeScan=null,lastFollowedScan='',lastActivityContact=0;
 $('endpoint').value=endpoint;
 const text=(tag,value)=>{const e=document.createElement(tag);e.textContent=value;return e};
 function status(message,error=false){$('status').textContent=message;$('status').className=error?'error':''}
