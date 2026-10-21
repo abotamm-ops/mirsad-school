@@ -2,3 +2,5 @@
 .brand-mark img{display:block;border-radius:13px}
 
 .backup-summary{margin-top:12px;padding:10px 12px;border-radius:9px;background:#e3f2ee;color:#166450;font-size:11px;white-space:pre-line;overflow-wrap:anywhere}.backup-summary.warning{background:#fff0d9;color:#925009}
+
+#environment-label{display:block;padding:5px 0}body[data-environment=experiment] #environment-label{color:#9a4b09}body[data-environment=experiment] .brand{background:linear-gradient(120deg,#713f12,#a65c10)}#experiment-feedback{font-size:11px;margin-top:8px}

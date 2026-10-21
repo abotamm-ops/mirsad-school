@@ -41,6 +41,9 @@ function monitorSchedule_(value){
  return {manualStart:value.manualStart,periodDuration:duration,manualGapMinutes:gap};
 }
 function monitorIsTrial_(value){return !!value&&(value.testMode===true||value.backtestMode===true||value.immediateMode===true||['trial','test','experiment'].indexOf(value.environment||value.mode)>=0)}
+function monitorExperimentId_(p){var id=p.experimentId;if(p.environment==='experiment'||id){if(typeof id!=='string'||!/^[a-f0-9-]{36}$/.test(id))throw new Error('معرّف التجربة غير صالح');return id}return ''}
+function monitorExperimentRoot_(root,id,create){if(!id)return root;var parents=root.getFoldersByName('تجارب مرصاد'),parent=parents.hasNext()?parents.next():create?root.createFolder('تجارب مرصاد'):null;if(!parent)throw new Error('لم تبدأ هذه التجربة');var folders=parent.getFoldersByName(id),folder=folders.hasNext()?folders.next():create?parent.createFolder(id):null;if(!folder)throw new Error('لم تبدأ هذه التجربة');return folder}
+function monitorExperimentReader_(p,props){return ['MONITOR_API_KEY','MONITOR_READER_KEY','MONITOR_SITE_PASSWORD'].some(function(k){var key=props.getProperty(k);return !!key&&monitorEqual_(p.key,key)})}
 function monitorTeacherToken_(props){var token=props.getProperty('MONITOR_TEACHER_VIEW_KEY')||'';if(token&&(token.length<32||['MONITOR_API_KEY','MONITOR_READER_KEY','MONITOR_SITE_PASSWORD'].some(function(k){return monitorEqual_(token,props.getProperty(k))})))throw new Error('رمز رابط المعلمين يجب أن يكون مستقلًا عن رموز الإدارة');return token}
 function monitorTeacherAccess_(p,props){
  if(props.getProperty('MONITOR_EVIDENCE_PRIVATE')!=='true')throw new Error('صفحة المعلمين بانتظار إكمال تهيئتها لدى الإدارة');
@@ -48,8 +51,8 @@ function monitorTeacherAccess_(p,props){
  var domain=String(props.getProperty('MONITOR_TEACHERS_DOMAIN')||'').trim().toLowerCase();if(domain){var email=String(Session.getActiveUser().getEmail()||'').toLowerCase();if(!email||email.split('@')[1]!==domain)throw new Error('يلزم الدخول بحساب المدرسة للمشاهدة')}
 }
 function monitorTeachersLive_(p){
- var props=PropertiesService.getScriptProperties();monitorTeacherAccess_(p,props);var cache=typeof CacheService!=='undefined'?CacheService.getScriptCache():null,cacheKey='teachers-live-'+monitorToday_();if(cache)try{var cached=cache.get(cacheKey);if(cached){var stored=JSON.parse(cached);stored.serverTime=Date.now();return stored}}catch(ignore){}var date=monitorToday_(),now=new Date(),root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT)),folders=root.getFoldersByName('توثيق غياب '+date),folder=folders.hasNext()?folders.next():null,data=folder?monitorRead_(monitorFile_(folder,'attendance.json'),null):null;
- var result={feed:'teachers-live-v1',source:'official',date:date,serverTime:now.getTime(),updatedAt:null,schedule:{manualStart:'06:30',periodDuration:45,manualGapMinutes:1},currentPeriod:null,rows:[],summary:{present:0,partial:0,partialAbsence:0,absent:0,unresolved:0}};
+ var props=PropertiesService.getScriptProperties(),experimentId=monitorExperimentId_(p);if(experimentId){var trialToken=props.getProperty('MONITOR_EXPERIMENT_VIEW_'+experimentId);if(!monitorExperimentReader_(p,props)&&!(trialToken&&monitorEqual_(p.viewToken,trialToken)))throw new Error('رابط التجربة غير مصرح')}else monitorTeacherAccess_(p,props);var cache=typeof CacheService!=='undefined'?CacheService.getScriptCache():null,cacheKey='teachers-live-'+experimentId+'-'+monitorToday_();if(cache)try{var cached=cache.get(cacheKey);if(cached){var stored=JSON.parse(cached);stored.serverTime=Date.now();return stored}}catch(ignore){}var date=monitorToday_(),now=new Date(),root=monitorExperimentRoot_(monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT)),experimentId,false),folders=root.getFoldersByName('توثيق غياب '+date),folder=folders.hasNext()?folders.next():null,data=folder?monitorRead_(monitorFile_(folder,'attendance.json'),null):null;
+ var result={feed:'teachers-live-v1',source:experimentId?'experiment':'official',experimentId:experimentId||undefined,date:date,serverTime:now.getTime(),updatedAt:null,schedule:{manualStart:'06:30',periodDuration:45,manualGapMinutes:1},currentPeriod:null,rows:[],summary:{present:0,partial:0,partialAbsence:0,absent:0,unresolved:0}};
  if(!data||!data.snapshot||data.snapshot.date!==date||monitorIsTrial_(data)||monitorIsTrial_(data.snapshot))return result;
  data=JSON.parse(JSON.stringify(data));data.records=(data.records||[]).filter(function(r){return !monitorIsTrial_(r)});Object.keys(data.evidence||{}).forEach(function(id){var proof=data.evidence[id];if(proof.record&&!monitorIsTrial_(proof.record)&&!data.records.some(function(r){return r.scanId===id}))data.records.push(proof.record)});data.adjustments=(data.adjustments||[]).filter(function(a){return !monitorIsTrial_(a)});
  result.schedule=monitorSchedule_(data.reportSchedule||data.snapshot.scheduleSettings)||result.schedule;var active=MONITOR_TEACHER_MODEL_.live(data,{now:now});result.currentPeriod=active.period;
@@ -59,7 +62,8 @@ function monitorTeachersLive_(p){
 function monitorRequest_(p){
  if(p.audience==='teachers'&&p.action!=='teachersLive')throw new Error('رابط المعلمين للمشاهدة فقط');
  if(p.action==='teachersLive')return monitorTeachersLive_(p);
- if(monitorIsTrial_(p)||monitorIsTrial_(p.record))throw new Error('لا يجوز إرسال بيانات التجربة إلى السجل الرسمي');
+ var experimentId=monitorExperimentId_(p);
+ if((monitorIsTrial_(p)&&!experimentId)||monitorIsTrial_(p.record))throw new Error('لا يجوز إرسال بيانات التجربة إلى السجل الرسمي');
  var props=PropertiesService.getScriptProperties(),writeKey=props.getProperty('MONITOR_API_KEY'),readKey=props.getProperty('MONITOR_READER_KEY'),sitePassword=props.getProperty('MONITOR_SITE_PASSWORD');
  var writer=String(writeKey||'').length>=32&&monitorEqual_(p.key,writeKey),reader=String(readKey||'').length>=32&&monitorEqual_(p.key,readKey);
  var siteReader=!!sitePassword&&monitorEqual_(p.key,sitePassword);
@@ -67,14 +71,17 @@ function monitorRequest_(p){
  if(!writer&&!reader&&!siteReader)throw new Error('غير مصرح بالدخول');
  var administrative=['override','resetReport','purgeDay','purgeRange','reportSchedule'].indexOf(p.action)>=0;
  if(administrative){var supplied=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(p.adminPin||''),Utilities.Charset.UTF_8).map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2)}).join('');var expected=props.getProperty('MONITOR_ADMIN_PIN_HASH')||'0e3dc69daef679ae76ca56039591a2002c71041a945a57db4460ee22db2259e5';if(!monitorEqual_(supplied,expected))throw new Error('الرقم السري للإدارة غير صحيح')}
- var reading=['dates','day','teacherLink'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
+ var reading=['dates','day','teacherLink','experimentInfo'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
  var root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT));
- if(p.action==='teacherLink'){var token=monitorTeacherToken_(props);return {url:'https://mirsad-school.onrender.com/teachers-live.html'+(token?'?view='+encodeURIComponent(token):'')}}
+ if(p.action==='experimentInfo')return {supported:true};
+ root=monitorExperimentRoot_(root,experimentId,p.action==='startDay'&&writer);
+ if(experimentId&&p.action==='startDay'&&!props.getProperty('MONITOR_EXPERIMENT_VIEW_'+experimentId))props.setProperty('MONITOR_EXPERIMENT_VIEW_'+experimentId,Utilities.getUuid()+Utilities.getUuid());
+ if(p.action==='teacherLink'){var token=experimentId?props.getProperty('MONITOR_EXPERIMENT_VIEW_'+experimentId):monitorTeacherToken_(props);return {url:'https://mirsad-school.onrender.com/teachers-live.html'+(experimentId?'?experiment='+encodeURIComponent(experimentId)+'&view='+encodeURIComponent(token):token?'?view='+encodeURIComponent(token):'')}}
  if(p.action==='dates'){var dates=[],it=root.getFolders();while(it.hasNext()){var f=it.next(),m=/^توثيق غياب (\d{4}-\d{2}-\d{2})$/.exec(f.getName());if(m&&monitorFile_(f,'attendance.json'))dates.push(m[1])}return {dates:dates.sort().reverse(),authMode:siteReader?'site-password':'access-key'}}
  if(administrative&&(typeof p.requestId!=='string'||!/^[A-Za-z0-9_-]{8,120}$/.test(p.requestId)))throw new Error('معرّف العملية غير صالح');
  if(p.action==='purgeDay'){
   if(typeof p.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(p.date))throw new Error('حدد تاريخ اليوم المطلوب حذفه');
-  var markerKey='MONITOR_PURGED_DAY_'+p.date,previous=props.getProperty(markerKey),marker=previous?JSON.parse(previous):null;
+  var markerKey='MONITOR_PURGED_DAY_'+(experimentId?experimentId+'_':'')+p.date,previous=props.getProperty(markerKey),marker=previous?JSON.parse(previous):null;
   if(marker&&marker.requestId===p.requestId)return {deleted:true,date:p.date};
   var matches=root.getFoldersByName('توثيق غياب '+p.date);
   while(matches.hasNext()){
@@ -86,7 +93,7 @@ function monitorRequest_(p){
   return {deleted:true,date:p.date};
  }
  if(['record','image'].includes(p.action)){
-  var purged=props.getProperty('MONITOR_PURGED_DAY_'+(p.date||monitorToday_()));
+  var purged=props.getProperty('MONITOR_PURGED_DAY_'+(experimentId?experimentId+'_':'')+(p.date||monitorToday_()));
   if(purged&&(!Number.isFinite(Number(p.record?.scannedAt))||Number(p.record.scannedAt)<=JSON.parse(purged).at))return {discarded:true,reason:'أُلغي هذا الفحص عند تصفير اليوم'};
  }
  var date=p.date||monitorToday_();if(p.action==='startDay'&&date!==monitorToday_())throw new Error('بداية اليوم تكون لتاريخ اليوم في السعودية فقط');var folder=monitorDay_(root,date,p.action==='startDay');

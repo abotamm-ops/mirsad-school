@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(prefix='mirsad-capture-',dir='/tmp') as fixture
   def init(page):
    page.goto('https://mirsad-capture.invalid/')
    page.evaluate('''()=>{window.nativeOnline=true;window.fixtureStore=JSON.parse(localStorage.getItem('storage')||'{}');const noop={addListener(){}};window.importScripts=()=>{};window.chrome={runtime:{id:'a'.repeat(32),onStartup:noop,onInstalled:noop,onMessage:{addListener(fn){window.handler=fn}},sendNativeMessage(host,message,callback){if(!nativeOnline){this.lastError={message:'Specified native messaging host not found.'};callback();delete this.lastError;return}fixtureNative(message).then(callback,error=>{this.lastError={message:error.message};callback();delete this.lastError})}},storage:{onChanged:noop,local:{async get(){return structuredClone(fixtureStore)},async set(v){Object.assign(fixtureStore,structuredClone(v));localStorage.setItem('storage',JSON.stringify(fixtureStore))}}},tabs:{onCreated:noop,onRemoved:noop,async query(q){return q?.active?[{id:1,windowId:1}]:[]},async get(id){return {id,windowId:1,url:'https://teams.microsoft.com/v2/'}},async captureVisibleTab(){const c=document.createElement('canvas');c.width=900;c.height=500;const x=c.getContext('2d');x.fillStyle='#ddd';x.fillRect(0,0,900,500);x.fillStyle='#111';x.font='28px sans-serif';x.fillText('Teams evidence fixture',50,100);return c.toDataURL('image/png')}},alarms:{create(){},clear(){},onAlarm:noop},downloads:{download(){throw Error('Evidence must not go to Downloads')}}}}''')
-   for name in ['schedule-core.js','monitor-model.js','drive-sync.js','local-backup.js','action-status.js','scan-activity.js','background.js']:page.add_script_tag(path=str(R/'teams-probe'/name))
+   for name in ['environment.js','schedule-core.js','monitor-model.js','drive-sync.js','local-backup.js','action-status.js','scan-activity.js','background.js']:page.add_script_tag(path=str(R/'teams-probe'/name))
   def capture(page,scan):
    return page.evaluate('''async scan=>{fixtureStore.mirsadAutoRun={running:true,current:{scanId:scan,teacher:'معلم الاختبار'},period:1,cycle:1,tabId:1};return new Promise(resolve=>handler({type:'MIRSAD_CAPTURE_EVIDENCE',teacher:'معلم الاختبار',status:'absent',period:1,scanId:scan,evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}},{tab:{id:1,windowId:1}},resolve))}''',scan)
   page=ctx.new_page();init(page);assert capture(page,'first-scan')['ok']
@@ -39,5 +39,15 @@ with tempfile.TemporaryDirectory(prefix='mirsad-capture-',dir='/tmp') as fixture
   page=ctx.new_page();init(page);page.evaluate('LocalBackup.check()')
   page.wait_for_function("async()=>{const info=await LocalBackup.info();return info.pendingImages===0&&fixtureStore.mirsadEvidenceRecords[1]?.localBackupPending===false}")
   recovered=list((disk/'C:\\'/'Data Copy'/('توثيق غياب '+day)).glob('*.png'));assert len(recovered)==1;assert recovered[0].read_bytes()==expected['offline-scan']
+  trial='11111111-2222-4333-8444-555555555555'
+  page.evaluate('async id=>{await MirsadEnvironment.select(id);await LocalBackup.checkExperiments()}',trial)
+  page.evaluate("async()=>{await MirsadStore.set({mirsadAutoRun:{running:true,current:{scanId:'trial-scan',teacher:'معلم الاختبار'},period:1,cycle:1,tabId:1}})}")
+  result=page.evaluate("""()=>new Promise(resolve=>handler({type:'MIRSAD_CAPTURE_EVIDENCE',teacher:'معلم الاختبار',status:'absent',period:1,scanId:'trial-scan',evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}},{tab:{id:1,windowId:1}},resolve))""")
+  assert result['ok'],result
+  page.wait_for_function("async()=>{const i=await LocalBackup.info();return i.capturedCount===1&&i.pendingImages===0}")
+  trial_files=list((disk/'C:\\'/'Data Copy'/'Experiments'/trial).rglob('*.png'));assert len(trial_files)==1
+  assert trial_files[0].read_bytes()==expected['trial-scan']
+  page.evaluate('MirsadEnvironment.select(null)')
+  assert page.evaluate('LocalBackup.info()')['capturedCount']==2
   assert not list(disk.rglob('Downloads'))
   b.close();print('PASS real captured PNGs written to both fixture drives; missing helper preserves image across restart; recovery writes C fallback without Downloads')

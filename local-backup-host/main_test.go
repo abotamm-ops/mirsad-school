@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -135,5 +136,31 @@ func TestNativeFramingRejectsBadInput(t *testing.T) {
 	binary.Write(&in, binary.LittleEndian, uint32(maxMessage+1))
 	if e := serve(&in, &bytes.Buffer{}); e == nil {
 		t.Fatal("oversized request accepted")
+	}
+}
+
+func TestExperimentsUseSeparateVerifiedRoots(t *testing.T) {
+	r := fixture("absent")
+	r.ExperimentID = "11111111-2222-4333-8444-555555555555"
+	j, err := validate(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	disks := roots(t)
+	saved := copies(j, disks, writeCopy, time.Second)
+	if !saved.OK || !saved.ExperimentSupport || len(saved.Paths) != 2 {
+		t.Fatal(saved)
+	}
+	for _, p := range saved.Paths {
+		if !strings.Contains(p, filepath.Join("Experiments", r.ExperimentID)) {
+			t.Fatal(p)
+		}
+		if _, err := os.Stat(filepath.Join(p, j.name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r.ExperimentID = "../../official"
+	if _, err := validate(r); err == nil {
+		t.Fatal("unsafe experiment ID accepted")
 	}
 }

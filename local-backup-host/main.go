@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -21,14 +22,16 @@ import (
 const maxMessage = 32 * 1024 * 1024
 
 type request struct {
-	Action   string          `json:"action"`
-	Date     string          `json:"date"`
-	Filename string          `json:"filename"`
-	Image    *string         `json:"image"`
-	Record   json.RawMessage `json:"record"`
+	ExperimentID string          `json:"experimentId"`
+	Action       string          `json:"action"`
+	Date         string          `json:"date"`
+	Filename     string          `json:"filename"`
+	Image        *string         `json:"image"`
+	Record       json.RawMessage `json:"record"`
 }
 type job struct {
 	date, name, recordName string
+	experimentID           string
 	image, record          []byte
 	probe                  bool
 }
@@ -37,11 +40,12 @@ type copyResult struct {
 	err  error
 }
 type response struct {
-	OK       bool     `json:"ok"`
-	Paths    []string `json:"paths"`
-	Fallback bool     `json:"fallback"`
-	Errors   []string `json:"errors,omitempty"`
-	Error    string   `json:"error,omitempty"`
+	ExperimentSupport bool     `json:"experimentSupport"`
+	OK                bool     `json:"ok"`
+	Paths             []string `json:"paths"`
+	Fallback          bool     `json:"fallback"`
+	Errors            []string `json:"errors,omitempty"`
+	Error             string   `json:"error,omitempty"`
 }
 
 func digest(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
@@ -86,7 +90,10 @@ func validate(r request) (job, error) {
 	default:
 		return job{}, errors.New("invalid status")
 	}
-	j := job{date: r.Date, record: r.Record, recordName: "result-" + digest([]byte(record.ScanID)) + ".json"}
+	if r.ExperimentID != "" && !regexp.MustCompile(`^[a-f0-9-]{36}$`).MatchString(r.ExperimentID) {
+		return job{}, errors.New("invalid experiment ID")
+	}
+	j := job{experimentID: r.ExperimentID, date: r.Date, record: r.Record, recordName: "result-" + digest([]byte(record.ScanID)) + ".json"}
 	if r.Image != nil && *r.Image != "" {
 		if record.Status != "absent" && record.Status != "unresolved" {
 			return job{}, errors.New("present photographs prohibited")
@@ -187,6 +194,12 @@ func writeCopy(root string, j job) copyResult {
 	if err := safeFolder(base); err != nil {
 		return fail(err)
 	}
+	if j.experimentID != "" {
+		base = filepath.Join(base, "Experiments", j.experimentID)
+		if err := safeFolder(base); err != nil {
+			return fail(err)
+		}
+	}
 	folder := base
 	if !j.probe {
 		folder = filepath.Join(base, "توثيق غياب "+j.date)
@@ -254,7 +267,7 @@ func copies(j job, roots [3]string, write func(string, job) copyResult, timeout 
 		results = append(results, c)
 		ok = c.err == nil
 	}
-	r := response{OK: ok, Fallback: fallback, Paths: []string{}}
+	r := response{ExperimentSupport: true, OK: ok, Fallback: fallback, Paths: []string{}}
 	for _, result := range results {
 		if result.err != nil {
 			r.Errors = append(r.Errors, result.err.Error())
