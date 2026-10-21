@@ -26,6 +26,17 @@ try:
   assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==4
   widths=page.locator('#todayTable tbody tr').first.locator('td').evaluate_all('(els)=>els.map(e=>e.getBoundingClientRect().width)');assert max(widths)-min(widths)<1
   page.screenshot(path='/tmp/mirsad-report-redesign.png',full_page=True)
+  page.locator('[data-view=reports]').click();page.locator('#teacherReportDate').fill('2026-10-20');page.locator('#loadTeacherReports').click();page.wait_for_selector('.teacher-report-card');assert page.locator('.teacher-report-card').count()==2
+  assert 'غياب يوم كامل' in page.locator('.teacher-report-card').first.inner_text()
+  page.locator('#teacherReportSchool').fill('متوسطة مرصاد')
+  with page.expect_download() as download_info:page.locator('.teacher-report-card button').first.click()
+  download=download_info.value;assert download.suggested_filename.endswith('.docx')
+  import zipfile,xml.etree.ElementTree as ET
+  with zipfile.ZipFile(download.path()) as doc:
+   assert doc.testzip() is None
+   for name in doc.namelist():ET.fromstring(doc.read(name))
+   xml=doc.read('word/document.xml').decode();assert 'متوسطة مرصاد' in xml;assert '2026-10-20' in xml;assert 'إفادة المعلم' in xml
+  page.locator('[data-view=today]').click();page.wait_for_selector('#todayTable tbody tr')
   page.locator('#todayTable .edit-lesson').first.click()
   form=page.locator('.edit-lesson-form');form.locator('select').select_option('present');form.locator('input[type=password]').fill('wrong');form.locator('button').click();page.wait_for_function("document.querySelector('.edit-lesson-form').textContent.includes('غير صحيح')")
   form.locator('input[type=password]').fill(PIN);form.locator('input[aria-label="سبب التعديل"]').fill('حضور مثبت إداريًا');form.locator('button').click();page.wait_for_selector('#details',state='hidden')
