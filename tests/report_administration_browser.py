@@ -26,7 +26,10 @@ try:
   assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==4
   widths=page.locator('#todayTable tbody tr').first.locator('td').evaluate_all('(els)=>els.map(e=>e.getBoundingClientRect().width)');assert max(widths)-min(widths)<1
   page.screenshot(path='/tmp/mirsad-report-redesign.png',full_page=True)
-  page.locator('[data-view=reports]').click();page.locator('#teacherReportDate').fill('2026-10-20');page.locator('#loadTeacherReports').click();page.wait_for_selector('.teacher-report-card');assert page.locator('.teacher-report-card').count()==2
+  page.locator('[data-view=reports]').click();page.locator('#teacherReportDate').fill('2026-10-20');page.locator('#loadTeacherReports').click();page.wait_for_selector('.teacher-report-folder');assert page.locator('.teacher-report-folder').count()==3
+  for folder in page.locator('.teacher-report-folder').all():
+   if folder.locator('.teacher-report-card').count():folder.locator('summary').click()
+  page.wait_for_selector('.teacher-report-card');assert page.locator('.teacher-report-card').count()==2
   assert 'غياب يوم كامل' in page.locator('.teacher-report-card').first.inner_text()
   page.locator('#teacherReportSchool').fill('متوسطة مرصاد')
   with page.expect_download() as download_info:page.locator('.teacher-report-card button').first.click()

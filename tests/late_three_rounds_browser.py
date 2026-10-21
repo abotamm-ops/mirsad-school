@@ -10,7 +10,7 @@ with sync_playwright() as p:
  page.route('https://script.google.com/**',lambda r:r.fulfill(json={'ok':True,'dates':['2026-10-20'],'authMode':'public'} if r.request.post_data_json['action']=='dates' else data))
  page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable .lesson-state.partial-absence');late=page.locator('#todayTable .lesson-state.partial-absence');assert late.inner_text()=='غياب جزئي';assert late.evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(255, 180, 84)';assert page.locator('#todayTable .lesson-state.partial').count()==0
  page.locator('#todayTable .round-info').click();page.wait_for_selector('#details[open]');assert page.locator('.round-result').count()==3;assert 'الدورة 1 — غائب' in page.locator('.round-result').nth(0).inner_text();assert 'الدورة 3 — حاضر' in page.locator('.round-result').nth(2).inner_text();page.locator('#closeDetails').click();
- page.locator('[data-view=reports]').click();page.wait_for_selector('.teacher-report-card');assert 'غياب جزئي عن الحصص' in page.locator('.teacher-report-card').inner_text()
+ page.locator('[data-view=reports]').click();page.wait_for_selector('.teacher-report-folder');page.locator('.teacher-report-folder summary').first.click();page.wait_for_selector('.teacher-report-card');assert 'غياب جزئي عن الحصص' in page.locator('.teacher-report-card').inner_text()
  with page.expect_download() as d:page.locator('.teacher-report-card button').click()
  with zipfile.ZipFile(d.value.path()) as z:
   body=z.read('word/document.xml').decode();assert 'سبب التغيب الجزئي:' in body;assert 'حضور جزئي' not in body;assert 'خالد بن حشر عبد الله العتيبي' in body
