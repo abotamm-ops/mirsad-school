@@ -1,4 +1,4 @@
-"""Anonymous viewer + protected edits/reset against the real Apps Script fixture."""
+"""Authenticated administration + protected edits/reset against the real Apps Script fixture."""
 from pathlib import Path
 import json,subprocess,time,urllib.request
 from datetime import datetime,timezone
@@ -6,7 +6,9 @@ from playwright.sync_api import sync_playwright
 R=Path(__file__).resolve().parents[1];PIN='fixture-admin-pin';PORT=8788
 source=(R/'tests/server.cjs').read_text().replace('8766',str(PORT)).replace('const server=',"backend.props.MONITOR_PUBLIC_READ='true';backend.props.MONITOR_ADMIN_PIN_HASH=require('node:crypto').createHash('sha256').update('fixture-admin-pin').digest('hex');const server=")
 proc=subprocess.Popen(['node','-e',source],cwd=R/'tests',stdout=subprocess.DEVNULL)
-def post(data):return json.loads(urllib.request.urlopen(urllib.request.Request(f'http://127.0.0.1:{PORT}',data=json.dumps(data).encode(),headers={'Content-Type':'application/json'})).read())
+def post(data):
+ data={'key':'r'*40,**data}
+ return json.loads(urllib.request.urlopen(urllib.request.Request(f'http://127.0.0.1:{PORT}',data=json.dumps(data).encode(),headers={'Content-Type':'application/json'})).read())
 try:
  for _ in range(60):
   try:post({'action':'dates'});break
@@ -18,11 +20,13 @@ try:
  assert post({'key':'w'*40,'action':'image','date':'2026-10-20','record':record,'image':'data:image/png;base64,iVBORw0KGgoBAA=='})['ok']
  with sync_playwright() as p:
   b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page(viewport={'width':1440,'height':1000});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+  page.add_init_script("localStorage.setItem('mirsad-monitor-reader-key','r'.repeat(40))")
   page.clock.install(time=datetime(2026,10,20,13,tzinfo=timezone.utc))
   page.route('https://script.google.com/**',lambda r:r.fulfill(json=post(r.request.post_data_json)))
   page.route('https://mirsad-school.onrender.com/**',lambda r:r.fulfill(path=str(R/r.request.url.split('mirsad-school.onrender.com/')[1].split('?')[0])))
   page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable tbody tr')
-  assert page.locator('#connection').is_hidden();assert page.locator('#todayTable .absent').count()==4
+  page.evaluate("Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>window.copiedTeacherLink=text}})");page.locator('#copyTeachersLiveLink').click();page.wait_for_function("window.copiedTeacherLink==='https://mirsad-school.onrender.com/teachers-live.html'")
+  assert page.locator('#connect').is_hidden();assert page.locator('#todayTable .absent').count()==4
   assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==4
   widths=page.locator('#todayTable tbody tr').first.locator('td').evaluate_all('(els)=>els.map(e=>e.getBoundingClientRect().width)');assert max(widths)-min(widths)<1
   page.locator('[data-view=stats]').click();page.wait_for_selector('#statsTable tbody tr');page.evaluate('window.savedStatsNode=document.querySelector("#statsTable table");window.savedChartNode=document.querySelector("#chart svg")');page.clock.fast_forward(31000);assert page.evaluate('window.savedStatsNode===document.querySelector("#statsTable table")');assert page.evaluate('window.savedChartNode===document.querySelector("#chart svg")')
