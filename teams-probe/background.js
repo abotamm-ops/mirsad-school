@@ -33,7 +33,7 @@ async function appendDailyReport(record){
  // Keep the raw result from every scan cycle, then derive the teacher's
  // running attendance state for this lesson from all conclusive scans.
  record.scanStatus=record.scanStatus||record.status||"unresolved";
- reports[day].push(record);
+ if(record.scanId){const existing=reports[day].findIndex(r=>r.scanId===record.scanId);if(existing>=0)reports[day][existing]=record;else reports[day].push(record)}else reports[day].push(record);
  const keyOf=x=>String(x.scheduledTeacher||x.teacher||"")+"|"+String(x.period||"")+"|"+String(x.url||"");
  const groups=new Map();
  for(const item of reports[day]){
@@ -144,14 +144,8 @@ async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https:/
 async function startMonitoring(immediate=false){
  await refreshScheduleSettings();
  const existing=await getRun();
- // An explicit normal start is a restart command: rebuild the active lesson
- // from its first teacher instead of continuing the saved index. The immediate
- // diagnostic path keeps its separate suspend/restore behavior.
- if(existing?.running&&!immediate){
-  await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
-  existing.running=false;await saveRun(existing);await closeProbeTab(existing);
-  await setStatus("أُعيد تشغيل الرصد؛ سيبدأ من أول رابط في الحصة الجارية.",{period:existing.period,restarted:true});
- }
+ if(!immediate&&existing?.paused){await resumeMonitoring();return}
+ if(!immediate&&existing?.running){await recoverPersistedRunAfterBrowserStart();return}
  if(existing?.running&&immediate&&existing.current){await setStatus("المراقبة تعمل بالفعل؛ لن يُفتح فحص فوري أثناء فحص رابط.",{period:existing.period,waiting:!existing.period});return}
  const suspendedRun=immediate&&existing?.running?existing:null;
  const suspendedAlarm=suspendedRun&&chrome.alarms.get?await chrome.alarms.get(NEXT_ALARM):null;
@@ -185,7 +179,7 @@ async function beginPeriod(run,periodNo){
  if(!run.backtestMode&&now<start){await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:start.getTime()});await setStatus("ينتظر بداية الحصة "+p.n+" عند "+p.start,{waiting:true,period:p.n});return}
  if(!run.backtestMode&&now>=end){await advancePeriod(run,periodNo);return}
  const items=scheduleCore.selectPeriodItems(run.schedule,p.n);
- run.period=p.n;run.periodItems=items;run.index=0;run.current=null;run.cycle=1;run.waitingForCycle2=false;
+ run.periodStartedAt=start.getTime();run.period=p.n;run.periodItems=items;run.index=0;run.current=null;run.cycle=1;run.waitingForCycle2=false;
  await saveRun(run);
   if(!items.length){if(run.immediateMode){await setStatus("لا يوجد رابط Teams صالح للحصة "+p.n+"؛ لم يُفتح رابط حصة أخرى. انتهى الفحص الفوري دون تغيير سجل الحضور.",{diagnostic:true,period:p.n,immediateMode:true,guard:"no-links-for-active-period"});await restoreSuspendedRun(run);return}const next=nextPeriod(now);await setStatus("لا يوجد رابط Teams صالح للحصة الجارية رقم "+p.n+". لم يُفتح رابط حصة أخرى؛ ينتظر مرصاد موعد الحصة التالية عند "+next.period.start+".",{diagnostic:true,period:p.n,totalItems:run.schedule.length,periodCounts:run.diagnostic?.periodCounts||[],validLinkCounts:run.diagnostic?.validLinkCounts||[],guard:"no-links-for-active-period"});await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:next.when});return}
  const delayMinutes=Math.max(1,Math.min(10,Number(scheduleSettings.scanDelay)||1));
@@ -218,7 +212,7 @@ async function navigateCurrent(run){
   }
   if(activePeriod.n!==run.period){
    // Drop the stale period and restart only against the currently active one.
-   run.period=activePeriod.n;run.periodItems=scheduleCore.selectPeriodItems(run.schedule,activePeriod.n);
+   run.periodStartedAt=periodBounds(activePeriod,nowDate,"active").start.getTime();run.period=activePeriod.n;run.periodItems=scheduleCore.selectPeriodItems(run.schedule,activePeriod.n);
    run.index=0;run.cycle=1;run.waitingForCycle2=false;run.current=null;
    await saveRun(run);
    await setStatus("تغيّر وقت الحصة أثناء الرصد؛ ألغى مرصاد الرابط القديم وانتقل إلى الحصة المتزامنة رقم "+activePeriod.n+" فقط.",{period:activePeriod.n,guard:"period-resync"});
@@ -302,7 +296,7 @@ async function receiveResult(message){
   if(!verified){status="unresolved";detail="لم يُعتمد الغياب لعدم وجود لقطة محفوظة ومتحقق منها لاسم المعلم ضمن المدعوين؛ الحالة غير محسومة."}
  }
  const resultRecord={scanId:item.scanId,teacher:resultTeacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status,detail,scannedAt,cycle:run.cycle||0};
- run.results.push(resultRecord);
+ run.results.push(resultRecord);await saveRun(run);
  if(!run.testMode&&!run.backtestMode){await appendDailyReport(resultRecord);await LocalBackup.enqueue(resultRecord).catch(e=>setStatus("تعذر تثبيت النسخة المحلية: "+String(e.message)));await CloudMonitoring.record(run,resultRecord).catch(()=>{})}
 
  run.index++;run.current=null;
@@ -325,7 +319,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
   if(typeof navigator!=="undefined"&&navigator.onLine===false){
    run.current=null;run.waitingForReconnect=true;await saveRun(run);await closeProbeTab(run);
    await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+RECONNECT_RETRY_MS});
-   await setStatus("انقطع اتصال الإنترنت أثناء الحصة "+run.period+"؛ أوقف مرصاد تسجيل نتيجة مؤقتة وسيعيد قائمة الحصة من أولها عند عودة الاتصال.",{period:run.period,waiting:true,waitingForReconnect:true});return;
+   await setStatus("انقطع اتصال الإنترنت أثناء الحصة "+run.period+"؛ أوقف مرصاد تسجيل نتيجة مؤقتة وسيستأنف من المعلم غير المكتمل عند عودة الاتصال.",{period:run.period,waiting:true,waitingForReconnect:true});return;
   }
   const diagnostic=await captureTimeoutDiagnostic(run,item);
   const latest=await getRun();if(!latest?.running||latest.current?.scanId!==item.scanId)return;
@@ -346,9 +340,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
  if(alarm.name!==NEXT_ALARM)return;
  if(run.waitingForReconnect){
   if(typeof navigator!=="undefined"&&navigator.onLine===false){await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+RECONNECT_RETRY_MS});return}
-  run.waitingForReconnect=false;const active=periodNow(new Date());
-  if(active){await setStatus("عاد الاتصال؛ يعيد مرصاد قائمة الحصة "+active.n+" من أول رابط.",{period:active.n,reconnected:true});await beginPeriod(run,active.n);return}
-  run.period=null;run.periodItems=[];run.index=0;run.current=null;await saveRun(run);const next=nextPeriod(new Date());await chrome.alarms.create(NEXT_ALARM,{when:next.when});await setStatus("عاد الاتصال بعد انتهاء وقت الحصة؛ ينتظر مرصاد الحصة "+next.period.n+".",{period:next.period.n,waiting:true,reconnected:true});return;
+  await recoverPersistedRunAfterBrowserStart();return;
  }
  if(run.period){const p=PERIODS.find(x=>x.n===run.period);if(p&&Date.now()<periodBounds(p,new Date(),"past").end.getTime()){
    if(run.waitingForCycle2){
@@ -359,13 +351,31 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
   }await advancePeriod(run,run.period);return}
  const now=new Date();const p=periodNow(now);if(p)await beginPeriod(run,p.n);else{const next=nextPeriod(now);await setStatus("لا توجد حصة نشطة الآن. الوقت الحالي "+now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". أقرب موعد: الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,now:now.toISOString(),nextAt:next.when,periods:PERIODS});await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 });
-async function recoverPersistedRunAfterBrowserStart(){
+let recoveryInProgress=null;
+function recoverPersistedRunAfterBrowserStart(){if(recoveryInProgress)return recoveryInProgress;recoveryInProgress=recoverSavedProgress().finally(()=>{recoveryInProgress=null});return recoveryInProgress}
+async function recoverSavedProgress(){
  await refreshScheduleSettings();const run=await getRun();if(!run?.running||run.autoResume===false)return;
- await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);run.current=null;run.waitingForReconnect=false;await closeProbeTab(run);
- const active=periodNow(new Date());
- if(active){run.running=true;run.backtestMode=false;run.immediateMode=false;run.suspendedRun=null;run.index=0;run.cycle=1;await setStatus("استعاد مرصاد التشغيل بعد إعادة فتح Chrome؛ يبدأ قائمة الحصة "+active.n+" من أول رابط.",{period:active.n,recovered:true});await beginPeriod(run,active.n);return}
- run.period=null;run.periodItems=[];run.index=0;run.cycle=1;await saveRun(run);const next=nextPeriod(new Date());await chrome.alarms.create(NEXT_ALARM,{when:next.when});await setStatus("استعاد مرصاد التشغيل بعد إعادة فتح Chrome؛ ينتظر موعد الحصة "+next.period.n+".",{period:next.period.n,waiting:true,recovered:true});
+ const pending=chrome.alarms.get?await chrome.alarms.get(NEXT_ALARM):null;
+ const active=periodNow(new Date()),bounds=active?periodBounds(active,new Date(),"active"):null;
+ const savedAt=run.periodStartedAt||run.current?.scanDeadlineAt||run.results?.[run.results.length-1]?.scannedAt||run.startedAt;
+ const samePeriod=active&&active.n===run.period&&Number.isFinite(savedAt)&&savedAt>=bounds.start.getTime()&&savedAt<bounds.end.getTime();
+ await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
+ if(samePeriod&&run.current&&(run.results||[]).some(r=>r.scanId===run.current.scanId)){const record=run.results.find(r=>r.scanId===run.current.scanId);if(!run.testMode&&!run.backtestMode){await appendDailyReport(record);await LocalBackup.enqueue(record).catch(()=>{});await CloudMonitoring.record(run,record).catch(()=>{})}run.index++;run.current=null;await saveRun(run)}
+ if(samePeriod&&run.current){const records=await chrome.storage.local.get('mirsadEvidenceRecords');const proof=(records.mirsadEvidenceRecords||[]).find(e=>e.scanId===run.current.scanId&&e.status==='absent'&&e.evidenceVerified===true&&Number(e.period)===Number(run.period));if(proof){await receiveResult({scanId:run.current.scanId,result:{status:'absent',teacher:proof.teacher,evidenceTeacher:proof.teacher,detail:'غائب: استعيد إثبات الغياب المحفوظ قبل الانقطاع لنفس المعلم والفحص.'}});return}}
+ run.current=null;run.waitingForReconnect=false;await closeProbeTab(run);
+ if(typeof navigator!=="undefined"&&navigator.onLine===false){run.waitingForReconnect=true;await saveRun(run);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+RECONNECT_RETRY_MS});await setStatus('التقدم محفوظ؛ ينتظر مرصاد عودة الاتصال لاستئناف الرصد دون إعادة النتائج.');return}
+ if(active){
+  if(!samePeriod){await beginPeriod(run,active.n);return}
+  run.periodStartedAt=bounds.start.getTime();await saveRun(run);
+  await setStatus('استأنف مرصاد من موضع التوقف: الحصة '+run.period+'، الدورة '+run.cycle+'، اكتمل '+run.index+' من '+run.periodItems.length+' معلمًا.',{period:run.period,cycle:run.cycle,done:run.index,recovered:true});
+  if(run.waitingForCycle2){const when=run.nextCycleAt||pending?.scheduledTime||Date.now();await chrome.alarms.create(NEXT_ALARM,{when:Math.max(Date.now()+1000,when)});return}
+  const firstAt=bounds.start.getTime()+scheduleSettings.scanDelay*60000;
+  if(run.index===0&&run.cycle===1&&Date.now()<firstAt){await chrome.alarms.create(NEXT_ALARM,{when:firstAt});return}
+  await navigateCurrent(run);return;
+ }
+ await saveRun(run);const next=nextPeriod(new Date());await chrome.alarms.create(NEXT_ALARM,{when:next.when});await setStatus('التقدم محفوظ؛ ينتظر مرصاد الحصة '+next.period.n+' دون إعادة الحصص المكتملة.',{period:next.period.n,waiting:true,recovered:true});
 }
+chrome.tabs.onRemoved?.addListener(tabId=>{(async()=>{const run=await getRun();if(!run?.running||run.immediateMode||!run.current||run.tabId!==tabId)return;run.tabId=null;run.probeTabIds=[];run.waitingForReconnect=true;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+1000});await setStatus('أُغلقت صفحة الفحص؛ التقدم محفوظ وسيُستأنف المعلم غير المكتمل تلقائيًا.')})().catch(()=>{})});
 chrome.runtime.onStartup?.addListener(()=>{recoverPersistedRunAfterBrowserStart().catch(()=>{})});
 chrome.runtime.onInstalled?.addListener(details=>{if(details?.reason==="update")recoverPersistedRunAfterBrowserStart().catch(()=>{})});
 async function labelEvidenceCapture(dataUrl,teacher,status,period,cycle){
@@ -452,6 +462,7 @@ async function resumeMonitoring(){
  await refreshScheduleSettings();const run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};
  run.paused=false;run.running=true;run.autoResume=run.pauseAutoResume!==false;run.current=null;await saveRun(run);
  await setStatus("تم استئناف الرصد من موضع التوقف، مع مراعاة وقت الحصة الحالية.");
+ if(run.periodStartedAt){const active=periodNow(),bounds=active?periodBounds(active,new Date(),"active"):null;if(!bounds||active.n!==run.period||run.periodStartedAt!==bounds.start.getTime()){await recoverPersistedRunAfterBrowserStart();return {ok:true}}}
  if(run.pausedNextAt){const when=Math.max(Date.now()+1000,run.pausedNextAt);run.pausedNextAt=null;await saveRun(run);await chrome.alarms.create(NEXT_ALARM,{when})}
  else if(run.period)await navigateCurrent(run);
  else {const active=periodNow();if(active)await beginPeriod(run,active.n);else await chrome.alarms.create(NEXT_ALARM,{when:nextPeriod().when})}
