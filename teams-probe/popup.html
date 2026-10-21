@@ -18,10 +18,10 @@
     <input id="manualGapMinutes" type="number" min="0" max="60" step="1" value="1">
     <label for="scanDelay">الدخول بعد بداية الحصة (دقيقة)</label>
     <input id="scanDelay" type="number" min="1" max="10" step="1" value="1">
-    <label for="roundCount">عدد دورات الرصد للحصة (1 إلى 3)</label>
-    <input id="roundCount" type="number" min="1" max="3" step="1" value="2">
-    <label for="roundGapMinutes">الفاصل بين الدورات (دقيقة، 1 إلى 10)</label>
-    <input id="roundGapMinutes" type="number" min="1" max="10" step="1" value="5">
+    <label for="roundCount">عدد دورات الرصد للحصة</label>
+    <input id="roundCount" type="number" min="3" max="3" step="1" value="3" readonly>
+    <label for="roundGapMinutes">الفاصل بين الأولى والثانية (دقيقة، 1 إلى 10)</label>
+    <input id="roundGapMinutes" type="number" min="1" max="10" step="1" value="5"><label for="thirdRoundGapMinutes">الفاصل بين الثانية والثالثة (دقيقة، 1 إلى 10)</label><input id="thirdRoundGapMinutes" type="number" min="1" max="10" step="1" value="5"><p class="hint">ثلاث دورات فقط. يبدأ الفاصل بعد اكتمال الدورة السابقة، ولا تُفتح دورة بعد نهاية الحصة. الأيام المحفوظة سابقًا تحتفظ بعدد دوراتها.</p>
     <div id="preview" class="preview">جارٍ تحميل الإعدادات…</div>
     <button id="save-time" type="button" style="background:#334155">حفظ وتحديث التوقيت</button>
   </section>
@@ -40,7 +40,7 @@
   <button id="diagnose" class="diagnose">فحص ربط الحصص والروابط</button>
   <button id="export" class="export">تنزيل تقرير الرصد CSV</button>
 </section><div id="local-backup-summary" class="backup-summary" role="status">جارٍ التحقق من الصور والنسخ المحلي…</div><div class="status-label">حالة الرصد</div>  <div id="status" role="status">لم تبدأ دورة الرصد بعد.</div>
-</main><footer>مرصاد · 0.6.10 <span>روابط مدرستك، وتوثيق يومك</span></footer>
+</main><footer>مرصاد · 0.6.11 <span>روابط مدرستك، وتوثيق يومك</span></footer>
   <script src="schedule-core.js"></script>
   <script src="popup.js"></script><script src="popup-layout.js"></script><script src="local-backup-ui.js"></script>
 </body>

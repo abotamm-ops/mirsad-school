@@ -24,13 +24,14 @@
    const ended=lessonEnded(data,lesson.period,options.now||new Date());
    const inferred=!reset&&!conclusive.length&&ended&&(lesson.url===''||!scans.length||scans.every(r=>r.status==='no-link'));
    let finalState=override?override.status:conclusive.length?state(conclusive,conclusive.length):inferred?'absent':scans.some(r=>r.status==='unresolved')?'unresolved':'pending';
-   return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred,ended,reset:!!reset&&!scans.length&&!override,
+   const lateAfterTwo=!override&&rounds[0]?.status==='absent'&&rounds[1]?.status==='absent'&&rounds[2]?.status==='present';
+   return {...lesson,rounds,state:finalState,displayState:lateAfterTwo?'late':finalState,override:override||null,inferred,ended,reset:!!reset&&!scans.length&&!override,
     pendingRounds:override||inferred?0:rounds.filter(r=>r.pending).length,failedRounds:override?0:rounds.filter(r=>!r.pending&&!['present','absent'].includes(r.status)).length,
     evidence:allScans.filter(r=>r.evidenceUrl&&r.status!=='present'),history:allScans,adjustments:audit.filter(a=>a.type==='reset'||(a.teacherId===lesson.teacherId&&a.period===lesson.period)),
-    late:!override&&rounds[0]?.status==='absent'&&rounds.slice(1).some(r=>r.status==='present')};
+    late:lateAfterTwo||(!override&&rounds.length===2&&rounds[0]?.status==='absent'&&rounds[1]?.status==='present')};
   });
  }
- function stats(days,options={}){const map=new Map();for(const data of days){const rows=cells(data,options);for(const teacher of data.snapshot?.teachers||[]){let stat=map.get(teacher.id)||{...teacher,scheduled:0,absentLessons:0,absentDays:0,present:0,unknown:0,partial:0,late:0};const lessons=rows.filter(x=>x.teacherId===teacher.id);stat.scheduled+=lessons.length;for(const x of lessons){stat.absentLessons+=Number(x.state==='absent');stat.present+=Number(['present','partial'].includes(x.state));stat.unknown+=Number(x.state==='unresolved');stat.partial+=Number(x.state==='partial');stat.late+=Number(x.late)}stat.absentDays+=Number(lessons.length>0&&lessons.every(x=>x.state==='absent'));stat.percent=stat.scheduled?Math.round(stat.absentLessons/stat.scheduled*1000)/10:0;map.set(teacher.id,stat)}}return [...map.values()]}
+ function stats(days,options={}){const map=new Map();for(const data of days){const rows=cells(data,options);for(const teacher of data.snapshot?.teachers||[]){let stat=map.get(teacher.id)||{...teacher,scheduled:0,absentLessons:0,absentDays:0,present:0,unknown:0,partial:0,late:0};const lessons=rows.filter(x=>x.teacherId===teacher.id);stat.scheduled+=lessons.length;for(const x of lessons){stat.absentLessons+=Number(x.state==='absent');stat.present+=Number(['present','partial'].includes(x.state));stat.unknown+=Number(x.state==='unresolved');stat.partial+=Number(x.state==='partial'&&x.displayState!=='late');stat.late+=Number(x.late)}stat.absentDays+=Number(lessons.length>0&&lessons.every(x=>x.state==='absent'));stat.percent=stat.scheduled?Math.round(stat.absentLessons/stat.scheduled*1000)/10:0;map.set(teacher.id,stat)}}return [...map.values()]}
  function live(data,options={}){
   const now=options.now||new Date(),date=day(now),empty={date,period:null,alerts:[],cycles:[],latestScanAt:null};
   if(!data?.snapshot||data.snapshot.date!==date)return empty;

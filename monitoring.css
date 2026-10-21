@@ -44,3 +44,5 @@ main{padding:24px 18px;max-width:1560px}nav{gap:8px;margin-bottom:12px}nav butto
 .cell-tools .edit-lesson{color:#155e75;background:#edf6f8;border:1px solid #cfe3e9;border-radius:6px;padding:3px 7px;min-height:29px;font-size:11px}.cell-tools .edit-lesson:hover,.cell-tools .edit-lesson:focus-visible{background:#dceef2;outline:2px solid #94c7d2}
 
 .teacher-report-card{padding:20px;border:1px solid #d7e4e9;border-top:4px solid #0b7f7a;border-radius:12px;background:#f8fbfc}.teacher-report-card h3{font-size:20px;color:#103d50;margin:0 0 12px}.teacher-report-card button{background:#0b7f7a;color:white}
+
+.lesson-state.late,.effective-state.late,.legend .late{background:#ffb454;color:#6b2b00;border:1px solid #ea850b;font-weight:700}
