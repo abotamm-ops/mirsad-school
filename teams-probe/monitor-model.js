@@ -14,8 +14,9 @@
  }
  function cells(data,options={}){
   if(!data?.snapshot)return [];
-  const audit=data.adjustments||[],reset=[...audit].reverse().find(a=>a.type==='reset'),cutoff=reset?.at||0;
+  const audit=data.adjustments||[];
   return data.snapshot.lessons.map(lesson=>{
+   const reset=[...audit].reverse().find(a=>a.type==='reset'||(a.type==='range-reset'&&a.teacherId===lesson.teacherId&&a.period===lesson.period)),cutoff=reset?.at||0;
    const allScans=(data.records||[]).filter(r=>r.teacherId===lesson.teacherId&&Number(r.period)===lesson.period);
    const scans=allScans.filter(r=>!reset||r.scannedAt>cutoff);
    const rounds=Array.from({length:data.snapshot.roundCount},(_,i)=>scans.filter(r=>r.cycle===i+1).sort((a,b)=>b.scannedAt-a.scannedAt)[0]||{status:'unresolved',pending:true});

@@ -65,7 +65,7 @@ function monitorRequest_(p){
  var siteReader=!!sitePassword&&monitorEqual_(p.key,sitePassword);
  var publicRead=props.getProperty('MONITOR_PUBLIC_READ')==='true';
  if(!writer&&!reader&&!siteReader)throw new Error('غير مصرح بالدخول');
- var administrative=['override','resetReport','purgeDay','reportSchedule'].indexOf(p.action)>=0;
+ var administrative=['override','resetReport','purgeDay','purgeRange','reportSchedule'].indexOf(p.action)>=0;
  if(administrative){var supplied=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(p.adminPin||''),Utilities.Charset.UTF_8).map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2)}).join('');var expected=props.getProperty('MONITOR_ADMIN_PIN_HASH')||'0e3dc69daef679ae76ca56039591a2002c71041a945a57db4460ee22db2259e5';if(!monitorEqual_(supplied,expected))throw new Error('الرقم السري للإدارة غير صحيح')}
  var reading=['dates','day','teacherLink'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
  var root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT));
@@ -99,6 +99,21 @@ function monitorRequest_(p){
   return {snapshot:data.snapshot,folderUrl:folder.getUrl()};
  }
  if(!data)throw new Error('جدول اليوم غير محفوظ');
+ if(p.action==='purgeRange'){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(p.date||'')||!/^([01]\d|2[0-3]):[0-5]\d$/.test(p.fromTime||'')||!/^([01]\d|2[0-3]):[0-5]\d$/.test(p.toTime||''))throw new Error('حدد التاريخ ووقت البداية والنهاية');
+  var offset=Number(p.timezoneOffset);if(p.timezoneOffset===undefined||!Number.isInteger(offset)||offset < -840||offset > 840)throw new Error('تعذر تحديد توقيت الجهاز');
+  var from=Date.parse(p.date+'T'+p.fromTime+':00Z')+offset*60000,until=Date.parse(p.date+'T'+p.toTime+':00Z')+offset*60000+60000;
+  if(!Number.isFinite(from)||until<=from)throw new Error('وقت النهاية يجب ألا يسبق البداية');
+  var previousRange=(data.rangePurges||[]).find(function(x){return x.id===p.requestId});if(previousRange)return {deleted:true,date:date,records:previousRange.records,images:previousRange.images};
+  var inside=function(at){return Number.isFinite(Number(at))&&Number(at)>=from&&Number(at)<until},removed=(data.records||[]).filter(function(r){return inside(r.scannedAt)}),imageIds=Object.keys(data.evidence||{}).filter(function(id){return inside(data.evidence[id].record?.scannedAt)||removed.some(function(r){return r.scanId===id})});
+  var affected=removed.concat(imageIds.map(function(id){return data.evidence[id].record})).filter(Boolean);
+  for(var imageId of imageIds){var evidence=data.evidence[imageId];if(!evidence.fileId)throw new Error('تعذر تحديد صورة الفترة بأمان');var deletedImage=UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(evidence.fileId),{method:'delete',headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},muteHttpExceptions:true});if([204,404].indexOf(deletedImage.getResponseCode())<0)throw new Error('لم يكتمل حذف صور الفترة؛ أعد المحاولة لإكمال العملية');}
+  data.records=(data.records||[]).filter(function(r){return !inside(r.scannedAt)});imageIds.forEach(function(id){delete data.evidence[id]});
+  var keptAdjustments=(data.adjustments||[]).filter(function(a){return a.type!=='override'||!inside(a.at)});var removedOverrides=(data.adjustments||[]).filter(function(a){return a.type==='override'&&inside(a.at)});affected=affected.concat(removedOverrides);data.adjustments=keptAdjustments;
+  data.snapshot.lessons.forEach(function(l){if(!affected.some(function(r){return r.teacherId===l.teacherId&&Number(r.period)===l.period}))return;var retained=data.records.some(function(r){return r.teacherId===l.teacherId&&Number(r.period)===l.period})||Object.keys(data.evidence||{}).some(function(id){var r=data.evidence[id].record;return r&&r.teacherId===l.teacherId&&Number(r.period)===l.period})||keptAdjustments.some(function(a){return a.type==='override'&&a.teacherId===l.teacherId&&a.period===l.period});if(!retained)data.adjustments.push({id:p.requestId+'-'+l.teacherId+'-'+l.period,type:'range-reset',teacherId:l.teacherId,period:l.period,at:Date.now(),sequence:Math.max(0,...data.adjustments.map(function(a){return a.sequence||0}))+1})});
+  var rangeEntry={id:p.requestId,from:from,until:until,at:Date.now(),records:removed.length,images:imageIds.length};data.rangePurges=data.rangePurges||[];data.rangePurges.push(rangeEntry);monitorWrite_(folder,'attendance.json',data);return {deleted:true,date:date,records:removed.length,images:imageIds.length};
+ }
+ if(['record','image'].includes(p.action)&&(data.rangePurges||[]).some(function(range){return Number(p.record?.scannedAt)>=range.from&&Number(p.record.scannedAt)<range.until}))return {discarded:true,reason:'أُلغي هذا الفحص عند تصفير الفترة'};
  if(administrative){
   if(typeof p.requestId!=='string'||!/^[A-Za-z0-9_-]{8,120}$/.test(p.requestId))throw new Error('معرّف العملية غير صالح');
   data.adjustments=data.adjustments||[];
@@ -189,8 +204,9 @@ var MONITOR_TEACHER_MODEL_=(function(){var module={exports:{}};
  }
  function cells(data,options={}){
   if(!data?.snapshot)return [];
-  const audit=data.adjustments||[],reset=[...audit].reverse().find(a=>a.type==='reset'),cutoff=reset?.at||0;
+  const audit=data.adjustments||[];
   return data.snapshot.lessons.map(lesson=>{
+   const reset=[...audit].reverse().find(a=>a.type==='reset'||(a.type==='range-reset'&&a.teacherId===lesson.teacherId&&a.period===lesson.period)),cutoff=reset?.at||0;
    const allScans=(data.records||[]).filter(r=>r.teacherId===lesson.teacherId&&Number(r.period)===lesson.period);
    const scans=allScans.filter(r=>!reset||r.scannedAt>cutoff);
    const rounds=Array.from({length:data.snapshot.roundCount},(_,i)=>scans.filter(r=>r.cycle===i+1).sort((a,b)=>b.scannedAt-a.scannedAt)[0]||{status:'unresolved',pending:true});

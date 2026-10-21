@@ -65,6 +65,11 @@ try:
   assert 'حضور الحصص' in page.locator('#statsTable thead').inner_text();assert 'غير محسوم' in page.locator('#chart .chart-legend').inner_text()
   page.locator('[data-view=today]').click();page.wait_for_selector('#todayTable tbody tr')
   page.locator('[data-reset-target=todayTable]').click()
+  assert page.locator('#resetDay').input_value()=='2026-10-20'
+  assert page.locator('#resetScope').input_value()=='range'
+  assert page.locator('#resetTimes').is_visible()
+  page.locator('#resetScope').select_option('day')
+  assert page.locator('#resetTimes').is_hidden()
   page.locator('#resetPin').fill('wrong');page.locator('#resetForm button').click();page.wait_for_function("document.querySelector('#resetFeedback').textContent.includes('غير صحيح')")
   assert len(post({'action':'day','date':'2026-10-20'})['adjustments'])==2
   page.locator('#resetPin').fill(PIN);page.locator('#resetForm button').click();page.wait_for_selector('#resetDialog',state='hidden')
