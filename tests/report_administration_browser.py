@@ -26,7 +26,7 @@ try:
   assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==4
   widths=page.locator('#todayTable tbody tr').first.locator('td').evaluate_all('(els)=>els.map(e=>e.getBoundingClientRect().width)');assert max(widths)-min(widths)<1
   page.screenshot(path='/tmp/mirsad-report-redesign.png',full_page=True)
-  page.locator('[data-view=reports]').click();page.locator('#teacherReportDate').fill('2026-10-20');page.locator('#loadTeacherReports').click();page.wait_for_selector('.teacher-report-folder');assert page.locator('.teacher-report-folder').count()==3
+  page.locator('[data-view=reports]').click();page.locator('#teacherReportDate').fill('2026-10-20');page.locator('#loadTeacherReports').click();page.wait_for_selector('.teacher-report-folder');assert page.locator('.teacher-report-folder').count()==2;assert 'معلم بلا حصص' not in page.locator('#teacherReportList').inner_text()
   for folder in page.locator('.teacher-report-folder').all():
    if folder.locator('.teacher-report-card').count():assert folder.get_attribute('open') is not None
   page.wait_for_selector('.teacher-report-card');assert page.locator('.teacher-report-card').count()==2
