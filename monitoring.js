@@ -1,6 +1,6 @@
 'use strict';
-const EXPERIMENT_ID=new URLSearchParams(location.search).get('experiment')||'';
-if(EXPERIMENT_ID){const warning=document.createElement('div');warning.className='error';warning.textContent='تجربة يوم كاملة — الجداول والصور والتقارير والإحصائيات واللايف هنا للتجربة فقط';document.body.prepend(warning);}
+const EXPERIMENT_ID='';
+if(new URLSearchParams(location.search).has('experiment')){const officialUrl=new URL(location.href);officialUrl.searchParams.delete('experiment');history.replaceState(null,'',officialUrl.href);}
 const DEFAULT_MONITOR_ENDPOINT='https://script.google.com/macros/s/AKfycbwvkojpc9K_wxKWZhFJj38_OkD5aw18299ceLWdFnKOSMqoGiV3oL74AueuZiKTEHdo/exec',PREVIOUS_MONITOR_ENDPOINTS=['https://script.google.com/macros/s/AKfycbxCujo4KK6XCQGQsj_o8J68Kt7otYa9ropHJqJmUfVxJPNSp9jvGQWe7rF8eXvvhU14/exec','https://script.google.com/macros/s/AKfycbyPULmkjNZ24jMbS5q7Iym5DQbV_EoDf2wMLAqZ_kYsKsuI3sekJfQdR2Euk9yt2wo7/exec','https://script.google.com/macros/s/AKfycbxl9jFw4R8OPgKACyf2wFEsvAIaRF5s2czH4OHdTkF3gJuF9PhR-Br3bCxcsA7mJ-iC/exec'],savedMonitorEndpoint=localStorage.getItem('mirsad-monitor-url');
 const model=MirsadMonitorModel,$=id=>document.getElementById(id),cache=new Map();let administrationMode=false,publicAccess=false,currentView='today',dates=[],endpoint=PREVIOUS_MONITOR_ENDPOINTS.includes(savedMonitorEndpoint)?DEFAULT_MONITOR_ENDPOINT:(savedMonitorEndpoint||DEFAULT_MONITOR_ENDPOINT),readerKey='',selectedDay=null,extensionReady=false,accessEpoch=0,settingsInitialized=false,settingsDirty=false,activeScan=null,lastFollowedScan='',lastActivityContact=0;
 const SAVED_READER_KEY='mirsad-monitor-reader-key',ARCHIVE_PASSWORD_KEY='mirsad_archive_password_v1';

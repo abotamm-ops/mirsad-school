@@ -2,7 +2,7 @@
 (()=>{'use strict';const model=globalThis.MirsadMonitorModel,root=document.getElementById('liveMonitoring');if(!model||!root)return;
  const current='https://script.google.com/macros/s/AKfycbwvkojpc9K_wxKWZhFJj38_OkD5aw18299ceLWdFnKOSMqoGiV3oL74AueuZiKTEHdo/exec';
  const old=['AKfycbxCujo4KK6XCQGQsj_o8J68Kt7otYa9ropHJqJmUfVxJPNSp9jvGQWe7rF8eXvvhU14','AKfycbyPULmkjNZ24jMbS5q7Iym5DQbV_EoDf2wMLAqZ_kYsKsuI3sekJfQdR2Euk9yt2wo7','AKfycbxl9jFw4R8OPgKACyf2wFEsvAIaRF5s2czH4OHdTkF3gJuF9PhR-Br3bCxcsA7mJ-iC'];
- const experimentId=new URLSearchParams(location.search).get('experiment')||'';
+ const experimentId='';
  if(experimentId){for(const a of document.querySelectorAll('a[href]')){try{const u=new URL(a.href,location.href);if(u.origin===location.origin&&['/','/index.html','/automatic-monitoring.html'].includes(u.pathname)){u.searchParams.set('experiment',experimentId);a.href=u.href}}catch{}}}
  const saved=localStorage.getItem('mirsad-monitor-url'),endpoint=saved&&!old.some(id=>saved.includes(id))?saved:current;
  const context=document.getElementById('liveMonitoringContext'),cycles=document.getElementById('liveMonitoringCycles'),alerts=document.getElementById('liveMonitoringAlerts'),update=document.getElementById('liveMonitoringUpdate');
