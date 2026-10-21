@@ -34,8 +34,9 @@ try:
   import zipfile,xml.etree.ElementTree as ET
   with zipfile.ZipFile(download.path()) as doc:
    assert doc.testzip() is None
-   for name in doc.namelist():ET.fromstring(doc.read(name))
-   xml=doc.read('word/document.xml').decode();assert 'متوسطة مرصاد' in xml;assert '2026-10-20' in xml;assert 'إفادة المعلم' in xml
+   for name in doc.namelist():
+    if name.endswith(('.xml','.rels')):ET.fromstring(doc.read(name))
+   xml=doc.read('word/document.xml').decode();assert 'متوسطة مرصاد' in doc.read('word/header2.xml').decode();assert '2026-10-20' in xml;assert 'إفادة المعلم' in xml
   page.locator('[data-view=today]').click();page.wait_for_selector('#todayTable tbody tr')
   page.locator('#todayTable .edit-lesson').first.click()
   form=page.locator('.edit-lesson-form');form.locator('select').select_option('present');form.locator('input[type=password]').fill('wrong');form.locator('button').click();page.wait_for_function("document.querySelector('.edit-lesson-form').textContent.includes('غير صحيح')")
