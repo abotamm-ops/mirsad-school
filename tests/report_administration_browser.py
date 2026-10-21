@@ -49,7 +49,7 @@ try:
   assert page.locator('#todayTable .unresolved').count()==1
   raw=post({'action':'day','date':'2026-10-20'});assert raw['records'][0]['status']=='absent';assert raw['records'][0]['evidenceUrl'];assert len(raw['adjustments'])==2
   page.locator('[data-view=stats]').click();page.wait_for_selector('#statsTable tbody tr')
-  assert page.locator('#statsSummary .summary-card strong').all_text_contents()==['3','1','0','1']
+  assert page.locator('#statsSummary .summary-card strong').all_text_contents()==['3','1','0','1','0']
   assert page.locator('#chart [data-series=unknown][data-value="1"]').count()==1
   assert page.locator('#chart [data-series=present]').count()==3
   assert 'حضور الحصص' in page.locator('#statsTable thead').inner_text();assert 'غير محسوم' in page.locator('#chart .chart-legend').inner_text()

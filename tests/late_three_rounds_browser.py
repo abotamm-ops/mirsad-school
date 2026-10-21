@@ -8,9 +8,11 @@ with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.clock.install(time=datetime(2026,10,20,13,tzinfo=timezone.utc))
  page.route('https://mirsad-school.onrender.com/**',lambda r:r.fulfill(path=str(R/r.request.url.split('mirsad-school.onrender.com/')[1].split('?')[0])))
  page.route('https://script.google.com/**',lambda r:r.fulfill(json={'ok':True,'dates':['2026-10-20'],'authMode':'public'} if r.request.post_data_json['action']=='dates' else data))
- page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable .lesson-state.late');late=page.locator('#todayTable .lesson-state.late');assert late.inner_text()=='متأخر';assert late.evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(255, 180, 84)';assert page.locator('#todayTable .lesson-state.partial').count()==0
- page.locator('[data-view=reports]').click();page.wait_for_selector('.teacher-report-card');assert 'تأخر عن الحصص' in page.locator('.teacher-report-card').inner_text()
+ page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable .lesson-state.partial-absence');late=page.locator('#todayTable .lesson-state.partial-absence');assert late.inner_text()=='غياب جزئي';assert late.evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(255, 180, 84)';assert page.locator('#todayTable .lesson-state.partial').count()==0
+ page.locator('#todayTable .round-info').click();page.wait_for_selector('#details[open]');assert page.locator('.round-result').count()==3;assert 'الدورة 1 — غائب' in page.locator('.round-result').nth(0).inner_text();assert 'الدورة 3 — حاضر' in page.locator('.round-result').nth(2).inner_text();page.locator('#closeDetails').click();
+ page.locator('[data-view=reports]').click();page.wait_for_selector('.teacher-report-card');assert 'غياب جزئي عن الحصص' in page.locator('.teacher-report-card').inner_text()
  with page.expect_download() as d:page.locator('.teacher-report-card button').click()
  with zipfile.ZipFile(d.value.path()) as z:
-  body=z.read('word/document.xml').decode();assert 'سبب التأخر:' in body;assert 'حضور جزئي' not in body;assert 'خالد حشر عبدالله العتيبي' in body
- assert not errors,errors;b.close();print('PASS orange late label and separate late Word form after absent/absent/present')
+  body=z.read('word/document.xml').decode();assert 'سبب التغيب الجزئي:' in body;assert 'حضور جزئي' not in body;assert 'خالد حشر عبدالله العتيبي' in body
+ data['records'][1]['status']='present';page.locator('[data-view=today]').click();page.wait_for_selector('#todayTable .lesson-state.partial');green=page.locator('#todayTable .lesson-state.partial');assert green.inner_text()=='حضور جزئي';assert green.evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(220, 252, 231)'
+ assert not errors,errors;b.close();print('PASS orange partial absence, three-cycle exclamation details, and separate Word form')
