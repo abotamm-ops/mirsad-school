@@ -148,7 +148,7 @@ async function publicTeacherLink(){
 function prepareTeacherLink(){
  const scope=endpoint+'|'+readerKey+'|'+EXPERIMENT_ID;
  if(teacherShareCache?.scope===scope)return teacherShareCache.promise;
- const promise=(async()=>{let href;if(readerKey||publicAccess){try{href=(await api('teacherLink')).url}catch(error){if(EXPERIMENT_ID)throw error;href=await publicTeacherLink()}}else{if(EXPERIMENT_ID)throw new Error('سجّل دخول الإدارة لنسخ رابط هذه التجربة');href=await publicTeacherLink()}const url=new URL(href);if(url.origin!==location.origin||url.pathname!=='/teachers-live.html'||(EXPERIMENT_ID&&url.searchParams.get('experiment')!==EXPERIMENT_ID)||(!EXPERIMENT_ID&&url.searchParams.has('experiment')))throw new Error('رابط المشاهدة غير صالح');return url.href})();
+ const promise=(async()=>{let href;if(readerKey){try{href=(await api('teacherLink')).url}catch(error){if(EXPERIMENT_ID)throw error;href=await publicTeacherLink()}}else{if(EXPERIMENT_ID)throw new Error('سجّل دخول الإدارة لنسخ رابط هذه التجربة');href=await publicTeacherLink()}const url=new URL(href);if(url.origin!==location.origin||url.pathname!=='/teachers-live.html'||(EXPERIMENT_ID&&url.searchParams.get('experiment')!==EXPERIMENT_ID)||(!EXPERIMENT_ID&&url.searchParams.has('experiment')))throw new Error('رابط المشاهدة غير صالح');return url.href})();
  teacherShareCache={scope,promise};promise.catch(()=>{if(teacherShareCache?.promise===promise)teacherShareCache=null});return promise;
 }
 async function copyPreparedTeacherLink(){
