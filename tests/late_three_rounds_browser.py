@@ -14,8 +14,9 @@ with sync_playwright() as p:
  with page.expect_download() as pdf_download:page.locator('.teacher-report-card [data-format=pdf]').click()
  pdf_file=pdf_download.value;assert pdf_file.suggested_filename.endswith('.pdf');pdf_file.save_as('/tmp/mirsad-daily-direct.pdf');assert Path(pdf_file.path()).read_bytes().startswith(b'%PDF-');pdf_text=unicodedata.normalize('NFKC',subprocess.check_output(['pdftotext','-layout',str(pdf_file.path()),'-']).decode());assert 'خالد بن حشر عبد الله العتيبي' in pdf_text;assert 'المعلم المتأخر' in pdf_text;assert 'لم يصل الرصد' not in pdf_text;assert ':' not in pdf_text;assert '...' not in pdf_text
  with page.expect_download() as d:page.locator('.teacher-report-card [data-format=word]').click()
+ d.value.save_as('/tmp/mirsad-unified-word.docx')
  with zipfile.ZipFile(d.value.path()) as z:
-  body=z.read('word/document.xml').decode();assert 'سبب التغيب الجزئي' in body;assert 'حضور جزئي' not in body;assert 'خالد بن حشر عبد الله العتيبي' in body
+  assert 'word/fonts/MirsadArabic.odttf' in z.namelist();body=z.read('word/document.xml').decode();assert 'سبب التغيب الجزئي' in body;assert 'حضور جزئي' not in body;assert 'خالد بن حشر عبد الله العتيبي' in body
  page.locator('#teacherReportDate').fill('2026-10-19');page.locator('[data-view=today]').click();page.locator('[data-view=reports]').click();page.wait_for_selector('.teacher-report-card');assert page.locator('#teacherReportDate').input_value()=='2026-10-20';assert page.locator('.teacher-report-folder').first.get_attribute('open') is not None;assert page.locator('.teacher-report-card').count()==1
  data['records'][1]['status']='present';page.locator('[data-view=today]').click();page.wait_for_selector('#todayTable .lesson-state.partial');green=page.locator('#todayTable .lesson-state.partial');assert green.inner_text()=='حضور جزئي';assert green.evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(220, 252, 231)'
  assert not errors,errors;b.close();print('PASS orange partial absence, three-cycle exclamation details, and separate Word form')
