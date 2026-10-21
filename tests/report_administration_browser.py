@@ -25,6 +25,9 @@ try:
   assert page.locator('#connection').is_hidden();assert page.locator('#todayTable .absent').count()==4
   assert page.locator('[data-reset-target=todayTable]').is_visible();assert page.locator('.edit-lesson').count()==4
   widths=page.locator('#todayTable tbody tr').first.locator('td').evaluate_all('(els)=>els.map(e=>e.getBoundingClientRect().width)');assert max(widths)-min(widths)<1
+  page.locator('[data-view=stats]').click();page.wait_for_selector('#statsTable tbody tr');page.evaluate('window.savedStatsNode=document.querySelector("#statsTable table");window.savedChartNode=document.querySelector("#chart svg")');page.clock.fast_forward(31000);assert page.evaluate('window.savedStatsNode===document.querySelector("#statsTable table")');assert page.evaluate('window.savedChartNode===document.querySelector("#chart svg")')
+  page.locator('[data-view=reports]').click();page.wait_for_selector('.teacher-report-folder');page.evaluate('window.savedLetterNode=document.querySelector(".teacher-report-folder")');page.clock.fast_forward(31000);assert page.evaluate('window.savedLetterNode===document.querySelector(".teacher-report-folder")')
+  page.locator('[data-view=today]').click();page.wait_for_selector('#todayTable tbody tr')
   page.screenshot(path='/tmp/mirsad-report-redesign.png',full_page=True)
   page.locator('[data-view=reports]').click();page.locator('#teacherReportDate').fill('2026-10-20');page.locator('#loadTeacherReports').click();page.wait_for_selector('.teacher-report-folder');assert page.locator('.teacher-report-folder').count()==2;assert 'معلم بلا حصص' not in page.locator('#teacherReportList').inner_text()
   for folder in page.locator('.teacher-report-folder').all():
