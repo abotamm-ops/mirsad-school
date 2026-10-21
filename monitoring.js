@@ -21,7 +21,7 @@ function summaryCards(id,items){const root=$(id);root.replaceChildren();for(cons
 function detail(cell,date){
  $('detailTitle').textContent=cell.teacherName+' — الحصة '+cell.period+' — '+date;
  const root=$('detailBody');root.replaceChildren();root.append(text('p',[cell.subject,cell.className].filter(Boolean).join(' — ')));
- const effective=text('p','المعتمد في التقرير: '+(cell.reset?'لم يبدأ الرصد':stateLabel[cell.displayState||cell.state]));effective.className='effective-state '+(cell.displayState||cell.state);root.append(effective);
+ const effective=text('p','المعتمد في التقرير: '+(cell.reset?'لم يبدأ الرصد':cell.state==='pending'?'بانتظار اكتمال الدورات':stateLabel[cell.state]));effective.className='effective-state '+(cell.displayState||cell.state);root.append(effective);
  const roundsBox=text('section','');roundsBox.className='round-results';roundsBox.append(text('h3','نتائج دورات الرصد'));for(let i=0;i<cell.rounds.length;i++){const r=cell.rounds[i],line=text('p','الدورة '+(i+1)+' — '+(r.pending?'بانتظار الرصد':stateLabel[r.status]||'غير محسوم'));line.className='round-result '+(r.pending?'pending':r.status);if(r.scannedAt)line.append(text('small',' · '+dateText(r.scannedAt)));roundsBox.append(line)}if(cell.state==='partial')roundsBox.append(text('p',cell.late?'غاب عن بداية الحصة ثم رُصد حضوره في الدورات التالية.':'لم يُرصد حضوره في إحدى الدورات أثناء الحصة.'));if(cell.state==='partial-absence')roundsBox.append(text('p','رُصد حضوره في دورة واحدة وغيابه في دورتين؛ يُحتسب ضمن الغياب الجزئي فقط.'));root.append(roundsBox);
  if(cell.override)root.append(text('p','عُدّلت الحالة يدويًا في '+dateText(cell.override.at)+(cell.override.note?' — '+cell.override.note:'')));
  if(cell.inferred)root.append(text('p',cell.url===''?'احتُسب الغياب بعد انتهاء الحصة لعدم وجود رابط تيمز.':'احتُسب الغياب بعد انتهاء الحصة لعدم وصول أي نتيجة رصد.'));
@@ -43,6 +43,11 @@ function detail(cell,date){
  if(cell.adjustments.length){const history=document.createElement('details');history.append(text('summary','سجل التعديلات والتصفير'));for(const entry of cell.adjustments)history.append(text('p',dateText(entry.at)+' — '+(entry.type==='reset'?'تصفير التقرير':('تعديل إلى '+stateLabel[entry.status]))+(entry.note?' — '+entry.note:'')));root.append(history)}
  $('details').showModal();
 }
+function cellPresentation(cell){
+ const recorded=cell.rounds.filter(r=>!r.pending),latest=recorded.slice().sort((a,b)=>Number(b.scannedAt||0)-Number(a.scannedAt||0)||Number(b.cycle||0)-Number(a.cycle||0))[0];
+ const provisional=!cell.override&&!cell.inferred&&!cell.reset&&cell.pendingRounds>0&&!!latest;
+ return {state:provisional&&['present','absent','unresolved'].includes(latest.status)?latest.status:(cell.displayState||cell.state),provisional,cycle:latest?cell.rounds.indexOf(latest)+1:0,completed:recorded.length,total:cell.rounds.length};
+}
 function renderTable(target,data){
  const root=$(target);root.dataset.date=data?.snapshot?.date||'';root.replaceChildren();
  if(!data?.snapshot){root.append(text('p','لم يبدأ توثيق هذا اليوم بعد. تظهر النتائج بعد تشغيل الرصد.'));if(target==='todayTable')$('todaySummary').replaceChildren();return}
@@ -54,7 +59,7 @@ function renderTable(target,data){
    const td=document.createElement('td'),cell=cells.find(c=>c.teacherId===teacher.id&&c.period===period);td.dataset.period=String(period);
    if(cell){
     const info=text('span',[cell.subject,cell.className].filter(Boolean).join(' — '));info.title=info.textContent;td.append(info);
-    const button=text('button',cell.reset?'لم يبدأ الرصد':stateLabel[cell.displayState||cell.state]);button.className='lesson-state '+(cell.displayState||cell.state);button.title='عرض تفاصيل الحصة '+period+' — '+teacher.name;button.onclick=()=>detail(cell,data.snapshot.date);const wrap=text('div','');wrap.className='lesson-status-wrap';const infoButton=text('button','!');infoButton.type='button';infoButton.className='round-info';infoButton.setAttribute('aria-label','نتائج دورات '+teacher.name+' للحصة '+period);infoButton.title='عرض نتائج الدورات';infoButton.onclick=()=>detail(cell,data.snapshot.date);wrap.append(button,infoButton);td.append(wrap);
+    const presentation=cellPresentation(cell);td.dataset.provisional=String(presentation.provisional);const button=text('button',cell.reset?'لم يبدأ الرصد':stateLabel[presentation.state]);button.className='lesson-state '+presentation.state+(presentation.provisional?' provisional':'');button.title='عرض تفاصيل الحصة '+period+' — '+teacher.name;button.onclick=()=>detail(cell,data.snapshot.date);const wrap=text('div','');wrap.className='lesson-status-wrap';const infoButton=text('button','!');infoButton.type='button';infoButton.className='round-info';infoButton.setAttribute('aria-label','نتائج دورات '+teacher.name+' للحصة '+period);infoButton.title='عرض نتائج الدورات';infoButton.onclick=()=>detail(cell,data.snapshot.date);wrap.append(button,infoButton);td.append(wrap);if(presentation.provisional){const note=text('small','نتيجة الدورة '+presentation.cycle+' · مؤقتة ('+presentation.completed+'/'+presentation.total+')');note.className='provisional-note';td.append(note)}
     const tools=text('div','');tools.className='cell-tools';
     const links=cell.evidence.filter(r=>safeDrive(r.evidenceUrl));if(links.length===1){const link=text('a','الصورة');link.href=safeDrive(links[0].evidenceUrl);link.target='_blank';link.rel='noopener noreferrer';tools.append(link)}else if(links.length){const photos=text('button','الصور ('+links.length+')');photos.onclick=()=>detail(cell,data.snapshot.date);tools.append(photos)}
     {const edit=text('button','تعديل الحالة');edit.className='edit-lesson';edit.onclick=()=>detail(cell,data.snapshot.date);tools.append(edit)}td.append(tools);
