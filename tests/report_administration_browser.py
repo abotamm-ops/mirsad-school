@@ -28,11 +28,11 @@ try:
   page.screenshot(path='/tmp/mirsad-report-redesign.png',full_page=True)
   page.locator('[data-view=reports]').click();page.locator('#teacherReportDate').fill('2026-10-20');page.locator('#loadTeacherReports').click();page.wait_for_selector('.teacher-report-folder');assert page.locator('.teacher-report-folder').count()==3
   for folder in page.locator('.teacher-report-folder').all():
-   if folder.locator('.teacher-report-card').count():folder.locator('summary').click()
+   if folder.locator('.teacher-report-card').count():assert folder.get_attribute('open') is not None
   page.wait_for_selector('.teacher-report-card');assert page.locator('.teacher-report-card').count()==2
   assert 'غياب يوم كامل' in page.locator('.teacher-report-card').first.inner_text()
   page.locator('#teacherReportSchool').fill('متوسطة مرصاد')
-  with page.expect_download() as download_info:page.locator('.teacher-report-card button').first.click()
+  with page.expect_download() as download_info:page.locator('.teacher-report-card [data-format=word]').first.click()
   download=download_info.value;assert download.suggested_filename.endswith('.docx')
   import zipfile,xml.etree.ElementTree as ET
   with zipfile.ZipFile(download.path()) as doc:
