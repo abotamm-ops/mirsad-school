@@ -76,6 +76,8 @@ try:
   assert page.locator('#todayTable .absent').count()==0;assert page.locator('#todayTable tbody tr').count()==0
   assert post({'action':'day','date':'2026-10-20'})['ok'] is False
   assert post({'action':'dates'})['dates']==[]
+  assert page.locator('#teacherReportList .teacher-report-card').count()==0
+  assert page.locator('#statsTable tbody tr').count()==0
   assert 'نهائيًا' in page.locator('#status').inner_text()
   assert PIN not in page.evaluate('JSON.stringify(localStorage)');assert not errors,errors
   page.screenshot(path='/tmp/mirsad-report-reset.png',full_page=True)
