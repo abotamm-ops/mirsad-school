@@ -139,5 +139,25 @@ async function loadTeacherReports(){const load=++teacherReportLoad;const button=
 $('loadTeacherReports').onclick=loadTeacherReports;
 $('teacherReportDate').onchange=loadTeacherReports;
 
-$('copyTeachersLiveLink').onclick=async()=>{const button=$('copyTeachersLiveLink');button.disabled=true;try{const result=await api('teacherLink');const url=new URL(result.url);if(url.origin!==location.origin||url.pathname!=='/teachers-live.html')throw new Error('رابط المشاهدة غير صالح');try{await navigator.clipboard.writeText(url.href);$('teacherLinkFeedback').textContent='نُسخ رابط اللايف للمعلمين'}catch{$('teacherShareUrl').value=url.href;$('teacherShareDialog').showModal();$('teacherShareUrl').select();$('teacherLinkFeedback').textContent='الرابط جاهز للنسخ'}}catch(e){$('teacherLinkFeedback').textContent=e.message}finally{button.disabled=false}};
+// Public sharing does not require an administration login. Restricted links remain server-issued.
+let teacherShareCache=null;
+async function publicTeacherLink(){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+ try{const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'teachersLive',audience:'teachers'}),signal:controller.signal});if(!response.ok)throw new Error('تعذر تجهيز رابط اللايف؛ أعد المحاولة');const value=await response.json();if(!value.ok||value.feed!=='teachers-live-v1'||value.source!=='official')throw new Error('رابط المشاهدة مقيّد؛ سجّل دخول الإدارة لنسخ الرابط المصرّح');return new URL('/teachers-live.html',location.origin).href}finally{clearTimeout(timer)}
+}
+function prepareTeacherLink(){
+ const scope=endpoint+'|'+readerKey+'|'+EXPERIMENT_ID;
+ if(teacherShareCache?.scope===scope)return teacherShareCache.promise;
+ const promise=(async()=>{let href;if(readerKey||publicAccess){try{href=(await api('teacherLink')).url}catch(error){if(EXPERIMENT_ID)throw error;href=await publicTeacherLink()}}else{if(EXPERIMENT_ID)throw new Error('سجّل دخول الإدارة لنسخ رابط هذه التجربة');href=await publicTeacherLink()}const url=new URL(href);if(url.origin!==location.origin||url.pathname!=='/teachers-live.html'||(EXPERIMENT_ID&&url.searchParams.get('experiment')!==EXPERIMENT_ID)||(!EXPERIMENT_ID&&url.searchParams.has('experiment')))throw new Error('رابط المشاهدة غير صالح');return url.href})();
+ teacherShareCache={scope,promise};promise.catch(()=>{if(teacherShareCache?.promise===promise)teacherShareCache=null});return promise;
+}
+async function copyPreparedTeacherLink(){
+ const input=$('teacherShareUrl');if(!input.value)return false;
+ try{await navigator.clipboard.writeText(input.value)}catch{input.focus();input.select();input.setSelectionRange(0,input.value.length);let copied=false;try{copied=document.execCommand('copy')}catch{}if(!copied){$('teacherShareFeedback').textContent='الرابط محدد؛ اضغط مطولًا واختر نسخ، أو اضغط Ctrl+C';return false}}
+ $('teacherLinkFeedback').textContent='نُسخ رابط اللايف للمعلمين';$('teacherShareFeedback').textContent='نُسخ الرابط';if($('teacherShareDialog').open)$('teacherShareDialog').close();return true;
+}
+$('copyTeachersLiveLink').onclick=async()=>{const button=$('copyTeachersLiveLink');button.disabled=true;$('teacherShareUrl').value='';$('copyTeacherShareUrl').disabled=true;$('teacherShareFeedback').textContent='جارٍ تجهيز رابط المشاهدة…';$('teacherLinkFeedback').textContent='جارٍ تجهيز الرابط…';$('teacherShareDialog').showModal();try{$('teacherShareUrl').value=await prepareTeacherLink();$('copyTeacherShareUrl').disabled=false;$('teacherShareFeedback').textContent='اضغط نسخ الرابط لإرساله للمعلمين';if($('teacherShareDialog').open)await copyPreparedTeacherLink()}catch(error){$('teacherShareFeedback').textContent=error.name==='AbortError'?'تعذر الاتصال؛ أعد المحاولة':error.message;$('teacherLinkFeedback').textContent=$('teacherShareFeedback').textContent}finally{button.disabled=false}};
+$('copyTeacherShareUrl').onclick=()=>void copyPreparedTeacherLink();
+$('teacherShareUrl').onclick=()=>{$('teacherShareUrl').select();$('teacherShareUrl').setSelectionRange(0,$('teacherShareUrl').value.length)};
 $('closeTeacherShare').onclick=()=>$('teacherShareDialog').close();
+void prepareTeacherLink().catch(()=>{});
