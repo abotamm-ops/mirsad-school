@@ -19,6 +19,22 @@ function monitorSnapshot_(root,payload,date){
  var count=Number(payload.roundCount);if(!Number.isInteger(count)||count<1||count>3||!lessons.length)throw new Error('عدد الدورات أو الحصص غير صالح');
  monitorWrite_(root,'mirsad-teachers.json',registry);return {date:date,teachers:teachers,lessons:lessons,roundCount:count,createdAt:Date.now()};
 }
+// Append verified scheduled lessons omitted by older readers; existing lessons and evidence stay intact.
+function monitorMergeMissingLessons_(data,items,source){
+ if(!Array.isArray(items)||data.snapshot.date!==monitorToday_())return 0;
+ var added=[],existing={};data.snapshot.lessons.forEach(function(l){existing[l.teacherId+'|'+l.period]=true});
+ items.forEach(function(item){if(!item||typeof item!=='object')return;var teacher=data.snapshot.teachers.find(function(t){return monitorName_(t.name)===monitorName_(item.teacher)}),period=Number(item.period);if(!teacher||!Number.isInteger(period)||period<1||period>7||String(item.url||'').trim()||(!String(item.subject||'').trim()&&!String(item.className||'').trim()))return;var key=teacher.id+'|'+period;if(existing[key])return;existing[key]=true;var lesson={teacherId:teacher.id,teacherName:teacher.name,period:period,subject:String(item.subject||''),className:String(item.className||''),url:''};data.snapshot.lessons.push(lesson);added.push(key)});
+ if(added.length){data.snapshot.repairs=data.snapshot.repairs||[];data.snapshot.repairs.push({type:'missing-linkless-lessons',at:Date.now(),source:String(source||''),added:added})}return added.length;
+}
+// Owner runs once to repair today's omitted linkless lessons from today's published timetable.
+function repairMissingMonitoringLessons(){
+ var lock=LockService.getScriptLock();lock.waitLock(30000);try{
+ var props=PropertiesService.getScriptProperties(),root=monitorPrivate_(DriveApp.getFolderById(props.getProperty('MONITOR_PRIVATE_ROOT_ID')||MONITOR_ROOT)),date=monitorToday_(),folder=monitorDay_(root,date,false),data=monitorRead_(monitorFile_(folder,'attendance.json'),null);if(!data)throw new Error('لا يوجد سجل لهذا اليوم');
+ var response=UrlFetchApp.fetch('https://script.google.com/macros/s/AKfycbznAVdLw5KVYmESB6Dx4av84-UQi3lewoK2Si59UNf_03y9keQf3CNxtXu0KhGbudX7Ng/exec',{muteHttpExceptions:true});if(response.getResponseCode()!==200)throw new Error('تعذر قراءة جدول اليوم');var envelope=JSON.parse(response.getContentText()),payload=envelope.payload;if(!envelope.ok||!payload||!Array.isArray(payload.lessons)||!payload.updatedAt||Utilities.formatDate(new Date(payload.updatedAt),'Asia/Riyadh','yyyy-MM-dd')!==date)throw new Error('يجب رفع جدول اليوم إلى مرصاد قبل إصلاح سجل اليوم');
+ var match=/[?&]dayindex=(\d+)/.exec(payload.sourceUrl||'');if(!match||Number(match[1])!==new Date(date+'T12:00:00+03:00').getUTCDay())throw new Error('يوم جدول نقار لا يطابق يوم الرصد');
+ var items=payload.lessons.filter(function(l){return !String(l.teams||l.teamsUrl||'').trim()}).map(function(l){return {teacher:l.teacher,period:Number(l.cellIndex)-1,subject:l.title||l.subject||l.lessonTitle||'حصة',className:l.class||l.lesson||l.className||'',url:''}});var count=monitorMergeMissingLessons_(data,items,payload.updatedAt);if(count)monitorWrite_(folder,'attendance.json',data);console.log('أُضيفت '+count+' حصة مفقودة إلى سجل '+date+' مع حفظ جميع النتائج والصور');return count;
+ }finally{lock.releaseLock()}
+}
 function monitorSchedule_(value){
  if(!value)return null;var m=/^(\d{2}):(\d{2})$/.exec(value.manualStart||''),duration=Number(value.periodDuration),gap=Number(value.manualGapMinutes);
  if(!m||Number(m[1])>23||Number(m[2])>59||!Number.isInteger(duration)||duration<1||duration>180||!Number.isInteger(gap)||gap<0||gap>60)throw new Error('توقيت الرصد غير صالح');
@@ -58,6 +74,7 @@ function monitorRequest_(p){
  if(p.action==='startDay'){
   if(date!==monitorToday_())throw new Error('بداية اليوم تكون لتاريخ اليوم في السعودية فقط');
   if(!data){data={snapshot:monitorSnapshot_(root,p,date),records:[],evidence:{}};monitorWrite_(folder,'attendance.json',data)}
+  if(monitorMergeMissingLessons_(data,p.items,'extension'))monitorWrite_(folder,'attendance.json',data);
   var actual=monitorSchedule_(p.scheduleSettings);if(actual){data.snapshot.scheduleSettings=actual;monitorWrite_(folder,'attendance.json',data)}
   return {snapshot:data.snapshot,folderUrl:folder.getUrl()};
  }

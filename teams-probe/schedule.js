@@ -77,16 +77,14 @@
           const anchors = [...root.querySelectorAll("a[href]")];
           const anchor = anchors.find(item => core.validTeamsUrl(item.href || item.getAttribute("href")));
           const url = anchor ? (anchor.href || anchor.getAttribute("href")) : "";
-          // A schedule cell is actionable only when it contains a valid Teams
-          // meeting link. Empty cells, teachers without a lesson, arrows, and
-          // lessons without links are skipped in place; row order stays top-to-bottom.
-          if (!url) continue;
+          // Scheduled lessons without Teams links still belong in the archive.
+          // They are never opened; absence is inferred only after their lesson ends.
           const explicit = [cell.getAttribute("data-period"), lesson?.getAttribute("data-period"), lesson?.querySelector("[data-period]")?.getAttribute("data-period")].find(value => value != null && String(value).trim() !== "");
           const cellLabel = norm(lesson?.innerText || lesson?.textContent || cell.innerText || cell.textContent);
           // Mirsad renders empty schedule cells as a dash; they are not lessons
           // and must not trigger an unknown-period error.
           const placeholder = /^[—–−\-↔←→↖↗↘↙⇐⇒➜➝➞➤›»]+$/u.test(cellLabel);
-          if (!anchor && explicit == null && (!cellLabel || placeholder)) continue;
+          if (!url && (!cellLabel || placeholder || /^(لا توجد حصة|لا يوجد درس|لا يوجد رابط تيمز|لا يوجد رابط Teams)$/i.test(cellLabel))) continue;
           const cellIndex = Number.isInteger(cell.cellIndex) ? cell.cellIndex : [...(cell.parentElement?.children || [])].indexOf(cell);
           // In this timetable the teacher column is followed by the seven
           // lesson columns. Rank by physical distance from the teacher cell:
