@@ -32,6 +32,10 @@
     late:!override&&finalState==='partial'&&rounds[0]?.status==='absent'&&rounds.slice(1).some(r=>r.status==='present')};
   });
  }
+ function presentation(cell){
+  const recorded=cell.rounds.filter(r=>!r.pending),latest=recorded.slice().sort((a,b)=>Number(b.scannedAt||0)-Number(a.scannedAt||0)||Number(b.cycle||0)-Number(a.cycle||0))[0],provisional=!cell.override&&!cell.inferred&&!cell.reset&&cell.pendingRounds>0&&!!latest;
+  return {state:provisional&&['present','absent','unresolved'].includes(latest.status)?latest.status:(cell.displayState||cell.state),provisional,cycle:latest?cell.rounds.indexOf(latest)+1:0,completed:recorded.length,total:cell.rounds.length};
+ }
  function stats(days,options={}){const map=new Map();for(const data of days){const rows=cells(data,options);for(const teacher of data.snapshot?.teachers||[]){let stat=map.get(teacher.id)||{...teacher,scheduled:0,absentLessons:0,absentDays:0,present:0,unknown:0,partial:0,partialAbsence:0,late:0};const lessons=rows.filter(x=>x.teacherId===teacher.id);stat.scheduled+=lessons.length;for(const x of lessons){stat.absentLessons+=Number(x.state==='absent');stat.present+=Number(['present','partial'].includes(x.state));stat.unknown+=Number(x.state==='unresolved');stat.partial+=Number(x.state==='partial');stat.partialAbsence+=Number(x.state==='partial-absence');stat.late+=Number(x.late)}stat.absentDays+=Number(lessons.length>0&&lessons.every(x=>x.state==='absent'));stat.percent=stat.scheduled?Math.round(stat.absentLessons/stat.scheduled*1000)/10:0;map.set(teacher.id,stat)}}return [...map.values()]}
  function live(data,options={}){
   const now=options.now||new Date(),date=day(now),empty={date,period:null,alerts:[],cycles:[],latestScanAt:null};
@@ -56,5 +60,5 @@
   alerts.sort((a,b)=>a.scannedAt-b.scannedAt);
   return {date,period,startedAt,endAt,minutesIntoPeriod:Math.floor((now.getTime()-startedAt)/60000),alerts,cycles,latestScanAt:scans.length?Math.max(...scans.map(r=>r.scannedAt)):null};
  }
- const api={normalize,day,state,cells,stats,lessonEnded,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
+ const api={normalize,day,state,cells,presentation,stats,lessonEnded,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
 })(globalThis);

@@ -43,11 +43,8 @@ function detail(cell,date){
  if(cell.adjustments.length){const history=document.createElement('details');history.append(text('summary','سجل التعديلات والتصفير'));for(const entry of cell.adjustments)history.append(text('p',dateText(entry.at)+' — '+(entry.type==='reset'?'تصفير التقرير':('تعديل إلى '+stateLabel[entry.status]))+(entry.note?' — '+entry.note:'')));root.append(history)}
  $('details').showModal();
 }
-function cellPresentation(cell){
- const recorded=cell.rounds.filter(r=>!r.pending),latest=recorded.slice().sort((a,b)=>Number(b.scannedAt||0)-Number(a.scannedAt||0)||Number(b.cycle||0)-Number(a.cycle||0))[0];
- const provisional=!cell.override&&!cell.inferred&&!cell.reset&&cell.pendingRounds>0&&!!latest;
- return {state:provisional&&['present','absent','unresolved'].includes(latest.status)?latest.status:(cell.displayState||cell.state),provisional,cycle:latest?cell.rounds.indexOf(latest)+1:0,completed:recorded.length,total:cell.rounds.length};
-}
+function cellPresentation(cell){return model.presentation(cell)}
+
 function renderTable(target,data){
  const root=$(target);root.dataset.date=data?.snapshot?.date||'';root.replaceChildren();
  if(!data?.snapshot){root.append(text('p','لم يبدأ توثيق هذا اليوم بعد. تظهر النتائج بعد تشغيل الرصد.'));if(target==='todayTable')$('todaySummary').replaceChildren();return}

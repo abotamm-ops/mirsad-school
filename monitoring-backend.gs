@@ -46,7 +46,7 @@ function monitorExperimentRoot_(root,id,create){if(!id)return root;var parents=r
 function monitorExperimentReader_(p,props){return ['MONITOR_API_KEY','MONITOR_READER_KEY','MONITOR_SITE_PASSWORD'].some(function(k){var key=props.getProperty(k);return !!key&&monitorEqual_(p.key,key)})}
 function monitorTeacherToken_(props){var token=props.getProperty('MONITOR_TEACHER_VIEW_KEY')||'';if(token&&(token.length<32||['MONITOR_API_KEY','MONITOR_READER_KEY','MONITOR_SITE_PASSWORD'].some(function(k){return monitorEqual_(token,props.getProperty(k))})))throw new Error('رمز رابط المعلمين يجب أن يكون مستقلًا عن رموز الإدارة');return token}
 function monitorTeacherAccess_(p,props){
- if(props.getProperty('MONITOR_EVIDENCE_PRIVATE')!=='true')throw new Error('صفحة المعلمين بانتظار إكمال تهيئتها لدى الإدارة');
+ if(props.getProperty('MONITOR_EVIDENCE_PRIVATE')!=='true'&&props.getProperty('MONITOR_ARCHIVE_PRIVATE')!=='true')throw new Error('صفحة المعلمين بانتظار إكمال تهيئتها لدى الإدارة');
  var token=monitorTeacherToken_(props);if(token){if(token.length<32||!monitorEqual_(p.viewToken,token))throw new Error('رابط المشاهدة غير مصرح أو انتهت صلاحيته')}else if(props.getProperty('MONITOR_PUBLIC_READ')!=='true')throw new Error('مشاهدة المعلمين غير مفعّلة');
  var domain=String(props.getProperty('MONITOR_TEACHERS_DOMAIN')||'').trim().toLowerCase();if(domain){var email=String(Session.getActiveUser().getEmail()||'').toLowerCase();if(!email||email.split('@')[1]!==domain)throw new Error('يلزم الدخول بحساب المدرسة للمشاهدة')}
 }
@@ -56,8 +56,8 @@ function monitorTeachersLive_(p){
  if(!data||!data.snapshot||data.snapshot.date!==date||monitorIsTrial_(data)||monitorIsTrial_(data.snapshot))return result;
  data=JSON.parse(JSON.stringify(data));data.records=(data.records||[]).filter(function(r){return !monitorIsTrial_(r)});Object.keys(data.evidence||{}).forEach(function(id){var proof=data.evidence[id];if(proof.record&&!monitorIsTrial_(proof.record)&&!data.records.some(function(r){return r.scanId===id}))data.records.push(proof.record)});data.adjustments=(data.adjustments||[]).filter(function(a){return !monitorIsTrial_(a)});
  result.schedule=monitorSchedule_(data.reportSchedule||data.snapshot.scheduleSettings)||result.schedule;var active=MONITOR_TEACHER_MODEL_.live(data,{now:now});result.currentPeriod=active.period;
- var cells=MONITOR_TEACHER_MODEL_.cells(data,{now:now});result.rows=cells.map(function(c){return {teacherId:c.teacherId,teacher:c.teacherName,period:c.period,status:['present','partial','partial-absence','absent'].indexOf(c.state)>=0?c.state:'unresolved',pending:c.state==='pending',lastResultAt:c.override?c.override.at:Math.max(0,...c.history.map(function(r){return Number(r.scannedAt)||0}))||null}});
- var times=result.rows.map(function(r){return r.lastResultAt||0});result.updatedAt=Math.max(0,...times)||null;result.rows.forEach(function(r){var key=r.status==='partial-absence'?'partialAbsence':r.status;result.summary[key]++});if(cache)try{cache.put(cacheKey,JSON.stringify(result),2)}catch(ignore){}return result;
+ var cells=MONITOR_TEACHER_MODEL_.cells(data,{now:now});result.rows=cells.map(function(c){var view=MONITOR_TEACHER_MODEL_.presentation(c);return {teacherId:c.teacherId,teacher:c.teacherName,period:c.period,status:['present','partial','partial-absence','absent'].indexOf(view.state)>=0?view.state:'unresolved',finalStatus:['present','partial','partial-absence','absent'].indexOf(c.state)>=0?c.state:'unresolved',provisional:view.provisional,cycle:view.cycle,completed:view.completed,total:view.total,pending:c.state==='pending',lastResultAt:c.override?c.override.at:Math.max(0,...c.history.map(function(r){return Number(r.scannedAt)||0}))||null}});
+ var times=result.rows.map(function(r){return r.lastResultAt||0});result.updatedAt=Math.max(0,...times)||null;result.rows.forEach(function(r){if(r.pending)return;var key=r.finalStatus==='partial-absence'?'partialAbsence':r.finalStatus;result.summary[key]++});if(cache)try{cache.put(cacheKey,JSON.stringify(result),2)}catch(ignore){}return result;
 }
 function monitorRequest_(p){
  if(p.audience==='teachers'&&p.action!=='teachersLive')throw new Error('رابط المعلمين للمشاهدة فقط');
@@ -158,7 +158,7 @@ function monitorRequest_(p){
   var name=safe(record.teacher||lesson.teacherName)+'_ح'+record.period+'_د'+record.cycle+'_'+(record.status==='absent'?'غائب':'غير محسوم')+'_'+safe(record.scanId)+'.png';
   if(record.localName){if(typeof record.localName!=='string'||record.localName.length>220||/[\\/:*?"<>|\u0000-\u001f]/.test(record.localName)||!record.localName.endsWith('.png'))throw new Error('اسم ملف غير صالح');name=record.localName;}
   var image=monitorFile_(folder,name)||folder.createFile(Utilities.newBlob(bytes,'image/png',name));
-  image.setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE);
+  if(props.getProperty('MONITOR_IMAGE_LINKS_PUBLIC')==='true')image.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);else image.setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE);
   var evidence={fileId:image.getId(),url:image.getUrl(),name:name,record:{scanId:record.scanId,teacherId:lesson.teacherId,teacherName:lesson.teacherName,observedTeacher:String(record.teacher||''),period:record.period,cycle:record.cycle,status:record.status,detail:String(record.detail||'').slice(0,3000),scannedAt:Number(record.scannedAt)||Date.now()}};data.evidence[record.scanId]=evidence;monitorWrite_(folder,'attendance.json',data);return evidence;
  }
  if(p.action==='record'){
@@ -186,7 +186,14 @@ function createPrivateMonitoringFolder() {
 function secureMonitoringEvidence(){
  var props=PropertiesService.getScriptProperties(),root=DriveApp.getFolderById(props.getProperty('MONITOR_PRIVATE_ROOT_ID')||MONITOR_ROOT),stack=[root],count=0;
  while(stack.length){var folder=stack.pop();folder.setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE);var files=folder.getFiles();while(files.hasNext()){files.next().setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE);count++}var children=folder.getFolders();while(children.hasNext())stack.push(children.next())}
- props.setProperty('MONITOR_EVIDENCE_PRIVATE','true');props.setProperty('MONITOR_PUBLIC_READ','true');console.log('الصور والأرشيف مقيدان؛ صفحة المعلمين تعرض الحالات الرسمية فقط. الملفات المؤمنة '+count);return root.getUrl();
+ props.setProperty('MONITOR_EVIDENCE_PRIVATE','true');props.setProperty('MONITOR_ARCHIVE_PRIVATE','true');props.setProperty('MONITOR_IMAGE_LINKS_PUBLIC','false');props.setProperty('MONITOR_PUBLIC_READ','true');console.log('الصور والأرشيف مقيدان؛ صفحة المعلمين تعرض الحالات الرسمية فقط. الملفات المؤمنة '+count);return root.getUrl();
+}
+// Owner-run: public viewing of evidence PNG links, with JSON and folders kept private.
+function enableMonitoringImageLinks(){
+ var props=PropertiesService.getScriptProperties(),root=DriveApp.getFolderById(props.getProperty('MONITOR_PRIVATE_ROOT_ID')||MONITOR_ROOT),folders=root.getFolders(),count=0;root.setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE);
+ while(folders.hasNext()){var folder=folders.next();if(!/^توثيق غياب \d{4}-\d{2}-\d{2}$/.test(folder.getName()))continue;folder.setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE);var files=folder.getFiles();while(files.hasNext()){var file=files.next();if(/\.png$/i.test(file.getName())){file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);count++}else file.setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE)}}
+ var registry=monitorFile_(root,'mirsad-teachers.json');if(registry)registry.setSharing(DriveApp.Access.PRIVATE,DriveApp.Permission.NONE);
+ props.setProperty('MONITOR_ARCHIVE_PRIVATE','true');props.setProperty('MONITOR_EVIDENCE_PRIVATE','false');props.setProperty('MONITOR_IMAGE_LINKS_PUBLIC','true');props.setProperty('MONITOR_PUBLIC_READ','true');console.log('تم فتح صور الإثبات بالرابط للعرض فقط؛ السجلات والمجلدات خاصة. الصور '+count);return count;
 }
 function enablePublicMonitoringSharing(){return secureMonitoringEvidence()}
 
@@ -234,6 +241,10 @@ var MONITOR_TEACHER_MODEL_=(function(){var module={exports:{}};
     late:!override&&finalState==='partial'&&rounds[0]?.status==='absent'&&rounds.slice(1).some(r=>r.status==='present')};
   });
  }
+ function presentation(cell){
+  const recorded=cell.rounds.filter(r=>!r.pending),latest=recorded.slice().sort((a,b)=>Number(b.scannedAt||0)-Number(a.scannedAt||0)||Number(b.cycle||0)-Number(a.cycle||0))[0],provisional=!cell.override&&!cell.inferred&&!cell.reset&&cell.pendingRounds>0&&!!latest;
+  return {state:provisional&&['present','absent','unresolved'].includes(latest.status)?latest.status:(cell.displayState||cell.state),provisional,cycle:latest?cell.rounds.indexOf(latest)+1:0,completed:recorded.length,total:cell.rounds.length};
+ }
  function stats(days,options={}){const map=new Map();for(const data of days){const rows=cells(data,options);for(const teacher of data.snapshot?.teachers||[]){let stat=map.get(teacher.id)||{...teacher,scheduled:0,absentLessons:0,absentDays:0,present:0,unknown:0,partial:0,partialAbsence:0,late:0};const lessons=rows.filter(x=>x.teacherId===teacher.id);stat.scheduled+=lessons.length;for(const x of lessons){stat.absentLessons+=Number(x.state==='absent');stat.present+=Number(['present','partial'].includes(x.state));stat.unknown+=Number(x.state==='unresolved');stat.partial+=Number(x.state==='partial');stat.partialAbsence+=Number(x.state==='partial-absence');stat.late+=Number(x.late)}stat.absentDays+=Number(lessons.length>0&&lessons.every(x=>x.state==='absent'));stat.percent=stat.scheduled?Math.round(stat.absentLessons/stat.scheduled*1000)/10:0;map.set(teacher.id,stat)}}return [...map.values()]}
  function live(data,options={}){
   const now=options.now||new Date(),date=day(now),empty={date,period:null,alerts:[],cycles:[],latestScanAt:null};
@@ -258,7 +269,7 @@ var MONITOR_TEACHER_MODEL_=(function(){var module={exports:{}};
   alerts.sort((a,b)=>a.scannedAt-b.scannedAt);
   return {date,period,startedAt,endAt,minutesIntoPeriod:Math.floor((now.getTime()-startedAt)/60000),alerts,cycles,latestScanAt:scans.length?Math.max(...scans.map(r=>r.scannedAt)):null};
  }
- const api={normalize,day,state,cells,stats,lessonEnded,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
+ const api={normalize,day,state,cells,presentation,stats,lessonEnded,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
 })(globalThis);
 
 return module.exports})();
