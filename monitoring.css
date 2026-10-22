@@ -56,3 +56,5 @@ main{padding:24px 18px;max-width:1560px}nav{gap:8px;margin-bottom:12px}nav butto
 #teacherShareUrl{display:block;width:100%;direction:ltr;text-align:left;margin:12px 0}#teacherShareFeedback{overflow-wrap:anywhere}
 
 .lesson-state.provisional{border:2px dashed currentColor}#todayTable .provisional-note,#archiveTable .provisional-note{font-size:11px;font-weight:600;color:#36576a}
+
+.daily-reports-ready,.daily-reports-pending{display:inline-block;font-size:13px;padding:7px 13px;border-radius:20px;margin-inline-start:10px}.daily-reports-ready{background:#dcfce7;color:#166534}.daily-reports-pending{background:#eef2f6;color:#586778}#downloadDailyReports{background:#087f80;color:white}#downloadDailyReports:disabled{background:#dce5e9;color:#667782;cursor:not-allowed}
