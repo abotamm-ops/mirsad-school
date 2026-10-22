@@ -110,6 +110,7 @@
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "MIRSAD_GET_SCHEDULE") {
+      if(location.origin!=='https://mirsad-school.onrender.com'||!['/','/index.html'].includes(location.pathname)){sendResponse({ok:false,items:[],error:'مصدر الحصص هو جدول المعلمين فقط'});return false}
       sendResponse({ ok: true, items: collectSchedule(true), teachers: [...document.querySelectorAll("tr[data-teacher]")].map(row=>row.dataset.teacher), page: location.href, title: document.title });
       return false;
     }

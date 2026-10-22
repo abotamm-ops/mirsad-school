@@ -140,7 +140,16 @@ function nextPeriod(now=new Date()){
  const d=new Date(now);d.setDate(d.getDate()+1);while(!schoolDay(d))d.setDate(d.getDate()+1);
  return {period:PERIODS[0],when:dateAtOffset(d,PERIODS[0].startOffset).getTime()};
 }
-async function getScheduleTab(){const tabs=await chrome.tabs.query({url:"https://mirsad-school.onrender.com/*"});const eligible=tabs.filter(t=>t.url&&!t.url.includes("/absence.html")&&!t.url.includes("/automatic-attendance.html")).sort((a,b)=>Number(Boolean(b.active))-Number(Boolean(a.active))||(b.lastAccessed||0)-(a.lastAccessed||0));for(const tab of eligible){try{const result=await chrome.tabs.sendMessage(tab.id,{type:"MIRSAD_GET_SCHEDULE",manualPeriodMapping:true});if(result?.ok&&Array.isArray(result.items)&&result.items.some(item=>item.teacher&&item.hasLesson))return tab}catch(_){}}return null}
+function isTimetablePage(value){try{const u=new URL(value);return u.origin==='https://mirsad-school.onrender.com'&&['/','/index.html'].includes(u.pathname)}catch{return false}}
+let openingScheduleTab=null;
+async function getScheduleTab(openIfMissing=false){
+ const tabs=await chrome.tabs.query({url:'https://mirsad-school.onrender.com/*'}),eligible=tabs.filter(t=>isTimetablePage(t.url)).sort((a,b)=>Number(Boolean(b.active))-Number(Boolean(a.active))||(b.lastAccessed||0)-(a.lastAccessed||0));
+ async function ready(tab){try{const r=await chrome.tabs.sendMessage(tab.id,{type:'MIRSAD_GET_SCHEDULE',manualPeriodMapping:true});return r?.ok&&Array.isArray(r.items)&&r.items.some(x=>x.teacher&&x.hasLesson)?tab:null}catch{return null}}
+ for(const tab of eligible){const result=await ready(tab);if(result)return result}
+ if(!openIfMissing)return null;
+ if(!openingScheduleTab)openingScheduleTab=(async()=>{await setStatus('جارٍ فتح جدول المعلمين وقراءة حصص اليوم…');const tab=eligible[0]||await chrome.tabs.create({url:'https://mirsad-school.onrender.com/index.html',active:false});for(let i=0;i<25;i++){const result=await ready(tab);if(result)return result;await new Promise(resolve=>setTimeout(resolve,600))}throw new Error('جدول المعلمين لم يكتمل تحميله؛ تأكد من ظهور حصص اليوم وروابط تيمز ثم شغّل الرصد')})().finally(()=>{openingScheduleTab=null});
+ return openingScheduleTab;
+}
 async function startMonitoring(immediate=false){
  await refreshScheduleSettings();
  const existing=await getRun();
@@ -163,7 +172,7 @@ async function startMonitoring(immediate=false){
  const schedule=PERIODS.flatMap(p=>scheduleCore.selectPeriodItems(allLessons,p.n));
  const periodCounts=Array.from({length:7},(_,i)=>allLessons.filter(x=>x.period===i+1).length);
  const validLinkCounts=Array.from({length:7},(_,i)=>scheduleCore.selectPeriodLinks(allLessons,i+1).length);
- if(!schedule.length){await setStatus("لم تُقرأ خلايا المعلمين والحصص. تأكد من ظهور جدول مرصاد ثم أعد المحاولة.",{diagnostic:true,totalItems:allLessons.length,periodCounts,validLinkCounts});return}
+ if(!schedule.length){await setStatus(allLessons.length?'جدول اليوم محفوظ، لكن لا توجد روابط تيمز صالحة في نطاق الحصص المحدد؛ راجع من الحصة وإلى الحصة في الإعدادات.':'لم تُقرأ حصص اليوم من جدول المعلمين الأصلي؛ افتح جدول المعلمين وانتظر تحميله ثم أعد المحاولة.', {diagnostic:true,totalItems:allLessons.length,periodCounts,validLinkCounts});return}
  await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
  const run={running:true,autoResume:!immediate,schedule,periods:PERIODS,diagnostic:{totalItems:allLessons.length,periodCounts,validLinkCounts},tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null,backtestMode:immediate,immediateMode:immediate,suspendedRun,suspendedNextAt:suspendedAlarm?.scheduledTime||null};
  await saveRun(run);

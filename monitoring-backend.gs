@@ -101,6 +101,11 @@ function monitorRequest_(p){
  if(p.action==='startDay'){
   if(date!==monitorToday_())throw new Error('بداية اليوم تكون لتاريخ اليوم في السعودية فقط');
   if(!data){data={snapshot:monitorSnapshot_(root,p,date),records:[],evidence:{}};monitorWrite_(folder,'attendance.json',data)}
+  if(p.repairEmptySchedule===true){
+   var trustworthy=/^https:\/\/mirsad-school\.onrender\.com\/(?:index\.html)?(?:[?#].*)?$/.test(p.sourcePage||''),hasLinks=Array.isArray(p.items)&&p.items.some(function(i){return /^https:\/\/(teams\.microsoft\.com|teams\.live\.com)\/.+/.test(i.url||'')});
+   if(!trustworthy||!hasLinks)throw new Error('تصحيح الجدول يتطلب جدول المعلمين الأصلي وروابط تيمز صحيحة');
+   if(data.snapshot.lessons.every(function(l){return !l.url})){if((data.records||[]).length||Object.keys(data.evidence||{}).length||(data.adjustments||[]).length||(data.rangePurges||[]).length)throw new Error('الجدول المحفوظ يحتوي توثيقًا؛ لم يُستبدل حفاظًا على النتائج والصور');var before=data.snapshot,next=monitorSnapshot_(root,p,date);data.scheduleRepairs=data.scheduleRepairs||[];data.scheduleRepairs.push({at:Date.now(),reason:'empty-links-from-wrong-page',sourcePage:p.sourcePage,previousSnapshot:before});data.snapshot=next;monitorWrite_(folder,'attendance.json',data)}
+  }
   if(monitorMergeMissingLessons_(data,p.items,'extension'))monitorWrite_(folder,'attendance.json',data);
   var actual=monitorSchedule_(p.scheduleSettings);if(actual){data.snapshot.scheduleSettings=actual;monitorWrite_(folder,'attendance.json',data)}
   return {snapshot:data.snapshot,folderUrl:folder.getUrl()};
