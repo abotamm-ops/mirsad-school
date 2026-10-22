@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-<head><link rel="stylesheet" href="/admin-access.css?v=20261022"><script src="/admin-access.js?v=20261022" defer></script>
+<head><link rel="stylesheet" href="/admin-access.css?v=20261022"><script src="/admin-access.js?v=20261022-silent" defer></script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>مرصاد | رصد الغياب</title>
 <style>
@@ -465,6 +465,7 @@ select,input,button{font:inherit;padding:11px;border:1px solid #cbd5df;border-ra
   $("accessCode").addEventListener("keydown",e=>{if(e.key==="Enter")loadArchive()});
 
   loadArchive();
+  window.addEventListener("mirsad-admin-login",()=>{$("accessCode").value=localStorage.getItem(REMEMBER_KEY)||"";loadArchive()});
   loadScheduleData();
 })();
 </script>
