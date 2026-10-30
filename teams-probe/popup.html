@@ -25,7 +25,7 @@
     <div id="preview" class="preview">جارٍ تحميل الإعدادات…</div>
     <button id="save-time" type="button" style="background:#334155">حفظ وتحديث التوقيت</button>
   </section>
-  </section><section data-panel="run"><section class="settings"><h3>مصدر جدول المعلمين</h3><label for="scheduleSource">اختر المصدر</label><select id="scheduleSource"><option value="naqar">نقار — الطريقة الحالية</option><option value="madrasati">مدرستي — مباشرة من المتصفح</option></select><button id="collectMadrasati" type="button" hidden>نقل من مدرستي إلى مرصاد</button><p id="scheduleSourceStatus" class="hint" role="status"></p><p class="hint">لمدرستي: افتح إدارة بيانات المعلمين وأوقف الرصد مؤقتًا قبل الجمع. الجداول المحفوظة في أرشيف يوم بدأ سابقًا تبقى كما هي.</p></section><div class="intro"><strong>يوم دراسي موثّق، بخطوات واضحة</strong><p>شغّل الرصد؛ يُجهّز مجلد اليوم تلقائيًا ويرسل النتائج إلى موقع مرصاد.</p></div>
+  </section><section data-panel="run"><section class="settings"><h3>مصدر جدول المعلمين</h3><label for="scheduleSource">اختر المصدر</label><select id="scheduleSource"><option value="naqar">نقار — الطريقة الحالية</option><option value="madrasati">مدرستي — مباشرة من المتصفح</option></select><label id="madrasatiDateLabel" for="madrasatiSourceDate" hidden>تاريخ الجدول المطلوب <input id="madrasatiSourceDate" type="date"></label><p id="madrasatiDateHint" class="hint" hidden>يسحب حصص وروابط التاريخ المختار. تُسجّل نتائج الاختبار بتاريخ التشغيل الفعلي.</p><button id="collectMadrasati" type="button" hidden>نقل من مدرستي إلى مرصاد</button><p id="scheduleSourceStatus" class="hint" role="status"></p><p class="hint">لمدرستي: افتح إدارة بيانات المعلمين وأوقف الرصد مؤقتًا قبل الجمع. الجداول المحفوظة في أرشيف يوم بدأ سابقًا تبقى كما هي.</p></section><div class="intro"><strong>يوم دراسي موثّق، بخطوات واضحة</strong><p>شغّل الرصد؛ يُجهّز مجلد اليوم تلقائيًا ويرسل النتائج إلى موقع مرصاد.</p></div>
   <button id="start">▶ تشغيل الرصد المجدول</button>
   <button id="start-now" class="now">فحص فوري تشخيصي</button>
   <button id="pause-resume" disabled>إيقاف مؤقت / استئناف</button>
@@ -40,7 +40,7 @@
   <button id="diagnose" class="diagnose">فحص ربط الحصص والروابط</button>
   <button id="export" class="export">تنزيل تقرير الرصد CSV</button>
 </section><div id="local-backup-summary" class="backup-summary" role="status">جارٍ التحقق من الصور والنسخ المحلي…</div><div class="status-label">حالة الرصد</div>  <div id="status" role="status">لم تبدأ دورة الرصد بعد.</div>
-</main><footer>مرصاد · 0.6.19 <span>روابط مدرستك، وتوثيق يومك</span></footer>
+</main><footer>مرصاد · 0.6.20 <span>روابط مدرستك، وتوثيق يومك</span></footer>
   <script src="schedule-core.js"></script>
   <script src="popup.js"></script><script src="madrasati-ui.js"></script><script src="popup-layout.js"></script><script src="local-backup-ui.js"></script>
 </body>

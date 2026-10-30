@@ -111,8 +111,8 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "MIRSAD_GET_SCHEDULE") {
       if(location.origin!=='https://mirsad-school.onrender.com'||!['/','/index.html'].includes(location.pathname)){sendResponse({ok:false,items:[],error:'مصدر الحصص هو جدول المعلمين فقط'});return false}
-      if(document.documentElement.dataset.mirsadSource==='madrasati'){const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());if(document.documentElement.dataset.mirsadSourceDate!==today){sendResponse({ok:false,items:[],error:'جدول مدرستي لهذا اليوم لم يكتمل تحميله'});return false}}
-      sendResponse({ ok: true, items: collectSchedule(true), teachers: [...document.querySelectorAll("tr[data-teacher]")].map(row=>row.dataset.teacher), page: location.href, title: document.title });
+      if(document.documentElement.dataset.mirsadSource==='madrasati'){const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());if((document.documentElement.dataset.mirsadImportDate||document.documentElement.dataset.mirsadSourceDate)!==today){sendResponse({ok:false,items:[],error:'جدول مدرستي لهذا اليوم لم يكتمل تحميله'});return false}}
+      sendResponse({ ok: true, sourceType:document.documentElement.dataset.mirsadSource,sourceDate:document.documentElement.dataset.mirsadSourceDate,sourceImportDate:document.documentElement.dataset.mirsadImportDate,items: collectSchedule(true), teachers: [...document.querySelectorAll("tr[data-teacher]")].map(row=>row.dataset.teacher), page: location.href, title: document.title });
       return false;
     }
   });

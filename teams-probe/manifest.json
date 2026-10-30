@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
-  "version": "0.6.19",
+  "version": "0.6.20",
   "description": "الرصد باسم المنظّم من Teams بثلاث دورات وفاصل مستقل بين الأولى والثانية وبين الثانية والثالثة.",
   "permissions": [
     "activeTab",
@@ -10,7 +10,8 @@
     "alarms",
     "downloads",
     "nativeMessaging",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "webRequest"
   ],
   "host_permissions": [
     "https://teams.microsoft.com/*",
