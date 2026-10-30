@@ -22,6 +22,18 @@
  const suspicious=[...doc.querySelectorAll('a[href]')].some(a=>{try{return /(^|\.)teams\.(microsoft\.com|live\.com)$/.test(new URL(a.getAttribute('href'),ORIGIN).hostname)}catch{return false}});
  if(complete&&!suspicious)return '';
  throw Object.assign(new Error(suspicious?'رابط تيمز في الدرس غير معتمد؛ يلزم مراجعته':'تفاصيل الدرس لم تكتمل بعد'),{retryable:!suspicious})}
+ async function meetingBatch(values){
+ if(!Array.isArray(values)||values.length>7)throw new Error('عدد روابط الحصص غير صالح');
+ const urls=[...new Set(values)];if(urls.some(url=>typeof url!=='string'||!sameUrl(url,/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i)))throw new Error('رابط تفاصيل خارج مدرستي');
+ const results=new Array(urls.length);let next=0;
+ await Promise.all(Array.from({length:Math.min(4,urls.length)},async()=>{while(next<urls.length){const index=next++,detailUrl=urls[index];try{
+ const response=await fetch(detailUrl,{method:'GET',credentials:'same-origin',redirect:'error',signal:AbortSignal.timeout(20000)});
+ if(!response.ok)throw new Error('تعذر تحميل تفاصيل الدرس ('+response.status+')');
+ if(!sameUrl(response.url,/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i))throw new Error('انتهت جلسة مدرستي؛ سجل الدخول مجددًا');
+ const html=await response.text();if(html.length>4000000)throw new Error('حجم صفحة الدرس غير متوقع');
+ const doc=new DOMParser().parseFromString(html,'text/html'),url=meeting(doc);results[index]={detailUrl,ok:true,url,unprepared:!url};
+ }catch(e){results[index]={detailUrl,ok:false,error:e.message,retryable:!!e.retryable}}}}));return results
+ }
  function validDate(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;const value=new Date(date+'T12:00:00Z');return Number.isFinite(value.getTime())&&value.toISOString().slice(0,10)===date}
  const week=date=>{const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-d.getUTCDay());return d.toISOString().slice(0,10)};
  async function clickAndWait(button,ready){if(!button||button.disabled||button.getAttribute('aria-disabled')==='true')throw new Error('مدرستي لا يتيح الانتقال إلى التاريخ المطلوب');const table=document.querySelector('#divDayLectures');if(!table)throw new Error('جدول مدرستي لم يكتمل');let changed=false,last=0;const started=performance.now(),root=document.querySelector('.hijriSchedule')||table.parentElement;const observer=new MutationObserver(()=>{changed=true;last=Date.now()});observer.observe(root,{subtree:true,childList:true,characterData:true});try{button.click();for(let i=0;i<150;i++){await new Promise(r=>setTimeout(r,200));const completed=performance.getEntriesByType('resource').some(e=>e.startTime>=started&&['xmlhttprequest','fetch'].includes(e.initiatorType)&&/Lesson|Lecture|TimeTable/i.test(e.name));if((changed||completed)&&Date.now()-last>=600){try{if(ready()&&!document.querySelector('#divDayLectures .loading'))return}catch{}}}throw new Error('لم يكتمل تحميل التاريخ المطلوب؛ لن يُرسل جدول مختلف')}finally{observer.disconnect()}}
@@ -29,11 +41,12 @@
  async function selectDay(date){if(!validDate(date))throw new Error('تاريخ غير صالح');const targetWeek=week(date);let shown=displayedDate(),steps=0;while(week(shown)!==targetWeek){if(++steps>260)throw new Error('التاريخ بعيد؛ افتح أسبوعه في مدرستي ثم أعد النقل');const before=week(shown),next=before<targetWeek;await clickAndWait(document.querySelector(next?'.nextCalendar':'.prevCalendar'),()=>week(displayedDate())!==before);const after=displayedDate();if(next?week(after)<=before:week(after)>=before)throw new Error('أسبوع مدرستي لم يتحرك في الاتجاه المتوقع');shown=after}
  if(shown!==date){const day=new Date(date+'T12:00:00Z').getUTCDay();await clickAndWait(document.querySelector('.dayIcon[dayindex="'+day+'"] a'),()=>displayedDate()===date)}const result=timetable();if(result.date!==date)throw new Error('الجدول المقروء لا يطابق التاريخ المختار');return result}
 
- globalThis.MirsadMadrasatiReader={directory,timetable,meeting,displayedDate};
+ globalThis.MirsadMadrasatiReader={directory,timetable,meeting,displayedDate,meetingBatch};
  chrome.runtime.onMessage.addListener((m,_sender,reply)=>{if(m?.type!=='MIRSAD_MADRASATI_READ')return;try{
  if(location.origin!==ORIGIN)throw new Error('هذه ليست صفحة مدرستي');
  if(m.kind==='directory'){if(!/^\/SchoolManagment\/Teachers\/?$/i.test(location.pathname))throw new Error('افتح صفحة إدارة بيانات المعلمين');reply({ok:true,teachers:directory(),sourceUrl:location.href});return}
  if(m.kind==='timetable'){if(!/^\/SchoolManagment\/Lessons\/TimeTable\//i.test(location.pathname))throw new Error('لم تفتح صفحة الجدول؛ تحقق من تسجيل الدخول');selectDay(m.date).then(data=>reply({ok:true,...data})).catch(e=>reply({ok:false,error:e.message}));return true}
+ if(m.kind==='meetings'){if(!/^\/SchoolManagment\/Lessons\/TimeTable\//i.test(location.pathname))throw new Error('لم تفتح صفحة جدول المعلم');meetingBatch(m.urls).then(results=>reply({ok:true,results})).catch(e=>reply({ok:false,error:e.message}));return true}
  if(m.kind==='meeting'){if(!/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i.test(location.pathname))throw new Error('لم تفتح تفاصيل الدرس؛ تحقق من تسجيل الدخول');const url=meeting();reply({ok:true,url,unprepared:!url});return}
  throw new Error('طلب قراءة غير صالح')
  }catch(e){reply({ok:false,error:e.message,retryable:!!e.retryable})}return false});

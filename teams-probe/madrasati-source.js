@@ -24,6 +24,11 @@ var MadrasatiSource=(()=>{
   for(let i=0;i<teachers.length;i++){
    const t=teachers[i];if([...new URL(t.url).searchParams].find(([key])=>key.toLowerCase()==='schoolid')?.[1]?.toLowerCase()!==schoolId.toLowerCase())throw new Error('جدول المعلم يتبع مدرسة مختلفة');
    await status('قراءة جدول '+t.name+' · '+(i+1)+' من '+teachers.length,{done:i,total:teachers.length});const table=await navigate(t.url,'timetable',{date});if(table.date!==date)throw new Error('تاريخ جدول '+t.name+' لا يطابق التاريخ المختار');
+   const needed=[...new Set(table.lessons.map(l=>l.detailUrl).filter(url=>url&&!linkCache.has(url)))];
+   if(needed.length){await status('جلب روابط حصص '+t.name+' بالتوازي…',{done:i,total:teachers.length});const batch=await chrome.tabs.sendMessage(worker,{type:'MIRSAD_MADRASATI_READ',kind:'meetings',urls:needed});
+    if(!batch?.ok||!Array.isArray(batch.results)||batch.results.length!==needed.length)throw new Error(batch?.error||'حدّث صفحة مدرستي لتفعيل النقل السريع');
+    const seen=new Set();for(const result of batch.results){if(!needed.includes(result.detailUrl)||seen.has(result.detailUrl))throw new Error('نتائج روابط الحصص غير متطابقة');seen.add(result.detailUrl);if(result.ok){if(!result.url&&!result.unprepared)throw new Error('لم تؤكد صفحة الدرس غياب الرابط');linkCache.set(result.detailUrl,result)}else if(!result.retryable){const period=table.lessons.find(l=>l.detailUrl===result.detailUrl)?.period;throw new Error(t.name+' · الحصة '+period+' · '+result.error)}}
+   }
    for(const l of table.lessons){let teams='';if(l.detailUrl){await status('قراءة رابط '+t.name+' · الحصة '+l.period,{done:i,total:teachers.length});try{let result=linkCache.get(l.detailUrl);if(!result){result=await navigate(l.detailUrl,'meeting');if(!result.url&&!result.unprepared)throw new Error('تعذر التأكد من اكتمال تفاصيل الدرس');linkCache.set(l.detailUrl,result)}teams=result.url}catch(e){throw new Error(t.name+' · الحصة '+l.period+' · '+e.message)}}else if(!l.unprepared)throw new Error('تعذر تحديد رابط حصة '+t.name);
     lessons.push({teacher:t.name,cellIndex:l.period+1,lesson:l.lesson,title:l.title,time:l.time,teams,linkState:teams?'linked':'unprepared'})
    }
