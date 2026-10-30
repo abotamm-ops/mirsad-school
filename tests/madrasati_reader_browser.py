@@ -21,6 +21,10 @@ with sync_playwright() as p:
  later=page.evaluate("MirsadMadrasatiReader.selectDay('2026-11-02')");assert later['date']=='2026-11-02';assert '2026-11-01' in later['lessons'][0]['title']
 
  load('<a href="https://schools.madrasati.sa/Home/MicrosoftTeams">تيمز العام</a><a href="https://teams.microsoft.com/l/meetup-join/fixture">رابط تسجيل الدرس</a>');assert page.evaluate('MirsadMadrasatiReader.meeting()').endswith('/fixture')
+ # Completed details with no link are valid unprepared lessons, not loading errors.
+ load('<h6 class="titlesection2">تكليفات الحصة</h6>');assert page.evaluate('MirsadMadrasatiReader.meeting()')==''
+ load('<h1>جار التحميل</h1>');assert page.evaluate('(()=>{try{MirsadMadrasatiReader.meeting();return false}catch(e){return e.retryable===true}})()')
+ load('<h6 class="titlesection2">تكليفات الحصة</h6><a href="https://teams.microsoft.com/unsupported">رابط التسجيل</a>');assert page.evaluate('(()=>{try{MirsadMadrasatiReader.meeting();return false}catch(e){return !e.retryable}})()')
  # Read the actual user-provided pages if attached in this execution workspace; no network or saved scripts execute.
  files=[('directory','e52d9109-ccbb-4f44-b736-cf7e0082c40e'),('timetable','38bce45a-b9db-4309-889a-dc4248c3f8bc'),('meeting','e0f9d464-81af-43e9-8738-783936f93a14')]
  for kind,folder in files:
