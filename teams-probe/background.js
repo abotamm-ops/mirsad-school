@@ -90,7 +90,8 @@ async function ensureProbeTab(run){
 function dateAtOffset(anchor,minuteOffset){
  const d=new Date(anchor);d.setHours(0,0,0,0);d.setMinutes(minuteOffset);return d;
 }
-function schoolDay(date){return date.getDay()!==5&&date.getDay()!==6}
+// Manual schedules run every calendar day, including Friday and Saturday.
+function schoolDay(date){return true}
 function periodBounds(p,now=new Date(),mode="activeOrNext"){
  const candidates=[];
  for(let dayOffset=-2;dayOffset<=2;dayOffset++){
