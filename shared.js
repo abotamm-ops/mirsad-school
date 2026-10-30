@@ -14,7 +14,7 @@
     const tableBody = document.getElementById("body");
     if (!tableBody || !tableBody.closest("table")) throw new Error("Original timetable table not found");
     const lessons = payload.lessons;
-    const teacherNames = [...new Set(lessons.map(x => String(x.teacher || "").trim()).filter(Boolean))];
+    const teacherNames = [...new Set([...(Array.isArray(payload.teachers)?payload.teachers:[]),...lessons.map(x => x.teacher)].map(x => String(x || "").trim()).filter(Boolean))];
     const indexes = [2,3,4,5,6,7,8];
     const byTeacher = new Map(teacherNames.map(t => [t, Array.from({length:7}, () => [])]));
     lessons.forEach(item => { const teacher = String(item.teacher || "").trim(); const period = indexes.indexOf(Number(item.cellIndex)); if (period >= 0 && byTeacher.has(teacher)) byTeacher.get(teacher)[period].push(item); });
@@ -36,9 +36,10 @@
     const search = document.getElementById("search");
     if (search) { const q = search.value.trim().toLocaleLowerCase("ar"); tableBody.querySelectorAll("tr").forEach(tr => { tr.hidden = !tr.innerText.toLocaleLowerCase("ar").includes(q); }); }
     const date = payload.selectedDate || payload.scheduleDate || payload.date || payload.dayDate || payload.selectedDay || payload.dayName || payload.day || "";
-    showStatus("تم تحميل آخر تقرير رفعته من نقار" + (date ? " — تاريخ التقرير: " + date : " — تاريخ التقرير غير محدد في المصدر") + " — وقت الرفع: " + (payload.updatedAt ? new Date(payload.updatedAt).toLocaleString("ar-SA") : "غير معروف") + " — " + lessons.length + " حصة — يتحدّث تلقائيًا", false);
+    document.documentElement.dataset.mirsadSource=payload.source||"naqar";document.documentElement.dataset.mirsadSourceDate=payload.source==='madrasati'?payload.scheduleDate||'':'';
+    showStatus((payload.source==='madrasati'?"تم تحميل الجدول مباشرة من مدرستي":"تم تحميل آخر تقرير رفعته من نقار") + (date ? " — تاريخ التقرير: " + date : " — تاريخ التقرير غير محدد في المصدر") + " — وقت الرفع: " + (payload.updatedAt ? new Date(payload.updatedAt).toLocaleString("ar-SA") : "غير معروف") + " — " + lessons.length + " حصة — يتحدّث تلقائيًا", false);
   }
-  function syncOnce() {
+  function syncNaqar() {
     if (busy) return;
     busy = true;
     const callbackName = "__mirsadSync_" + Date.now() + "_" + Math.random().toString(36).slice(2);
@@ -50,6 +51,7 @@
       done = true; clearTimeout(timeout); busy = false;
       try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
       script.remove();
+      if(payload&&localStorage.getItem('mirsad-timetable-source-mode')==='madrasati')return;
       if (payload) {
         const version = String(payload.updatedAt || "") + "|" + JSON.stringify(payload.lessons);
         if (version !== lastVersion) { try { applyPayload(payload); lastVersion = version; } catch (_) { showStatus("تعذر تطبيق التقرير المشترك؛ بقي تصميم الجدول كما هو.", true); } }
@@ -64,8 +66,26 @@
     script.src = ENDPOINT + "?callback=" + encodeURIComponent(callbackName) + "&_=" + Date.now();
     document.head.appendChild(script);
   }
-  syncOnce();
-  setInterval(syncOnce, 15000);
+  let sourceBusy=false,legacySourceService=false;
+  const SOURCE_URL='https://script.google.com/macros/s/AKfycbwvkojpc9K_wxKWZhFJj38_OkD5aw18299ceLWdFnKOSMqoGiV3oL74AueuZiKTEHdo/exec';
+  function holdMadrasati(message){document.documentElement.dataset.mirsadSource='madrasati';document.documentElement.dataset.mirsadSourceDate='';document.getElementById('body')?.replaceChildren();lastVersion='';showStatus(message,true)}
+  async function syncOnce(){if(sourceBusy)return;sourceBusy=true;try{
+   if(document.readyState==='loading')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
+   if(window.MirsadAdminAccess)await window.MirsadAdminAccess.ready;
+   if(legacySourceService){syncNaqar();return}
+   const key=localStorage.getItem('mirsad_archive_password_v1')||localStorage.getItem('mirsad-monitor-reader-key');
+   if(!key){syncNaqar();return}
+   const endpoint=localStorage.getItem('mirsad-monitor-url')||SOURCE_URL;
+   const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'getTimetableSource',key}),signal:AbortSignal.timeout(12000)});if(!response.ok)throw new Error('تعذر تحديد مصدر الجدول');const result=await response.json();
+   if(!result.ok){if(['صلاحية القراءة لا تسمح بالرفع','النتيجة لا تطابق جدول اليوم المحفوظ','جدول اليوم غير محفوظ','لم تبدأ أرشفة هذا اليوم'].includes(result.error)){legacySourceService=true;syncNaqar();return}throw new Error(result.error||'تعذر قراءة مصدر الجدول')}
+   if(!['naqar','madrasati'].includes(result.mode))throw new Error('مصدر الجدول غير معروف');
+   localStorage.setItem('mirsad-timetable-source-mode',result.mode);
+   if(result.mode==='naqar'){document.documentElement.dataset.mirsadSource='naqar';document.documentElement.dataset.mirsadSourceDate='';syncNaqar();return}
+   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),payload=result.payload;
+   if(!payload||payload.scheduleDate!==today){holdMadrasati('المصدر مدرستي — اجمع جدول اليوم من الإضافة؛ لم تُعرض بيانات نقار أو يوم سابق.');return}
+   const version='madrasati|'+payload.updatedAt+'|'+JSON.stringify(payload.lessons);if(version!==lastVersion){applyPayload(payload);lastVersion=version}
+  }catch(error){if(localStorage.getItem('mirsad-timetable-source-mode')==='madrasati'&&!document.documentElement.dataset.mirsadSourceDate)holdMadrasati('تعذر تحميل جدول مدرستي؛ أعد المحاولة دون تغيير المصدر.');else showStatus('تعذر تحديث مصدر الجدول؛ ستعاد المحاولة تلقائيًا.',true)}finally{sourceBusy=false}}
+  void syncOnce();setInterval(()=>void syncOnce(),15000);
 
   function updateAbsenceLink() {
     const banner = document.getElementById("absence-banner");

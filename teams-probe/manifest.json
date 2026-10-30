@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
-  "version": "0.6.18",
+  "version": "0.6.19",
   "description": "الرصد باسم المنظّم من Teams بثلاث دورات وفاصل مستقل بين الأولى والثانية وبين الثانية والثالثة.",
   "permissions": [
     "activeTab",
@@ -16,7 +16,8 @@
     "https://teams.microsoft.com/*",
     "https://teams.live.com/*",
     "https://mirsad-school.onrender.com/*",
-    "<all_urls>"
+    "<all_urls>",
+    "https://schools.madrasati.sa/*"
   ],
   "action": {
     "default_title": "مرصاد — الرصد متوقف",
@@ -68,6 +69,15 @@
       ],
       "js": [
         "monitor-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://schools.madrasati.sa/*"
+      ],
+      "js": [
+        "madrasati-reader.js"
       ],
       "run_at": "document_idle"
     }

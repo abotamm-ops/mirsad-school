@@ -1,6 +1,13 @@
 // Independent Google Apps Script web app. Never merge with timetable/absence services.
 var MONITOR_ROOT='1t6dLow9LsdUtZZFH4CgnUleNMXEBHc2c';
 function configureMonitoringService(){var p=PropertiesService.getScriptProperties();if(!p.getProperty('MONITOR_API_KEY'))p.setProperty('MONITOR_API_KEY',Utilities.getUuid()+Utilities.getUuid());if(!p.getProperty('MONITOR_READER_KEY'))p.setProperty('MONITOR_READER_KEY',Utilities.getUuid()+Utilities.getUuid());return 'Set MONITOR_API_KEY and MONITOR_READER_KEY in Script properties. Never paste values into chat.'}
+function monitorMadrasatiPayload_(p){
+ if(!p||p.source!=='madrasati'||p.scheduleDate!==monitorToday_()||!Array.isArray(p.teachers)||!p.teachers.length||p.teachers.length>500||p.totalTeachers!==p.teachers.length||!Array.isArray(p.lessons)||p.lessons.length>3500||p.totalLessons!==p.lessons.length)throw new Error('جدول مدرستي ناقص أو تاريخه ليس اليوم');
+ if(!/^[A-Fa-f0-9]{32}$/.test(p.schoolId||'')||!/^https:\/\/schools\.madrasati\.sa\/SchoolManagment\/Teachers\?/i.test(p.sourceUrl||''))throw new Error('مصدر المدرسة غير صالح');
+ var sourceSchool=/[?&]schoolid=([A-Fa-f0-9]{32})(?:&|$)/i.exec(p.sourceUrl);if(!sourceSchool||sourceSchool[1].toLowerCase()!==p.schoolId.toLowerCase())throw new Error('رابط المصدر لا يطابق المدرسة');
+ var names={},teachers=p.teachers.map(function(name){var key=monitorName_(name);if(!key||names[key]||String(name).length>180)throw new Error('أسماء المعلمين غير صالحة');names[key]=true;return String(name).trim()}),seen={},lessons=p.lessons.map(function(l,i){var period=Number(l.cellIndex)-1,key=monitorName_(l.teacher)+'|'+period;if(!names[monitorName_(l.teacher)]||!Number.isInteger(period)||period<1||period>7||seen[key]||!String(l.lesson||'').trim()||!String(l.title||'').trim()||!String(l.time||'').trim())throw new Error('بيانات الحصة غير مكتملة أو مكررة');seen[key]=true;var teams=String(l.teams||'');if(teams&&!/^https:\/\/(teams\.microsoft\.com|teams\.live\.com)\/(l\/meetup-join\/|meet\/)/.test(teams))throw new Error('رابط تيمز غير صالح');if(!teams&&l.linkState!=='unprepared')throw new Error('تعذر قراءة الرابط لا يعني عدم تحضير الحصة');return {n:i+1,teacher:String(l.teacher),cellIndex:period+1,lesson:String(l.lesson).slice(0,200),title:String(l.title).slice(0,300),time:String(l.time).slice(0,100),teams:teams,status:'موجود'}});
+ return {source:'madrasati',schoolId:p.schoolId,sourceUrl:p.sourceUrl,updatedAt:new Date().toISOString(),scheduleDate:p.scheduleDate,totalLessons:lessons.length,teachers:teachers,lessons:lessons};
+}
 function monitorToday_(){return Utilities.formatDate(new Date(),'Asia/Riyadh','yyyy-MM-dd')}
 function monitorName_(v){return String(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim()}
 function monitorEqual_(a,b){a=String(a||'');b=String(b||'');var diff=a.length^b.length;for(var i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return !!a.length&&diff===0}
@@ -73,8 +80,17 @@ function monitorRequest_(p){
  if(p.action==='adminLogin'){if(!siteReader)throw new Error('أدخل كلمة مرور الموقع الإدارية');return {role:'admin',authMode:'site-password'}}
  if(administrative&&sitePassword&&!siteReader)throw new Error('هذه العملية تتطلب دخول إدارة الموقع');
  if(administrative&&!siteReader){var supplied=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(p.adminPin||''),Utilities.Charset.UTF_8).map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2)}).join('');var expected=props.getProperty('MONITOR_ADMIN_PIN_HASH')||'0e3dc69daef679ae76ca56039591a2002c71041a945a57db4460ee22db2259e5';if(!monitorEqual_(supplied,expected))throw new Error('الرقم السري للإدارة غير صحيح')}
- var reading=['dates','day','teacherLink','experimentInfo'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
+ var reading=['dates','day','teacherLink','experimentInfo','getTimetableSource'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
  var root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT));
+ if(p.action==='getTimetableSource'){var source=monitorRead_(monitorFile_(root,'mirsad-timetable-source.json'),{mode:'naqar',payload:null});return {mode:source.mode,payload:source.mode==='madrasati'?source.payload:null,updatedAt:source.updatedAt||null}}
+ if(p.action==='setTimetableSource'||p.action==='publishMadrasatiTimetable'){
+  if(experimentId)throw new Error('مصدر الجدول مستقل عن بيانات التجربة');
+  if(!writer)throw new Error('تغيير مصدر الجدول يتطلب إضافة مرتبطة برمز الرفع');
+  var sourceFile=monitorFile_(root,'mirsad-timetable-source.json'),source=monitorRead_(sourceFile,{mode:'naqar',payload:null});
+  if(p.action==='setTimetableSource'){if(['naqar','madrasati'].indexOf(p.mode)<0)throw new Error('مصدر غير صالح');source.mode=p.mode;source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);return {saved:true,mode:source.mode}}
+  if(source.mode!=='madrasati')throw new Error('اختر مصدر مدرستي أولًا');
+  var payload=monitorMadrasatiPayload_(p.payload);if(source.schoolId&&source.schoolId.toLowerCase()!==payload.schoolId.toLowerCase())throw new Error('جدول المدرسة لا يطابق المدرسة المرتبطة بالخدمة');source.schoolId=payload.schoolId;source.payload=payload;source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);return {saved:true,mode:'madrasati',date:payload.scheduleDate,teachers:payload.teachers.length,lessons:payload.lessons.length,updatedAt:payload.updatedAt};
+ }
  if(p.action==='experimentInfo')return {supported:true};
  root=monitorExperimentRoot_(root,experimentId,p.action==='startDay'&&writer);
  if(experimentId&&p.action==='startDay'&&!props.getProperty('MONITOR_EXPERIMENT_VIEW_'+experimentId))props.setProperty('MONITOR_EXPERIMENT_VIEW_'+experimentId,Utilities.getUuid()+Utilities.getUuid());
