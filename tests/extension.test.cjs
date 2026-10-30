@@ -28,3 +28,7 @@ test('manual monitoring accepts every weekday including Friday and Saturday and 
  }
  const next=vm.runInContext('nextPeriod(new Date("2026-10-29T23:59:00"))',e.ctx);assert.equal(new Date(next.when).getDay(),5);assert.equal(next.period.n,1);
 });
+
+test('a confirmed Madrasati import with zero lessons stops with an actionable message instead of opening the timetable repeatedly',async()=>{const e=extension();let opened=0;e.ctx.chrome.tabs.query=async()=>[{id:3,url:'https://mirsad-school.onrender.com/index.html'}];e.ctx.chrome.tabs.sendMessage=async()=>({ok:true,sourceType:'madrasati',sourceImportDate:model.day(),teachers:['المعلم'],items:[]});e.ctx.chrome.tabs.create=async()=>{opened++;return {id:4}};await assert.rejects(vm.runInContext('getScheduleTab(true)',e.ctx),/دون حصص/);assert.equal(opened,0)});
+
+test('a stale empty timetable tab does not hide another ready timetable tab',async()=>{const e=extension();e.ctx.chrome.tabs.query=async()=>[{id:3,active:true,url:'https://mirsad-school.onrender.com/index.html'},{id:4,url:'https://mirsad-school.onrender.com/index.html'}];e.ctx.chrome.tabs.sendMessage=async id=>id===3?{ok:true,sourceType:'madrasati',sourceImportDate:model.day(),teachers:['المعلم'],items:[]}:{ok:true,teachers:['المعلم'],items:[{teacher:'المعلم',period:1,hasLesson:true,url:'https://teams.microsoft.com/l/meetup-join/test'}]};assert.equal((await vm.runInContext('getScheduleTab(true)',e.ctx)).id,4)});
