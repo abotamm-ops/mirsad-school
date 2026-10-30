@@ -51,7 +51,7 @@ function renderTable(target,data){
  renderedDays.set(data.snapshot.date,data);
  const table=document.createElement('table'),head=document.createElement('thead'),hr=document.createElement('tr');for(const label of ['المعلم',...Array.from({length:7},(_,i)=>'الحصة '+(i+1))])hr.append(text('th',label));head.append(hr);table.append(head);
  const body=document.createElement('tbody'),cells=model.cells(data);
- for(const teacher of data.snapshot.teachers){const row=document.createElement('tr');row.dataset.teacherId=teacher.id;row.dataset.teacherName=teacher.name;row.append(text('th',teacher.name));
+ for(const teacher of data.snapshot.teachers.slice().sort((a,b)=>a.name.localeCompare(b.name,'ar',{sensitivity:'base',numeric:true}))){const row=document.createElement('tr');row.dataset.teacherId=teacher.id;row.dataset.teacherName=teacher.name;row.append(text('th',teacher.name));
   for(let period=1;period<=7;period++){
    const td=document.createElement('td'),cell=cells.find(c=>c.teacherId===teacher.id&&c.period===period);td.dataset.period=String(period);
    if(cell){

@@ -14,7 +14,7 @@
     const tableBody = document.getElementById("body");
     if (!tableBody || !tableBody.closest("table")) throw new Error("Original timetable table not found");
     const lessons = payload.lessons;
-    const teacherNames = [...new Set([...(Array.isArray(payload.teachers)?payload.teachers:[]),...lessons.map(x => x.teacher)].map(x => String(x || "").trim()).filter(Boolean))];
+    const teacherNames = [...new Set([...(Array.isArray(payload.teachers)?payload.teachers:[]),...lessons.map(x => x.teacher)].map(x => String(x || "").trim()).filter(Boolean))].sort(new Intl.Collator("ar",{sensitivity:"base",numeric:true}).compare);
     const indexes = [2,3,4,5,6,7,8];
     const byTeacher = new Map(teacherNames.map(t => [t, Array.from({length:7}, () => [])]));
     lessons.forEach(item => { const teacher = String(item.teacher || "").trim(); const period = indexes.indexOf(Number(item.cellIndex)); if (period >= 0 && byTeacher.has(teacher)) byTeacher.get(teacher)[period].push(item); });
