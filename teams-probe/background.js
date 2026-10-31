@@ -171,7 +171,7 @@ async function startMonitoring(immediate=false){
  const allLessons=loaded.items;
  // Skip teachers/lesson cells without valid Teams URLs without changing period numbering.
  // If teacher 1 has no Teams link, teacher 2's link in period 1 remains period 1.
- const schedule=PERIODS.flatMap(p=>scheduleCore.selectPeriodItems(allLessons,p.n));
+ const schedule=PERIODS.flatMap(p=>scheduleCore.selectPeriodItems(allLessons,p.n).slice().sort((a,b)=>a.teacher.localeCompare(b.teacher,'ar',{sensitivity:'base',numeric:true})));
  const periodCounts=Array.from({length:7},(_,i)=>allLessons.filter(x=>x.period===i+1).length);
  const validLinkCounts=Array.from({length:7},(_,i)=>scheduleCore.selectPeriodLinks(allLessons,i+1).length);
  if(!schedule.length){await setStatus(allLessons.length?'جدول اليوم محفوظ، لكن لا توجد روابط تيمز صالحة في نطاق الحصص المحدد؛ راجع من الحصة وإلى الحصة في الإعدادات.':'لم تُقرأ حصص اليوم من جدول المعلمين الأصلي؛ افتح جدول المعلمين وانتظر تحميله ثم أعد المحاولة.', {diagnostic:true,totalItems:allLessons.length,periodCounts,validLinkCounts});return}
