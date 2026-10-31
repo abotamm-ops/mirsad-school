@@ -1,0 +1,25 @@
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+from urllib.parse import urlsplit
+import json
+R=Path(__file__).resolve().parents[1]
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page(viewport={'width':640,'height':580});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ def route(r):
+  file=R/'teams-probe'/urlsplit(r.request.url).path.lstrip('/')
+  if file.is_file():r.fulfill(path=str(file))
+  else:r.abort()
+ page.route('**/*',route)
+ page.add_init_script('''globalThis.state={};globalThis.messages=[];globalThis.run=null;globalThis.fetch=async()=>({ok:true,json:async()=>({ok:true,payload:{scheduleDate:'2026-10-31',teachers:[],lessons:Array.from({length:13},(_,i)=>({teacher:'معلم '+(i+1),cellIndex:2,teams:'https://teams.microsoft.com/l/meetup-join/'+i}))}})});globalThis.chrome={permissions:{contains:async()=>true,request:async()=>true},runtime:{id:'fixture',sendMessage:async m=>{messages.push(m);switch(m.type){case 'MIRSAD_GET_LIVE_REPORT':return {ok:true,scheduleSettings:{manualStart:'06:30',startPeriod:1,endPeriod:7,roundCount:3}};case 'MIRSAD_STATUS':return {status:{text:'جاهز لبدء الرصد وفق التوقيت المحفوظ'},run};case 'MIRSAD_SOURCE_INFO':return {ok:true,mode:'madrasati',selectedDate:'2026-10-31'};case 'MIRSAD_LOCAL_BACKUP_INFO':return {status:{text:'الحفظ المحلي متصل — C:\\Users\\School\\Documents\\MirsadSchools-Data'},pendingImages:0,capturedCount:25};case 'MIRSAD_DRIVE_INFO':return {configured:true,status:{text:'تم حفظ النتائج على هذا الجهاز'}};case 'MIRSAD_SAVE_SCHEDULE_SETTINGS':return {ok:true,settings:m.settings};default:return {ok:true}}}},storage:{local:{get:async key=>state,set:async value=>Object.assign(state,value)}},tabs:{query:async()=>[{id:1,url:'https://mirsad-school.onrender.com/index.html'}],sendMessage:async()=>({ok:true,items:Array.from({length:13},(_,i)=>({teacher:'معلم '+(i+1),hasLesson:true,period:1,url:'https://teams.microsoft.com/l/meetup-join/'+i}))})},downloads:{download:async()=>1}}''')
+ page.goto('http://popup.test/popup.html');page.wait_for_function("document.querySelector('#madrasatiSourceDate').value==='2026-10-31'")
+ def fits():
+  return page.evaluate('''()=>{const main=document.querySelector('main'),panel=document.querySelector('[role=tabpanel]:not([hidden])'),m=main.getBoundingClientRect();const all=[...panel.querySelectorAll('button,input,select,a,.panel-note,.backup-summary')].filter(el=>el.getClientRects().length);return {scroll:document.documentElement.scrollHeight,viewport:innerHeight,mainOverflow:main.scrollHeight>main.clientHeight,clipped:all.filter(el=>{const r=el.getBoundingClientRect();return r.bottom>m.bottom+1||r.top<m.top-1}).map(el=>el.id||el.className)}}''')
+ assert page.locator('#panel-run #start').count()==1 and page.locator('#panel-run #pause-resume').count()==1 and page.locator('#panel-run #stop').count()==1
+ assert page.locator('#panel-drive #collectMadrasati').count()==1 and page.locator('#panel-tools #start-now').count()==1
+ for tab in ['run','timing','drive','tools']:
+  page.locator('[data-tab='+tab+']').click();result=fits();assert not result['mainOverflow'] and not result['clipped'] and result['scroll']<=result['viewport'],(tab,result);page.screenshot(path=str(R/('tests/popup-'+tab+'.png')))
+ page.locator('#show-links').click();page.wait_for_selector('#link-list .link-row');assert page.locator('#link-list .link-row:visible').count()==4;assert page.locator('#links-page').inner_text()=='1 / 4';assert not fits()['mainOverflow'];page.locator('#links-next').click();assert page.locator('#links-page').inner_text()=='2 / 4';page.locator('#links-next').click();page.locator('#links-next').click();assert page.locator('#link-list .link-row:visible').count()==1
+ page.locator('[data-tab=timing]').click();page.locator('#periodDuration').fill('40');page.locator('#save-time').click();page.wait_for_function("messages.some(m=>m.type==='MIRSAD_SAVE_SCHEDULE_SETTINGS'&&m.settings.periodDuration===40)")
+ page.locator('[data-tab=run]').click();page.locator('#start').click();page.wait_for_function("messages.some(m=>m.type==='MIRSAD_START')")
+ page.evaluate('run={paused:true,running:false}');page.evaluate('refresh()');assert 'استئناف' in page.locator('#pause-resume').inner_text();assert page.locator('#pause-resume svg').count()==1;assert page.locator('#start').is_disabled();page.locator('#pause-resume').click();page.wait_for_function("messages.some(m=>m.type==='MIRSAD_RESUME')")
+ page.locator('[data-tab=drive]').click();page.locator('#openDriveSettings').click();assert page.locator('#driveDialog').is_visible();page.locator('#driveUrl').fill('https://script.google.com/macros/s/fixture/exec');page.locator('#driveKey').fill('fixture-key');page.locator('#save-drive').click();page.wait_for_function("messages.some(m=>m.type==='MIRSAD_DRIVE_CONFIG')");page.locator('#closeDriveSettings').click();assert not page.locator('#driveDialog').is_visible();assert not errors,errors;b.close();print('PASS original extension popup panels, paginated links, timing/run controls and Drive configuration')

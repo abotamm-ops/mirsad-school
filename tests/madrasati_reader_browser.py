@@ -20,6 +20,12 @@ with sync_playwright() as p:
  earlier=page.evaluate("MirsadMadrasatiReader.selectDay('2026-10-05')");assert earlier['date']=='2026-10-05';assert '2026-10-04' in earlier['lessons'][0]['title']
  later=page.evaluate("MirsadMadrasatiReader.selectDay('2026-11-02')");assert later['date']=='2026-11-02';assert '2026-11-01' in later['lessons'][0]['title']
 
+ # Historical Thursday: complete scheduled lessons without detail actions stay in the import.
+ no_details='<span id="dategeo">18 أكتوبر 2026</span><li class="dayIcon" dayindex="4"><a class="active">الخميس</a></li><table><tbody id="divDayLectures"><tr id="hessaNumber3"><td class="event-title"><h6>العلوم</h6><div class="text-black-2">08:02–08:47</div><div class="fs-sm text-body">أول أ</div></td></tr></tbody></table>'
+ load(no_details);lesson=page.evaluate('MirsadMadrasatiReader.timetable()');assert lesson['date']=='2026-10-22';assert lesson['lessons'][0]['period']==3;assert lesson['lessons'][0]['unprepared'];assert lesson['lessons'][0]['missingDetails'];assert lesson['lessons'][0]['detailUrl']==''
+ page.evaluate("document.querySelector('#divDayLectures').setAttribute('aria-busy','true')");assert page.evaluate("(()=>{try{MirsadMadrasatiReader.timetable();return false}catch(e){return e.retryable===true}})()")
+ load(no_details.replace('</td>','<a href="https://outside.invalid/Teacher/Lessons/viewLectureDetails?Data=x">تفاصيل</a></td>'));assert page.evaluate("(()=>{try{MirsadMadrasatiReader.timetable();return false}catch(e){return !e.retryable}})()")
+ load(no_details.replace('<div class="fs-sm text-body">أول أ</div>',''));assert page.evaluate("(()=>{try{MirsadMadrasatiReader.timetable();return false}catch(e){return e.message.includes('ناقصة')}})()")
  load('<a href="https://schools.madrasati.sa/Home/MicrosoftTeams">تيمز العام</a><a href="https://teams.microsoft.com/l/meetup-join/fixture">رابط تسجيل الدرس</a>');assert page.evaluate('MirsadMadrasatiReader.meeting()').endswith('/fixture')
  # Completed details with no link are valid unprepared lessons, not loading errors.
  load('<h6 class="titlesection2">تكليفات الحصة</h6>');assert page.evaluate('MirsadMadrasatiReader.meeting()')==''

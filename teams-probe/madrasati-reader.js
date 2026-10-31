@@ -14,7 +14,14 @@
  for(const row of rows){const period=Number(row.id.replace('hessaNumber',''));if(!Number.isInteger(period)||period<1||period>7)throw new Error('رقم حصة غير صالح');const cell=row.querySelector('.event-title'),title=norm(cell?.querySelector('h6')?.textContent);if(!title){if(!norm(cell?.textContent)||/لا توجد (حصة|دروس)|لا يوجد درس/.test(norm(cell?.textContent)))continue;throw new Error('حصة غير مقروءة؛ لم يُرسل جدول ناقص')}
  const detailLinks=[...cell.querySelectorAll('a[href]')].map(a=>sameUrl(a.getAttribute('href'),/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i)).filter(Boolean);if(detailLinks.length>1)throw new Error('يوجد أكثر من درس للحصة نفسها؛ يلزم مراجعة الربط');
  const time=norm(cell.querySelector('.text-black-2')?.textContent),classroom=norm(cell.querySelector('.fs-sm.text-body')?.textContent);if(!time||!classroom)throw new Error('بيانات وقت الحصة أو الفصل ناقصة');
- const unprepared=/لم يتم (?:إعداد|اعداد|تحضير)|غير معد/.test(norm(cell.textContent));if(!detailLinks.length&&!unprepared)throw new Error('لم يظهر رابط تفاصيل الحصة؛ لن تُعامل مشكلة القراءة كغياب');lessons.push({period,title,lesson:classroom,time,detailUrl:detailLinks[0]||'',unprepared})}
+ const explicitUnprepared=/لم يتم (?:إعداد|اعداد|تحضير)|غير معد/.test(norm(cell.textContent));
+ // A complete scheduled row can legitimately have no lesson-details action.
+ // Retain its period/subject/class as a linkless lesson; never omit the row.
+ const complete=doc.readyState==='complete'&&!doc.querySelector('[aria-busy="true"],#divDayLectures .loading');
+ const suspicious=[...cell.querySelectorAll('a[href]')].some(a=>/viewLectureDetails/i.test(a.getAttribute('href')||''));
+ if(!detailLinks.length&&(!complete||suspicious))throw Object.assign(new Error('الحصة '+period+' · '+(!complete?'جدول مدرستي لم يكتمل تحميله':'رابط تفاصيل الحصة غير صالح؛ يلزم مراجعته')),{retryable:!complete});
+ const missingDetails=!detailLinks.length&&!explicitUnprepared;
+ lessons.push({period,title,lesson:classroom,time,detailUrl:detailLinks[0]||'',unprepared:explicitUnprepared||missingDetails,missingDetails})}
  return {date,lessons}}
  function meeting(doc=document){const urls=[...doc.querySelectorAll('a[href]')].map(a=>{try{const u=new URL(a.getAttribute('href'));return u.protocol==='https:'&&['teams.microsoft.com','teams.live.com'].includes(u.hostname)&&/^\/(?:l\/meetup-join\/|meet\/)/.test(u.pathname)?u.href:null}catch{return null}}).filter(Boolean),unique=[...new Set(urls)];if(unique.length>1)throw new Error('وجد أكثر من رابط اجتماع؛ لم يُختَر رابط بالتخمين');if(unique.length===1)return unique[0];
  // Only a fully rendered lesson detail can establish that no meeting link was supplied.
@@ -45,8 +52,8 @@
  chrome.runtime.onMessage.addListener((m,_sender,reply)=>{if(m?.type!=='MIRSAD_MADRASATI_READ')return;try{
  if(location.origin!==ORIGIN)throw new Error('هذه ليست صفحة مدرستي');
  if(m.kind==='directory'){if(!/^\/SchoolManagment\/Teachers\/?$/i.test(location.pathname))throw new Error('افتح صفحة إدارة بيانات المعلمين');reply({ok:true,teachers:directory(),sourceUrl:location.href});return}
- if(m.kind==='timetable'){if(!/^\/SchoolManagment\/Lessons\/TimeTable\//i.test(location.pathname))throw new Error('لم تفتح صفحة الجدول؛ تحقق من تسجيل الدخول');selectDay(m.date).then(data=>reply({ok:true,...data})).catch(e=>reply({ok:false,error:e.message}));return true}
- if(m.kind==='meetings'){if(!/^\/SchoolManagment\/Lessons\/TimeTable\//i.test(location.pathname))throw new Error('لم تفتح صفحة جدول المعلم');meetingBatch(m.urls).then(results=>reply({ok:true,results})).catch(e=>reply({ok:false,error:e.message}));return true}
+ if(m.kind==='timetable'){if(!/^\/SchoolManagment\/Lessons\/TimeTable\//i.test(location.pathname))throw new Error('لم تفتح صفحة الجدول؛ تحقق من تسجيل الدخول');selectDay(m.date).then(data=>reply({ok:true,...data})).catch(e=>reply({ok:false,error:e.message,retryable:!!e.retryable}));return true}
+ if(m.kind==='meetings'){if(!/^\/SchoolManagment\/Lessons\/TimeTable\//i.test(location.pathname))throw new Error('لم تفتح صفحة جدول المعلم');meetingBatch(m.urls).then(results=>reply({ok:true,results})).catch(e=>reply({ok:false,error:e.message,retryable:!!e.retryable}));return true}
  if(m.kind==='meeting'){if(!/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i.test(location.pathname))throw new Error('لم تفتح تفاصيل الدرس؛ تحقق من تسجيل الدخول');const url=meeting();reply({ok:true,url,unprepared:!url});return}
  throw new Error('طلب قراءة غير صالح')
  }catch(e){reply({ok:false,error:e.message,retryable:!!e.retryable})}return false});
