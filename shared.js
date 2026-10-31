@@ -36,7 +36,7 @@
     const search = document.getElementById("search");
     if (search) { const q = search.value.trim().toLocaleLowerCase("ar"); tableBody.querySelectorAll("tr").forEach(tr => { tr.hidden = !tr.innerText.toLocaleLowerCase("ar").includes(q); }); }
     const date = payload.selectedDate || payload.scheduleDate || payload.date || payload.dayDate || payload.selectedDay || payload.dayName || payload.day || "";
-    document.documentElement.dataset.mirsadSource=payload.source||"naqar";document.documentElement.dataset.mirsadSourceDate=payload.source==='madrasati'?payload.scheduleDate||'':'';document.documentElement.dataset.mirsadImportDate=payload.source==='madrasati'?(payload.importedForDate||payload.scheduleDate||''):'';
+    document.documentElement.dataset.mirsadUploadedAt=payload.updatedAt||'';document.documentElement.dataset.mirsadSource=payload.source||"naqar";document.documentElement.dataset.mirsadSourceDate=payload.scheduleDate||payload.selectedDate||payload.date||'';document.documentElement.dataset.mirsadImportDate=payload.source==='madrasati'?(payload.importedForDate||payload.scheduleDate||''):'';
     showStatus((payload.source==='madrasati'?"تم تحميل الجدول مباشرة من مدرستي"+(payload.importedForDate&&payload.importedForDate!==payload.scheduleDate?" — جدول من تاريخ مختلف للتجربة؛ الرصد بتاريخ "+payload.importedForDate:""):"تم تحميل آخر تقرير رفعته من نقار") + (date ? " — تاريخ التقرير: " + date : " — تاريخ التقرير غير محدد في المصدر") + " — وقت الرفع: " + (payload.updatedAt ? new Date(payload.updatedAt).toLocaleString("ar-SA") : "غير معروف") + " — " + lessons.length + " حصة — يتحدّث تلقائيًا", false);
   }
   function syncNaqar() {
