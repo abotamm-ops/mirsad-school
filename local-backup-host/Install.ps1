@@ -51,6 +51,8 @@ $exe = Join-Path $installDir 'MirsadBackupHost.exe'
 $arch = if ([Environment]::Is64BitOperatingSystem) { 'amd64' } else { '386' }
 $sourceExe = Join-Path $PSScriptRoot "MirsadBackupHost-$arch.exe"
 if (-not (Test-Path -LiteralPath $sourceExe)) { throw "Missing backup executable: $sourceExe" }
+# Stop only this helper's independent recovery worker before replacing its executable.
+Get-CimInstance Win32_Process -Filter "Name = 'MirsadBackupHost.exe'" | Where-Object { $_.ExecutablePath -eq $exe -and $_.CommandLine -like '*--browser-recovery*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop }
 Copy-Item -LiteralPath $sourceExe -Destination $exe -Force
 $manifest = @{
     name = 'com.mirsad.local_backup'
@@ -70,3 +72,5 @@ Write-Host ('Registered extension IDs: ' + (($ids | Sort-Object) -join ', '))
 Write-Host 'Installed for this Windows user. No administrator permission required.' -ForegroundColor Green
 Write-Host 'Reload the Mirsad extension, open Drive, then click the local backup check button.'
 Write-Host 'Backups: G:\Data Copy AND K:\Data Copy. C:\Data Copy replaces an unavailable primary drive.'
+
+& (Join-Path $PSScriptRoot "Install-Recovery.ps1")

@@ -1,4 +1,4 @@
-importScripts("restore-official.js","schedule-core.js","monitor-model.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js","madrasati-source.js");
+importScripts("restore-official.js","schedule-core.js","monitor-model.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js","madrasati-source.js","browser-recovery.js","live-heartbeat.js");
 const scheduleCore = globalThis.MirsadScheduleCore;
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
@@ -19,7 +19,7 @@ async function loadPeriodsFromSchedule(tabId,settingsOverride){const activeSetti
 
 async function setStatus(text,extra={}){await chrome.storage.local.set({[STATUS_KEY]:{text,at:Date.now(),...extra}})}
 async function getRun(){await MirsadOfficialReady;const x=await chrome.storage.local.get(KEY);return x[KEY]||null}
-async function saveRun(run){await chrome.storage.local.set({[KEY]:run})}
+async function saveRun(run){await chrome.storage.local.set({[KEY]:run});await MirsadBrowserRecovery.sync();void MirsadLiveSender.sync()}
 const DAILY_REPORT_KEY="mirsadDailyAttendanceReports";
 function localDayKey(date=new Date()){
  const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,"0"),d=String(date.getDate()).padStart(2,"0");
@@ -153,7 +153,8 @@ async function getScheduleTab(openIfMissing=false){
 }
 async function startMonitoring(immediate=false){
  await refreshScheduleSettings();
- const existing=await getRun();
+ let existing=await getRun();
+ if(!immediate&&(existing?.paused||existing?.running)&&(await chrome.storage.local.get('mirsadDriveConfig')).mirsadDriveConfig?.key){await CloudMonitoring.ensureDay(true);existing=await getRun()}
  if(!immediate&&existing?.paused){await resumeMonitoring();return}
  if(!immediate&&existing?.running){await recoverPersistedRunAfterBrowserStart();return}
  if(existing?.running&&immediate&&existing.current){await setStatus("المراقبة تعمل بالفعل؛ لن يُفتح فحص فوري أثناء فحص رابط.",{period:existing.period,waiting:!existing.period});return}
@@ -175,7 +176,7 @@ async function startMonitoring(immediate=false){
  const validLinkCounts=Array.from({length:7},(_,i)=>scheduleCore.selectPeriodLinks(allLessons,i+1).length);
  if(!schedule.length){await setStatus(allLessons.length?'جدول اليوم محفوظ، لكن لا توجد روابط تيمز صالحة في نطاق الحصص المحدد؛ راجع من الحصة وإلى الحصة في الإعدادات.':'لم تُقرأ حصص اليوم من جدول المعلمين الأصلي؛ افتح جدول المعلمين وانتظر تحميله ثم أعد المحاولة.', {diagnostic:true,totalItems:allLessons.length,periodCounts,validLinkCounts});return}
  await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
- const run={running:true,autoResume:!immediate,schedule,periods:PERIODS,diagnostic:{totalItems:allLessons.length,periodCounts,validLinkCounts},tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null,backtestMode:immediate,immediateMode:immediate,suspendedRun,suspendedNextAt:suspendedAlarm?.scheduledTime||null};
+ const run={running:true,scheduleRevision:frozen?.scheduleRevision||null,autoResume:!immediate,schedule,periods:PERIODS,diagnostic:{totalItems:allLessons.length,periodCounts,validLinkCounts},tabId:null,probeTabIds:[],startedAt:Date.now(),results:[],period:null,periodItems:[],index:0,cycle:1,current:null,backtestMode:immediate,immediateMode:immediate,suspendedRun,suspendedNextAt:suspendedAlarm?.scheduledTime||null};
  await saveRun(run);
  const current=immediate?(periodNow()||PERIODS[0]):periodNow();
  if(current){await beginPeriod(run,current.n)}
@@ -365,7 +366,10 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
 let recoveryInProgress=null;
 function recoverPersistedRunAfterBrowserStart(){if(recoveryInProgress)return recoveryInProgress;recoveryInProgress=recoverSavedProgress().finally(()=>{recoveryInProgress=null});return recoveryInProgress}
 async function recoverSavedProgress(){
- await refreshScheduleSettings();const run=await getRun();if(!run?.running||run.autoResume===false)return;
+ await refreshScheduleSettings();let run=await getRun();if(!run?.running||run.autoResume===false)return;
+ const config=(await chrome.storage.local.get('mirsadDriveConfig')).mirsadDriveConfig;
+ if(config?.key&&(typeof navigator==='undefined'||navigator.onLine!==false)){try{await CloudMonitoring.ensureDay(true);run=await getRun();if(!run?.running||run.autoResume===false)return}catch(error){run.waitingForReconnect=true;await saveRun(run);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+RECONNECT_RETRY_MS});await setStatus('التقدم محفوظ؛ تعذر التحقق من جدول الرصد الحالي، وستُعاد المحاولة: '+error.message);return}}
+
  const pending=chrome.alarms.get?await chrome.alarms.get(NEXT_ALARM):null;
  const active=periodNow(new Date()),bounds=active?periodBounds(active,new Date(),"active"):null;
  const savedAt=run.periodStartedAt||run.current?.scanDeadlineAt||run.results?.[run.results.length-1]?.scannedAt||run.startedAt;
@@ -386,7 +390,7 @@ async function recoverSavedProgress(){
  }
  await saveRun(run);const next=nextPeriod(new Date());await chrome.alarms.create(NEXT_ALARM,{when:next.when});await setStatus('التقدم محفوظ؛ ينتظر مرصاد الحصة '+next.period.n+' دون إعادة الحصص المكتملة.',{period:next.period.n,waiting:true,recovered:true});
 }
-chrome.tabs.onRemoved?.addListener(tabId=>{(async()=>{const run=await getRun();if(!run?.running||run.immediateMode||!run.current||run.tabId!==tabId)return;run.tabId=null;run.probeTabIds=[];run.waitingForReconnect=true;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+1000});await setStatus('أُغلقت صفحة الفحص؛ التقدم محفوظ وسيُستأنف المعلم غير المكتمل تلقائيًا.')})().catch(()=>{})});
+chrome.tabs.onRemoved?.addListener((tabId,removeInfo)=>{(async()=>{const run=await getRun();if(!run?.running||run.immediateMode||!run.current||run.tabId!==tabId)return;run.tabId=null;run.probeTabIds=[];run.waitingForReconnect=true;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+(removeInfo?.isWindowClosing?65000:1000)});await setStatus('أُغلقت صفحة الفحص؛ التقدم محفوظ وسيُستأنف المعلم غير المكتمل تلقائيًا.')})().catch(()=>{})});
 chrome.runtime.onStartup?.addListener(()=>{recoverPersistedRunAfterBrowserStart().catch(()=>{})});
 chrome.runtime.onInstalled?.addListener(details=>{if(details?.reason==="update")(async()=>{const saved=await chrome.storage.local.get(SCHEDULE_SETTINGS_KEY);await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:{...(saved[SCHEDULE_SETTINGS_KEY]||{}),configuredRoundCount:3}});await recoverPersistedRunAfterBrowserStart()})().catch(()=>{})});
 async function labelEvidenceCapture(dataUrl,teacher,status,period,cycle){
@@ -470,6 +474,7 @@ async function pauseMonitoring(){
  await setStatus("الرصد متوقف مؤقتًا؛ اضغط استئناف للمتابعة من نفس المعلم والدورة.");return {ok:true};
 }
 async function resumeMonitoring(){
+ if((await chrome.storage.local.get('mirsadDriveConfig')).mirsadDriveConfig?.key)await CloudMonitoring.ensureDay(true);
  await refreshScheduleSettings();const run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};
  run.paused=false;run.running=true;run.autoResume=run.pauseAutoResume!==false;run.current=null;await saveRun(run);
  await setStatus("تم استئناف الرصد من موضع التوقف، مع مراعاة وقت الحصة الحالية.");
@@ -486,6 +491,8 @@ async function stopAndResetMonitoring(){
 }
 
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
+ if(message?.type==='MIRSAD_PURGED_DAY'){let valid=false;try{const u=new URL(sender?.tab?.url);valid=u.origin==='https://mirsad-school.onrender.com'&&u.pathname==='/automatic-monitoring.html'}catch{}if(!valid){sendResponse({ok:false});return false}CloudMonitoring.resetAfterPurge(message.date,message.requestId).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
+
  if(message?.type==='MIRSAD_DASHBOARD_ROUNDS'){
   (async()=>{const count=Number(message.count),gap=Number(message.gap),thirdGap=Number(message.thirdGap??5);if(!Number.isInteger(thirdGap)||thirdGap<1||thirdGap>10||!Number.isInteger(count)||count!==3||!Number.isInteger(gap)||gap<1||gap>10)throw new Error('ثلاث دورات فقط، وكل فاصل من 1 إلى 10 دقائق');const run=await getRun();if(run?.running)throw new Error('أوقف الرصد قبل تغيير الإعدادات');const frozen=(await chrome.storage.local.get('mirsadDriveDay')).mirsadDriveDay;if(frozen?.date===MirsadMonitorModel.day()&&frozen.snapshot.roundCount!==count)throw new Error('عدد الدورات مثبت في أرشيف اليوم؛ غيّره قبل بداية يوم جديد');await refreshScheduleSettings();scheduleSettings={...scheduleSettings,roundCount:count,configuredRoundCount:3,roundGapMinutes:gap,thirdRoundGapMinutes:thirdGap};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:scheduleSettings});sendResponse({ok:true})})().catch(e=>sendResponse({ok:false,error:e.message}));return true
  }

@@ -43,3 +43,7 @@ GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o Mir
 go -C local-backup-host build -o /tmp/mirsad-backup-integration .
 python3 tests/capture_local_integration.py
 ```
+
+## حماية إغلاق كروم — 0.6.28
+
+يضيف التحديث مراقبًا مستقلًا يعيد فتح ملف Chrome الخاص بالإضافة المدرسية بعد نحو دقيقة من إغلاقه أثناء الرصد فقط. الإيقاف المؤقت أو النهائي يعطّله. شغّل Install.cmd مرة واحدة من الحزمة الجديدة لتحديث المساعد وتسجيل اختصار بدء التشغيل. لا يقرأ كلمات المرور ولا يقبل أوامر أو روابط يحددها الموقع؛ الفتح محصور في Chrome وموقع مرصاد الخاص. إعداد / سامي الماجد.

@@ -1,0 +1,1 @@
+(()=>{const credit=document.createElement('div');credit.className='mirsad-credit';credit.textContent='إعداد / سامي الماجد';const footer=document.querySelector('footer');(footer||document.body).append(credit)})();

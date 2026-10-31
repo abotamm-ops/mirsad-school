@@ -29,3 +29,5 @@ document.getElementById('driveKey').oninput=()=>{driveFormError='';document.getE
 document.getElementById('begin-day').onclick=async()=>{const b=document.getElementById('begin-day');b.disabled=true;driveFormError='';try{const result=await chrome.runtime.sendMessage({type:'MIRSAD_BEGIN_DAY'});if(!result.ok)throw new Error(result.error);await driveInfo()}catch(e){driveFormError=e.message;document.getElementById('drive-status').textContent=e.message}finally{b.disabled=false}};
 document.getElementById('retry-drive').onclick=async()=>{await chrome.runtime.sendMessage({type:'MIRSAD_DRIVE_RETRY'});await driveInfo()};
 driveInfo();setInterval(driveInfo,5000);
+
+async function recoveryInfo(){const s=chrome.storage?.local?await chrome.storage.local.get("mirsadBrowserRecoveryStatus"):{};document.getElementById("browserRecoveryStatus").textContent=s.mirsadBrowserRecoveryStatus?.text||"حدّث مساعد الحفظ لتفعيل إعادة فتح كروم بعد انقطاع دقيقة."}void recoveryInfo();setInterval(recoveryInfo,3000);

@@ -1,4 +1,4 @@
-// Mirsad native messaging host: fixed backup roots only, no network or shell access.
+// Mirsad native host: fixed backup roots and narrowly scoped school Chrome recovery.
 package main
 
 import (
@@ -23,6 +23,8 @@ const maxMessage = 32 * 1024 * 1024
 
 type request struct {
 	ExperimentID string          `json:"experimentId"`
+	WindowOpen   *bool           `json:"windowOpen"`
+	Running      *bool           `json:"running"`
 	Action       string          `json:"action"`
 	Date         string          `json:"date"`
 	Filename     string          `json:"filename"`
@@ -40,12 +42,13 @@ type copyResult struct {
 	err  error
 }
 type response struct {
-	ExperimentSupport bool     `json:"experimentSupport"`
-	OK                bool     `json:"ok"`
-	Paths             []string `json:"paths"`
-	Fallback          bool     `json:"fallback"`
-	Errors            []string `json:"errors,omitempty"`
-	Error             string   `json:"error,omitempty"`
+	BrowserRecoverySupport bool     `json:"browserRecoverySupport"`
+	ExperimentSupport      bool     `json:"experimentSupport"`
+	OK                     bool     `json:"ok"`
+	Paths                  []string `json:"paths"`
+	Fallback               bool     `json:"fallback"`
+	Errors                 []string `json:"errors,omitempty"`
+	Error                  string   `json:"error,omitempty"`
 }
 
 func digest(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
@@ -281,6 +284,13 @@ func copies(j job, roots [3]string, write func(string, job) copyResult, timeout 
 	return r
 }
 func execute(r request) response {
+	if r.Action == "browserRecovery" {
+		origin := ""
+		if len(os.Args) > 1 {
+			origin = os.Args[1]
+		}
+		return recoveryRequest(r, origin)
+	}
 	j, err := validate(r)
 	if err != nil {
 		return response{Error: err.Error()}
@@ -317,6 +327,10 @@ func serve(input io.Reader, output io.Writer) error {
 	return err
 }
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--browser-recovery" {
+		recoveryLoop()
+		return
+	}
 	if err := serve(os.Stdin, os.Stdout); err != nil {
 		body, _ := json.Marshal(response{Error: err.Error()})
 		binary.Write(os.Stdout, binary.LittleEndian, uint32(len(body)))
