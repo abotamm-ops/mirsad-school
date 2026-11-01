@@ -501,7 +501,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==='MIRSAD_LOCAL_BACKUP_CHECK'){LocalBackup.check().then(sendResponse);return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_RETRY'){LocalBackup.flush().then(()=>LocalBackup.info()).then(sendResponse);return true}
  if(message?.type==='MIRSAD_DRIVE_CONFIG'){CloudMonitoring.configure(String(message.url||''),String(message.key||'')).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
- if(message?.type==='MIRSAD_BEGIN_DAY'){CloudMonitoring.beginDay().then(day=>sendResponse({ok:true,day})).catch(e=>sendResponse({ok:false,error:e.message}));return true}
+ if(['MIRSAD_PREVIEW_TIMETABLE','MIRSAD_ADOPT_TIMETABLE'].includes(message?.type)){let allowed=!sender.tab;try{const u=new URL(sender?.tab?.url);allowed=u.origin==='https://mirsad-school.onrender.com'&&['/','/index.html','/automatic-monitoring.html'].includes(u.pathname)}catch{}if(!allowed){sendResponse({ok:false,error:'العملية متاحة من مرصاد فقط'});return false}const action=message.type==='MIRSAD_PREVIEW_TIMETABLE'?CloudMonitoring.previewTimetable():CloudMonitoring.adoptTimetable(message.preview);action.then(result=>sendResponse({ok:true,...result})).catch(e=>sendResponse({ok:false,error:e.message}));return true}
+ if(message?.type==='MIRSAD_BEGIN_DAY'){CloudMonitoring.beginDay().then(day=>sendResponse({ok:true,day})).catch(e=>sendResponse({ok:false,error:e.message,preview:e.preview,needsAdoption:!!e.preview}));return true}
  if(message?.type==='MIRSAD_DRIVE_INFO'){CloudMonitoring.info().then(info=>sendResponse({ok:true,...info}));return true}
  if(message?.type==='MIRSAD_DRIVE_RETRY'){CloudMonitoring.flush().then(()=>sendResponse({ok:true}));return true}
 

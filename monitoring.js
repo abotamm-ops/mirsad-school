@@ -190,3 +190,5 @@ $('downloadDailyReportsWord').onclick=()=>downloadDailyReports('word');
 updateReportReadiness();
 
 function dashboardRoundFields(){const count=Number($("roundCount").value);$("roundGap").closest("label").hidden=count<2;$("thirdRoundGap").closest("label").hidden=count<3}$("roundCount").addEventListener("input",dashboardRoundFields);dashboardRoundFields();
+
+window.addEventListener("mirsad-schedule-adopted",()=>{cache.clear();renderedDays.clear();void refreshRemote()});
