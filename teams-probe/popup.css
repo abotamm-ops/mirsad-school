@@ -32,3 +32,10 @@ input,select{height:26px;padding:3px 5px;margin-bottom:5px}
 .timing-grid label{font-size:9px;line-height:1.4}.preview{max-height:43px}
 #drive-folder{font-size:9px}.backup-summary{max-height:28px;padding:3px 6px}#status{max-height:40px;padding:5px}
 [data-panel="tools"]{display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start}[data-panel="tools"]>.link-picker{grid-column:1/-1}[data-panel="tools"]>#diagnose,[data-panel="tools"]>#export{font-size:9px;margin:0;line-height:1.35}
+/* The four daily actions use verified state, with both text and color. */
+button[data-step]{background:#fff2df!important;color:#8c4406!important;border:1px solid #e9a34d;font-weight:bold;position:relative;padding-right:27px;padding-left:5px;min-height:30px}
+button[data-step]::before{content:attr(data-step);position:absolute;right:5px;top:50%;transform:translateY(-50%);border-radius:50%;width:18px;height:18px;line-height:18px;background:#b75c0e;color:white;font-size:11px}
+button[data-step][data-step-state=done]{background:#dff5e9!important;color:#155f3e!important;border-color:#74bb93}button[data-step][data-step-state=done]::before{background:#218454}button[data-step][data-step-state=done]::after{content:' ✓';font-weight:bold}
+button[data-step][data-step-state=error]{background:#fde5e4!important;color:#a12626!important;border-color:#d87979}button[data-step][data-step-state=error]::before{background:#bd3939}button[data-step][data-step-state=error]::after{content:' !'}
+button[data-step][data-step-state=busy]::after{content:' …'}button[data-step]:disabled{opacity:1;cursor:wait}
+#save-drive,#check-local-backup,#pause-resume{background:#e7eef3;color:#31566b;border:1px solid #d8e3e9}
