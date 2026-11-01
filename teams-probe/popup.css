@@ -2,3 +2,19 @@
 .brand-mark img{display:block;border-radius:13px}
 
 .backup-summary{margin-top:12px;padding:10px 12px;border-radius:9px;background:#e3f2ee;color:#166450;font-size:11px;white-space:pre-line;overflow-wrap:anywhere}.backup-summary.warning{background:#fff0d9;color:#925009}
+
+/* Single-page popup: presentation only; existing control IDs and handlers stay intact. */
+body{width:780px;background:#edf3f6;color:#183c4b}
+.brand{padding:12px 20px;background:linear-gradient(110deg,#173b51,#087f7b);border-bottom:3px solid #83d3c4}
+.brand h2{font-size:25px}.brand a{padding:8px 12px;background:#ffffff12}
+main{max-height:490px;overflow:auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+[data-panel]{min-width:0}[data-panel="run"]{grid-column:1;grid-row:1}[data-panel="timing"]{grid-column:2;grid-row:1 / span 2}[data-panel="drive"]{grid-column:1;grid-row:2}[data-panel="tools"]{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+[data-panel="tools"] .link-picker{grid-column:1 / -1}[data-panel="tools"]>button{margin:0}
+.settings,.link-picker,.intro{border-radius:14px;border-color:#dbe6ec;box-shadow:0 3px 12px #183c4b05}
+.settings+.settings{margin-top:12px}.intro{margin:12px 0 4px;padding:12px}.intro strong{font-size:13px}
+h3{border-bottom:1px solid #edf2f5;padding-bottom:9px;color:#076e70}
+button{padding:9px 10px;border-radius:10px;transition:background .15s}input,select{padding:8px;margin-bottom:10px}
+.timing-grid{grid-template-columns:minmax(0,1fr) 116px;gap:0 10px}.timing-grid .hint{grid-column:1 / -1}.timing-grid label{align-self:center}
+.backup-summary,.status-label,#status{grid-column:1 / -1;margin:0}.status-label{font-weight:bold}#status{max-height:130px;background:#fff;border:1px solid #dbe6ec}
+footer{padding:9px 20px}.hint{line-height:1.8}
+@media(max-width:600px){body{width:100%;min-width:360px}main{grid-template-columns:1fr}[data-panel="run"],[data-panel="timing"],[data-panel="drive"],[data-panel="tools"]{grid-column:1;grid-row:auto}}
