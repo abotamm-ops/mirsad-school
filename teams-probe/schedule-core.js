@@ -146,11 +146,12 @@
     return target.length >= 2 && haystack.has(target[0]) && haystack.has(target[target.length - 1]);
   }
 
-  function classifyOrganizerMembership(organizerName, invitedText, inviteesReadable, fullyScanned=true) {
-    if (!organizerName || !inviteesReadable) return { status:"unresolved", teacher:organizerName||"" };
-    if (nameAppears(organizerName, invitedText)) return { status:"absent", teacher:organizerName };
-    if (!fullyScanned) return { status:"unresolved", teacher:organizerName };
-    return { status:"present", teacher:organizerName };
+  function classifyOrganizerMembership(organizerName, invitedText, inviteesReadable, fullyScanned=true, presentText='') {
+    const exactRow=text=>String(text||'').split(/\n+/).some(row=>normalize(row)===normalize(organizerName));
+    if(!organizerName)return {status:'unresolved',teacher:''};
+    if(exactRow(invitedText))return {status:'absent',teacher:organizerName};
+    if(!inviteesReadable||!fullyScanned)return {status:'unresolved',teacher:organizerName};
+    return {status:'present',teacher:organizerName};
   }
 
   function summarizeAttendanceStatuses(records) {

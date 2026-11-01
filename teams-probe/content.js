@@ -18,8 +18,8 @@
   const rosterDigits = value => String(value).replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c)));
   const participantSelector = '[data-cid="roster-participant"], [data-tid^="participantsFromMeeting-"], [id^="participantsFromMeeting-"], [data-tid^="participantsInCall-"], [id^="participantsInCall-"]';
   const headingAliases = [
-    {key:"present", labels:["الحضور","In this meeting","Attendees"]},
-    {key:"invited", labels:["تمت دعوة الآخرين","Invited","Other invitees"]},
+    {key:"present", labels:["الحضور","في هذا الاجتماع","في الاجتماع","In this meeting","In this call","Attendees"]},
+    {key:"invited", labels:["تمت دعوة الآخرين","من تمت دعوتهم","من تم دعوتهم","تمت دعوتهم","تم دعوتهم","الأشخاص المدعوون","Invited","Other invitees","Invited participants","Invited people","Not in this meeting"]},
     {key:"noResponse", labels:["لا توجد استجابة","Didn't respond","Hasn't responded"]},
     // Section boundaries only: none of these groups is required for presence.
     {key:"other", labels:["مقدمو الاجتماع","مقدمو العرض","منظمو الاجتماع","Meeting organizers","Presenters","Organizers"]}
@@ -139,7 +139,7 @@
   // "تمت دعوة الآخرين (31)" is a REQUIRED minimum before a positive
   // presence decision; the visible window alone is not the full roster.
   function expectedInviteeCount(label) {
-    const match = rosterDigits(normalize(label)).match(/[（(]\s*(\d+)(?:\s*[/،,]\s*(\d+))?\s*[）)]/);
+    const match = rosterDigits(normalize(label)).match(/(\d+)(?:\s*[/،,]\s*(\d+))?\s*[）)]?\s*$/);
     return match ? Math.max(...match.slice(1).filter(Boolean).map(Number)) : null;
   }
 
@@ -220,7 +220,7 @@
       // but not necessarily the same data-tid prefix. Read its explicit name field.
       const nameField=el.querySelector('[id^="roster-avatar-img-"], .fui-TreeItemPersonaLayout__main span[title]');
       const fieldName=normalize(nameField?.innerText||nameField?.textContent||nameField?.getAttribute('title')||'');
-      const name=prefix?normalize(identifier.slice(prefix.length)):fieldName;
+      const name=fieldName||(prefix?normalize(identifier.slice(prefix.length)):'');
       const contents=normalize(el.innerText||el.textContent||'');
       // Teams' refactored in-call row contains both the name and its organizer badge.
       // It establishes identity only; presence still requires a complete invitee scan.
@@ -231,7 +231,7 @@
         /^(?:المنظم|organizer|organiser)$/i.test(normalize(badge.innerText||badge.textContent||''))&&
         ![...badge.children].some(child=>visible(child)&&normalize(child.innerText||child.textContent||''))
       );
-      return {el,name,contents,group:prefix==='participantsInCall-'?'present':rosterGroupForRow(el,headings),organizer};
+      return {el,name,contents,group:rosterGroupForRow(el,headings),organizer};
     }).filter(x=>x.name && x.name.length<=130);
   }
 
@@ -308,16 +308,16 @@
       collect();
     }
     const matches=[...organizers];
-    // The displayed total is diagnostic only, not a condition for presence.
-    // Require readable rows (or an explicitly empty list), and finish the existing scan.
+    // A stable declared count must match the unique invited rows actually read.
+    // Missing or changing rows cannot establish absence from the invited list.
     const inviteesReadable=sawInvitees&&!unreadableRows&&(observedInvitees.size>0||expectedCount===0);
-    const fullyScanned=inviteesReadable&&scrollables.every(x=>x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3);
+    const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3);
     // Preserve the matched row for evidence when an absence has been detected.
     if(matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
-      reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?'تعذر إنهاء تمرير قائمة المدعوين':'',
-      diagnostics:'إصدار القارئ=0.5.51؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ العدد المعلن للمعلومة فقط='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
+      diagnostics:'إصدار القارئ=0.6.41؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
@@ -414,11 +414,11 @@
         line("تعذّر تحديد اسم المعلم من «المنظّم» حتى بعد البحث بالمسطرة؛ النتيجة غير محسومة.");
       } else {
         line("اسم المنظّم من Teams: " + organizer.name);
-        const result = organizer.inInvitees?{status:"absent",teacher:organizer.name}:scheduleCore?.classifyOrganizerMembership(organizer.name, "", true, organizer.fullyScanned);
+        const result = organizer.inInvitees?{status:"absent",teacher:organizer.name}:scheduleCore?.classifyOrganizerMembership(organizer.name,organizer.invitedText,organizer.inviteesReadable,organizer.fullyScanned,organizer.presentText);
         if (result?.status === "absent") {
           line("النتيجة الأولية: غائب — اسم المنظّم موجود ضمن «تمت دعوة الآخرين». يلزم حفظ دليل الغياب قبل اعتماده.");
         } else if (result?.status === "present") {
-          line("النتيجة: حاضر — اكتمل فحص قائمة «تمت دعوة الآخرين» ولم يوجد اسم المنظّم فيها.");
+          line("النتيجة: حاضر — اسم المنظّم غير موجود في قائمة المدعوين بعد اكتمال قراءتها.");
         } else {
           line("النتيجة: غير محسوم — لم تكتمل قراءة قائمة «تمت دعوة الآخرين» (المقروء " + organizer.observedCount + " من " + (organizer.expectedCount ?? "عدد غير معروف") + ").");
         }
@@ -506,17 +506,16 @@
     }
     const organizer=await scanOrganizerAcrossPage(teacher,sections);
     if(!organizer.name)return {status:"unresolved",teacher,reason:"organizer-not-found",retryable:!organizer.ambiguous,detail:organizer.ambiguous?"ظهر أكثر من اسم محتمل مرتبط بوسم «المنظّم»؛ لم تُسجّل حالة حضور أو غياب.":"تعذّر العثور على اسم مرتبط بوسم «المنظّم» بعد البحث والتمرير في الصفحة؛ لم تُسجّل حالة حضور أو غياب."};
-    // Present = organizer identity + not found in the scanned invitee list.
-    // Displayed invitee totals are not a prerequisite.
-    // No membership in an attendance or presenter group is required.
-    const decision=organizer.inInvitees?{status:"absent",teacher:organizer.name}:scheduleCore?.classifyOrganizerMembership(organizer.name,"",organizer.inviteesReadable,organizer.fullyScanned);
+    // The organizer is absent if listed among invitees, otherwise present only
+    // after the entire readable invitee list has been verified.
+    const decision=organizer.inInvitees?{status:"absent",teacher:organizer.name}:scheduleCore?.classifyOrganizerMembership(organizer.name,organizer.invitedText,organizer.inviteesReadable,organizer.fullyScanned,organizer.presentText);
     if(decision?.status==="absent"){
       const evidenceReady=await prepareInviteeEvidenceView(organizer.name);
       if(!evidenceReady)return {status:"unresolved",teacher,detail:"اسم المنظّم «"+organizer.name+"» ظهر ضمن المدعوين، لكن تعذّر إظهار الاسم وعنوان القائمة معًا للتصوير؛ لم يُسجّل غياب."};
       return {status:"absent",teacher:organizer.name,evidenceTeacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» مرتبط بالمعلم ويظهر تحت «تمت دعوة الآخرين»؛ الحالة غائب. جُهزت القائمة للتصوير.",evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}};
     }
-    if(decision?.status==="present")return {status:"present",teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» مرتبط بالمعلم، ولم يظهر تحت «تمت دعوة الآخرين» بعد فحص القائمة؛ الحالة حاضر."};
-    return {status:"unresolved",teacher:organizer.name,detail:(organizer.reason||"تعذر تأكيد اكتمال القائمة")+"؛ الأسماء المقروءة من المدعوين=" + organizer.observedCount + ". "+organizer.diagnostics};
+    if(decision?.status==="present")return {status:"present",teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» غير موجود ضمن المدعوين بعد اكتمال قراءة القائمة؛ الحالة حاضر."};
+    return {status:"unresolved",teacher:organizer.name,detail:(organizer.reason||"تعذر تأكيد اكتمال قائمة المدعوين")+"؛ الأسماء المقروءة من المدعوين=" + organizer.observedCount + ". "+organizer.diagnostics};
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
