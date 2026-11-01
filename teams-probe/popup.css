@@ -40,3 +40,5 @@ button[data-step][data-step-state=error]{background:#fde5e4!important;color:#a12
 button[data-step][data-step-state=busy]::after{content:' …'}button[data-step]:disabled{opacity:1;cursor:wait}
 #save-drive,#check-local-backup,#pause-resume{background:#e7eef3;color:#31566b;border:1px solid #d8e3e9}
 main{padding-top:9px;padding-bottom:9px}
+
+#importDecision{border:1px solid #c8dce2;border-radius:14px;padding:18px;width:min(650px,94vw);max-height:90vh;overflow:auto;color:#183c4b;background:#fff;font:12px/1.8 Tahoma,Arial,sans-serif}#importDecision::backdrop{background:#102b3c88}#importDecision p{margin:8px 0}#importDecision button{font-size:12px;padding:9px}#importDecision .decision-note{font-size:10px;color:#6e5360}#importDecisionError{color:#a22b35}

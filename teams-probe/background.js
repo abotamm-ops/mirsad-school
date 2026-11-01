@@ -153,13 +153,13 @@ async function getScheduleTab(openIfMissing=false){
 }
 async function startMonitoring(immediate=false){
  await MirsadClassicReady;await refreshScheduleSettings();
- const existing=await getRun();
+ const existing=await getRun();try{await CloudMonitoring.assertSelected(existing)}catch(e){if(existing?.running)await pauseMonitoring();throw e}
  if(!immediate&&existing?.paused){await resumeMonitoring();return}
  if(!immediate&&existing?.running){await recoverPersistedRunAfterBrowserStart();return}
  if(existing?.running&&immediate&&existing.current){await setStatus("المراقبة تعمل بالفعل؛ لن يُفتح فحص فوري أثناء فحص رابط.",{period:existing.period,waiting:!existing.period});return}
  const suspendedRun=immediate&&existing?.running?existing:null;
  const suspendedAlarm=suspendedRun&&chrome.alarms.get?await chrome.alarms.get(NEXT_ALARM):null;
- if(!immediate)await CloudMonitoring.ensureDay(true);
+ await CloudMonitoring.ensureDay(true);await CloudMonitoring.assertSelected();
  const scheduleTab=await getScheduleTab();
  const driveDay=(await chrome.storage.local.get("mirsadDriveDay")).mirsadDriveDay;
  const frozen=driveDay?.date===MirsadMonitorModel.day()?driveDay.snapshot:null;
@@ -206,7 +206,7 @@ async function beginPeriod(run,periodNo){
  await navigateCurrent(run);
 }
 async function navigateCurrent(run){
- if(!run?.running)return;
+ if(!run?.running)return;try{await CloudMonitoring.assertSelected(run)}catch(e){await pauseMonitoring();await setStatus(e.message);return}
  // Hard gate: choose the period that is active NOW, never the next/previous
  // period merely because the run state or link order still points to it.
  if(!run.backtestMode){
@@ -365,7 +365,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
 let recoveryInProgress=null;
 function recoverPersistedRunAfterBrowserStart(){if(recoveryInProgress)return recoveryInProgress;recoveryInProgress=recoverSavedProgress().finally(()=>{recoveryInProgress=null});return recoveryInProgress}
 async function recoverSavedProgress(){
- await refreshScheduleSettings();const run=await getRun();if(!run?.running||run.autoResume===false)return;
+ await refreshScheduleSettings();const run=await getRun();if(!run?.running||run.autoResume===false)return;try{await CloudMonitoring.assertSelected(run)}catch(e){await pauseMonitoring();await setStatus(e.message);return}
  const pending=chrome.alarms.get?await chrome.alarms.get(NEXT_ALARM):null;
  const active=periodNow(new Date()),bounds=active?periodBounds(active,new Date(),"active"):null;
  const savedAt=run.periodStartedAt||run.current?.scanDeadlineAt||run.results?.[run.results.length-1]?.scannedAt||run.startedAt;
@@ -388,7 +388,7 @@ async function recoverSavedProgress(){
 }
 chrome.tabs.onRemoved?.addListener(tabId=>{(async()=>{const run=await getRun();if(!run?.running||run.immediateMode||!run.current||run.tabId!==tabId)return;run.tabId=null;run.probeTabIds=[];run.waitingForReconnect=true;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+1000});await setStatus('أُغلقت صفحة الفحص؛ التقدم محفوظ وسيُستأنف المعلم غير المكتمل تلقائيًا.')})().catch(()=>{})});
 chrome.runtime.onStartup?.addListener(()=>{recoverPersistedRunAfterBrowserStart().catch(()=>{})});
-chrome.runtime.onInstalled?.addListener(()=>{void MirsadClassicReady});
+chrome.runtime.onInstalled?.addListener(()=>{(async()=>{await MirsadClassicReady;const run=await getRun();try{await CloudMonitoring.assertSelected(run)}catch(e){if(run?.running)await pauseMonitoring();await setStatus(e.message)}})().catch(()=>{})});
 async function labelEvidenceCapture(dataUrl,teacher,status,period,cycle){
  const bitmap=await createImageBitmap(await (await fetch(dataUrl)).blob());
  try{
@@ -470,7 +470,7 @@ async function pauseMonitoring(){
  await setStatus("الرصد متوقف مؤقتًا؛ اضغط استئناف للمتابعة من نفس المعلم والدورة.");return {ok:true};
 }
 async function resumeMonitoring(){
- await refreshScheduleSettings();const run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};
+ await CloudMonitoring.assertSelected(await getRun());await refreshScheduleSettings();const run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};
  run.paused=false;run.running=true;run.autoResume=run.pauseAutoResume!==false;run.current=null;await saveRun(run);
  await setStatus("تم استئناف الرصد من موضع التوقف، مع مراعاة وقت الحصة الحالية.");
  if(run.periodStartedAt){const active=periodNow(),bounds=active?periodBounds(active,new Date(),"active"):null;if(!bounds||active.n!==run.period||run.periodStartedAt!==bounds.start.getTime()){await recoverPersistedRunAfterBrowserStart();return {ok:true}}}
@@ -499,7 +499,6 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==='MIRSAD_LOCAL_BACKUP_RETRY'){LocalBackup.flush().then(()=>LocalBackup.info()).then(sendResponse);return true}
  if(message?.type==='MIRSAD_DRIVE_CONFIG'){CloudMonitoring.configure(String(message.url||''),String(message.key||'')).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
  if(message?.type==='MIRSAD_SERVICE_URL'){let allowed=false;try{const u=new URL(sender?.tab?.url);allowed=u.origin==='https://mirsad-school.onrender.com'&&u.pathname==='/automatic-monitoring.html'}catch{}if(!allowed){sendResponse({ok:false});return false}chrome.storage.local.get('mirsadDriveConfig').then(s=>sendResponse({ok:true,url:s.mirsadDriveConfig?.url||null}));return true}
- if(message?.type==='MIRSAD_IMPORT_NAQAR'){if(sender.tab){sendResponse({ok:false});return false}CloudMonitoring.importNaqar().then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
  if(message?.type==='MIRSAD_BEGIN_DAY'){CloudMonitoring.beginDay().then(day=>sendResponse({ok:true,day})).catch(e=>sendResponse({ok:false,error:e.message}));return true}
  if(message?.type==='MIRSAD_DRIVE_INFO'){CloudMonitoring.info().then(info=>sendResponse({ok:true,...info}));return true}
  if(message?.type==='MIRSAD_DRIVE_RETRY'){CloudMonitoring.flush().then(()=>sendResponse({ok:true}));return true}
