@@ -19,7 +19,7 @@ with sync_playwright() as p:
  assert [page.locator('#'+id).get_attribute('data-step') for id in ['collectMadrasati','save-time','begin-day','start']]==['1','2','3','4']
  assert state('collectMadrasati')!='done'
  page.locator('#collectMadrasati').click();page.wait_for_timeout(1700);assert state('collectMadrasati')=='busy'
- page.evaluate("""()=>{sourceInfo.state={running:false};sourceInfo.lastSuccess={date:'2026-10-31',importedForDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),lessons:70,updatedAt:'verified-import'}}""")
+ page.evaluate("""()=>{sourceInfo.state={running:false};sourceInfo.lastSuccess={date:'2026-10-31',importedForDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),lessons:70,monitoringPrepared:true,updatedAt:'verified-import'}}""")
  page.wait_for_function("document.querySelector('#collectMadrasati').dataset.stepState==='done'")
  page.locator('#save-time').click();page.wait_for_function("document.querySelector('#save-time').dataset.stepState==='done'")
  page.locator('#periodDuration').fill('42');assert state('save-time')=='pending';page.locator('#save-time').click();page.wait_for_function("document.querySelector('#save-time').dataset.stepState==='done'")
