@@ -153,7 +153,7 @@ async function getScheduleTab(openIfMissing=false){
 }
 async function startMonitoring(immediate=false){
  await MirsadClassicReady;await refreshScheduleSettings();
- const existing=await getRun();try{await CloudMonitoring.assertSelected(existing)}catch(e){if(existing?.running)await pauseMonitoring();throw e}
+ const existing=await getRun();try{await CloudMonitoring.assertSelected(existing?.running||existing?.paused?existing:null)}catch(e){if(existing?.running)await pauseMonitoring();throw e}
  if(!immediate&&existing?.paused){await resumeMonitoring();return}
  if(!immediate&&existing?.running){await recoverPersistedRunAfterBrowserStart();return}
  if(existing?.running&&immediate&&existing.current){await setStatus("المراقبة تعمل بالفعل؛ لن يُفتح فحص فوري أثناء فحص رابط.",{period:existing.period,waiting:!existing.period});return}
@@ -388,7 +388,7 @@ async function recoverSavedProgress(){
 }
 chrome.tabs.onRemoved?.addListener(tabId=>{(async()=>{const run=await getRun();if(!run?.running||run.immediateMode||!run.current||run.tabId!==tabId)return;run.tabId=null;run.probeTabIds=[];run.waitingForReconnect=true;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+1000});await setStatus('أُغلقت صفحة الفحص؛ التقدم محفوظ وسيُستأنف المعلم غير المكتمل تلقائيًا.')})().catch(()=>{})});
 chrome.runtime.onStartup?.addListener(()=>{recoverPersistedRunAfterBrowserStart().catch(()=>{})});
-chrome.runtime.onInstalled?.addListener(()=>{(async()=>{await MirsadClassicReady;const run=await getRun();try{await CloudMonitoring.assertSelected(run)}catch(e){if(run?.running)await pauseMonitoring();await setStatus(e.message)}})().catch(()=>{})});
+chrome.runtime.onInstalled?.addListener(()=>{(async()=>{await MirsadClassicReady;const run=await getRun();try{await CloudMonitoring.assertSelected(run?.running||run?.paused?run:null)}catch(e){if(run?.running)await pauseMonitoring();await setStatus(e.message)}})().catch(()=>{})});
 async function labelEvidenceCapture(dataUrl,teacher,status,period,cycle){
  const bitmap=await createImageBitmap(await (await fetch(dataUrl)).blob());
  try{
