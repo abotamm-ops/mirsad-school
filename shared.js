@@ -31,6 +31,7 @@
       }).join("");
       return '<tr data-teacher="' + esc(teacher) + '"><th class="teacher"><span class="num">' + (rowIndex+1) + '</span><span class="teacher-name">' + esc(teacher) + '</span></th>' + cells + '</tr>';
     }).join("");
+    try{if(globalThis.MirsadVisibleSchedule){const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),ref=MirsadVisibleSchedule.reference(payload,day),old=JSON.parse(localStorage.getItem(MirsadVisibleSchedule.KEY)||'null'),signature=x=>JSON.stringify({...x,observedAt:0});if(!old||signature(old)!==signature(ref)){localStorage.setItem(MirsadVisibleSchedule.KEY,JSON.stringify(ref));window.dispatchEvent(new Event('mirsad-visible-schedule-changed'))}}}catch{}
     const count = document.getElementById("count");
     if (count) count.textContent = teacherNames.length + " معلمًا — " + lessons.length + " حصة";
     const search = document.getElementById("search");
@@ -76,7 +77,7 @@
    const key=localStorage.getItem('mirsad_archive_password_v1')||localStorage.getItem('mirsad-monitor-reader-key');
    if(!key){syncNaqar();return}
    const endpoint=localStorage.getItem('mirsad-monitor-url')||SOURCE_URL;
-   const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'getTimetableSource',key}),signal:AbortSignal.timeout(12000)});if(!response.ok)throw new Error('تعذر تحديد مصدر الجدول');const result=await response.json();
+   const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'getTimetableSource',key}),signal:AbortSignal.timeout(12000)});if(!response.ok)throw new Error('تعذر تحديد مصدر الجدول');const result=await response.json();if(endpoint!==(localStorage.getItem('mirsad-monitor-url')||SOURCE_URL))return;
    if(!result.ok){if(['صلاحية القراءة لا تسمح بالرفع','النتيجة لا تطابق جدول اليوم المحفوظ','جدول اليوم غير محفوظ','لم تبدأ أرشفة هذا اليوم'].includes(result.error)){legacySourceService=true;syncNaqar();return}throw new Error(result.error||'تعذر قراءة مصدر الجدول')}
    if(!['naqar','madrasati'].includes(result.mode))throw new Error('مصدر الجدول غير معروف');
    localStorage.setItem('mirsad-timetable-source-mode',result.mode);

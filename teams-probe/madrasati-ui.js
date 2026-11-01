@@ -9,7 +9,7 @@
   if(!dateEditing&&!$('madrasatiSourceDate').value)$('madrasatiSourceDate').value=r.selectedDate;
   $('collectMadrasati').disabled=!!r.state?.running;$('scheduleSource').disabled=!!r.state?.running;
   const selected=$('madrasatiSourceDate').value,last=r.lastSuccess;
-  const result=r.state?.error?r.state.text:last?.date&&last.date!==selected?'التاريخ المختار: '+selected+' — آخر نقل ناجح: '+last.date+' ('+last.lessons+' حصة)':r.state?.text;
+  const result=r.mode==='naqar'?'المصدر نقار — يعتمد الرصد جدول الصفحة الأولى':r.state?.error?r.state.text:last?.date&&last.date!==selected?'التاريخ المختار: '+selected+' — آخر نقل ناجح: '+last.date+' ('+last.lessons+' حصة)':r.state?.text;
   $('scheduleSourceStatus').textContent=errorText||(r.state?.running?r.state.text:selectionNotice||result)||(r.mode==='naqar'?'المصدر نقار — بالطريقة الحالية':'المصدر مدرستي — جاهز للجمع');
  }catch{}}
  async function saveDate(showNotice=true){dateEditing=true;const value=$('madrasatiSourceDate').value;if(!validDate(value))return false;

@@ -41,5 +41,5 @@ footer{font-size:12px;color:#64748b;text-align:center;padding:12px}
 <script>
 const q=document.getElementById('search'), body=document.getElementById('body'), count=document.getElementById('count');
 q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('ar');let n=0;for(const tr of body.rows){const hit=tr.innerText.toLocaleLowerCase('ar').includes(term);tr.hidden=!hit;if(hit)n++;}count.textContent=n+' معلم';});
-</script><script src="shared.js?v=0.6.30"></script>
+</script><script src="visible-schedule.js?v=0.6.32"></script><script src="shared.js?v=0.6.32"></script>
 </body></html>
