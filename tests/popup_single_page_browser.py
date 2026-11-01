@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 import json
 R=Path(__file__).resolve().parents[1]
 with sync_playwright() as p:
- b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page(viewport={'width':780,'height':600});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page(viewport={'width':790,'height':600});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def route(r):
   file=R/'teams-probe'/urlsplit(r.request.url).path.lstrip('/')
   if file.is_file():r.fulfill(path=str(file))
@@ -16,6 +16,8 @@ with sync_playwright() as p:
  assert page.locator('[data-panel]:visible').count()==4
  assert page.locator('[data-tab]').count()==0
  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+ page.screenshot(path='/tmp/mirsad-popup34-top.png')
+ assert page.evaluate('document.documentElement.scrollHeight<=600'),page.evaluate('document.documentElement.scrollHeight')
  page.locator('#periodDuration').fill('40');page.locator('#save-time').click();page.wait_for_function("messages.some(m=>m.type==='MIRSAD_SAVE_SCHEDULE_SETTINGS'&&m.settings.periodDuration===40)")
  page.locator('#show-links').click();page.wait_for_selector('#link-list .link-row')
  assert not errors,errors

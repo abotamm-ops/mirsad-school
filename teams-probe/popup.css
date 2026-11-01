@@ -3,18 +3,32 @@
 
 .backup-summary{margin-top:12px;padding:10px 12px;border-radius:9px;background:#e3f2ee;color:#166450;font-size:11px;white-space:pre-line;overflow-wrap:anywhere}.backup-summary.warning{background:#fff0d9;color:#925009}
 
-/* Single-page popup: presentation only; existing control IDs and handlers stay intact. */
-body{width:780px;background:#edf3f6;color:#183c4b}
-.brand{padding:12px 20px;background:linear-gradient(110deg,#173b51,#087f7b);border-bottom:3px solid #83d3c4}
-.brand h2{font-size:25px}.brand a{padding:8px 12px;background:#ffffff12}
-main{max-height:490px;overflow:auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
-[data-panel]{min-width:0}[data-panel="run"]{grid-column:1;grid-row:1}[data-panel="timing"]{grid-column:2;grid-row:1 / span 2}[data-panel="drive"]{grid-column:1;grid-row:2}[data-panel="tools"]{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
-[data-panel="tools"] .link-picker{grid-column:1 / -1}[data-panel="tools"]>button{margin:0}
-.settings,.link-picker,.intro{border-radius:14px;border-color:#dbe6ec;box-shadow:0 3px 12px #183c4b05}
-.settings+.settings{margin-top:12px}.intro{margin:12px 0 4px;padding:12px}.intro strong{font-size:13px}
-h3{border-bottom:1px solid #edf2f5;padding-bottom:9px;color:#076e70}
-button{padding:9px 10px;border-radius:10px;transition:background .15s}input,select{padding:8px;margin-bottom:10px}
-.timing-grid{grid-template-columns:minmax(0,1fr) 116px;gap:0 10px}.timing-grid .hint{grid-column:1 / -1}.timing-grid label{align-self:center}
-.backup-summary,.status-label,#status{grid-column:1 / -1;margin:0}.status-label{font-weight:bold}#status{max-height:130px;background:#fff;border:1px solid #dbe6ec}
-footer{padding:9px 20px}.hint{line-height:1.8}
-@media(max-width:600px){body{width:100%;min-width:360px}main{grid-template-columns:1fr}[data-panel="run"],[data-panel="timing"],[data-panel="drive"],[data-panel="tools"]{grid-column:1;grid-row:auto}}
+/* Compact dashboard: all primary controls visible together. */
+body{width:790px;font-size:11px;background:#eef4f6}
+.brand{padding:9px 14px;border-bottom:3px solid #7ed0bc}.brand h2{font-size:22px}.brand-mark,.brand-mark img{width:36px;height:36px}.brand a{padding:5px 9px}
+main{padding:10px;max-height:none;overflow:visible;display:grid;grid-template-columns:1fr 1.12fr 1fr;gap:8px;align-items:stretch}
+[data-panel]{min-width:0}[data-panel="run"]{grid-column:1;grid-row:1}[data-panel="tools"]{grid-column:1;grid-row:2}[data-panel="timing"]{grid-column:2;grid-row:1 / span 2}[data-panel="drive"]{grid-column:3;grid-row:1 / span 2;display:flex;flex-direction:column-reverse;justify-content:flex-end;gap:8px}
+.settings,.link-picker{padding:9px;border-radius:11px;border-color:#dce7eb;height:auto}.settings label,.link-picker label{font-size:10px;margin-bottom:3px}
+[data-panel="timing"]>.settings{height:100%}[data-panel="run"]>.settings{margin-bottom:5px}
+h3{font-size:12px;margin:0 0 8px;padding-bottom:5px;border-bottom:1px solid #e8eff2;color:#076d70}
+button{font-size:11px;padding:6px 5px;margin-top:5px;min-height:29px;border-radius:7px}input,select{font-size:11px;padding:5px 6px;margin-bottom:6px;height:29px;border-radius:6px}
+input[type=url]{font-size:10px}.intro{display:none}.hint{display:none}
+.timing-grid{grid-template-columns:minmax(0,1fr) 94px;gap:0 6px;align-content:start}.timing-grid label{align-self:center;line-height:1.5}.timing-grid input,.timing-grid select{grid-column:2}
+.preview{font-size:9px;line-height:1.5;max-height:48px;overflow:auto;margin-top:4px;padding:5px;grid-column:1/-1}
+#drive-key-state,#drive-status,#local-backup-status{font-size:10px;line-height:1.5;margin:5px 0;max-height:42px;overflow:auto;overflow-wrap:anywhere}
+#drive-folder{font-size:10px}#local-backup-status:empty{display:none}
+.link-picker{padding:8px}.link-list{max-height:65px}.link-summary{font-size:10px;max-height:32px;overflow:auto}.link-row{padding:4px}.link-row a{font-size:9px}
+[data-panel="tools"]>#diagnose,[data-panel="tools"]>#export{font-size:10px}
+.backup-summary{grid-column:1/-1;font-size:10px;padding:5px 8px;margin:0;max-height:38px;overflow:auto}.status-label{display:none}#status{grid-column:1/-1;font-size:11px;line-height:1.5;padding:7px;margin:0;max-height:51px;overflow:auto;border:1px solid #d7e5ea;background:white}
+footer{padding:6px 14px;font-size:10px}
+.brand{padding:6px 14px}.brand h2{font-size:20px}.brand span{font-size:10px}
+button{min-height:25px;padding:4px 5px;line-height:1.45;margin-top:4px}
+input,select{height:26px;padding:3px 5px;margin-bottom:5px}
+[data-panel="run"] label[for="scheduleSource"]{display:none}
+#madrasatiDateLabel{display:flex;align-items:center;gap:6px;font-size:9px!important}#madrasatiDateLabel input{margin:0;min-width:0;flex:1}
+#collectMadrasati{font-size:10px}#scheduleSourceStatus:not(:empty){display:block;font-size:9px;line-height:1.3;max-height:25px;overflow:auto;margin:3px 0}
+.settings,.link-picker{padding:7px}h3{margin-bottom:5px;padding-bottom:4px}
+#drive-key-state,#drive-status,#local-backup-status{font-size:9px;line-height:1.4;margin:3px 0;max-height:28px}
+.timing-grid label{font-size:9px;line-height:1.4}.preview{max-height:43px}
+#drive-folder{font-size:9px}.backup-summary{max-height:28px;padding:3px 6px}#status{max-height:40px;padding:5px}
+[data-panel="tools"]{display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start}[data-panel="tools"]>.link-picker{grid-column:1/-1}[data-panel="tools"]>#diagnose,[data-panel="tools"]>#export{font-size:9px;margin:0;line-height:1.35}
