@@ -5,6 +5,8 @@ const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
 // Watchdog includes Teams loading/joining; successful scans still finish immediately.
 const SCAN_TIMEOUT_MS=90000;
 const RECONNECT_RETRY_MS=15000;
+const MAX_UNRESOLVED_RETRIES=2;
+const resolvingScans=new Set();
 const DEFAULT_SCHEDULE_SETTINGS={manualStart:"06:30",periodDuration:45,manualGapMinutes:1,periodCount:7,startPeriod:1,endPeriod:7,scanDelay:1,roundCount:3,roundGapMinutes:5,thirdRoundGapMinutes:5};
 let scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS};
 let PERIODS=[];
@@ -274,11 +276,11 @@ async function navigateCurrent(run){
  const item=run.periodItems[run.index];
  if(!item.url){const record={teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:"",status:"no-link",detail:"لا يوجد رابط Teams لهذه الحصة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle||0};run.results.push(record);if(!run.testMode&&!run.backtestMode)await appendDailyReport(record);run.index++;run.current=null;await saveRun(run);await setStatus("الحصة "+p.n+" — "+item.teacher+": لا يوجد رابط Teams؛ يتابع مرصاد المعلم التالي.",{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle,last:record});await navigateCurrent(run);return}
  if(!isTeamsMeetingUrl(item.url)){run.results.push({teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",status:"unresolved",detail:"تجاوز مرصاد رابطًا لا يطابق نطاقات Teams المسموحة؛ لم يفتحه.",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run);return}
- run.current={...item,scanDeadlineAt:Date.now()+SCAN_TIMEOUT_MS,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())};await saveRun(run);
+ run.current={...item,retryCount:scanRetryState(run)?.attempts.length||0,scanDeadlineAt:Date.now()+SCAN_TIMEOUT_MS,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())+"-retry"+String(scanRetryState(run)?.attempts.length||0)};await saveRun(run);
  await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+SCAN_TIMEOUT_MS});
- await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle,{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
+ await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle+(run.current.retryCount?" — إعادة الفحص "+run.current.retryCount+" من 2":""),{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
  try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:true});void MirsadScanActivity.open(tabId,run).catch(()=>{})}
- catch(_){run.results.push({teacher:item.teacher,scheduledTeacher:item.teacher,period:p.n,subject:item.subject||"",className:item.className||"",status:"unresolved",detail:"تعذر فتح الرابط",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run)}
+ catch(_){await receiveResult({scanId:run.current.scanId,result:{status:"unresolved",teacher:item.teacher,detail:"تعذر فتح الرابط"}})}
 }
 async function advancePeriod(run,after){
  if(!run?.running)return;
@@ -291,7 +293,26 @@ async function advancePeriod(run,after){
  }
  await beginPeriod(run,next.n)
 }
+function scanRetryState(run){const retry=run.scanRetry;return retry&&retry.period===run.period&&retry.cycle===run.cycle&&retry.index===run.index&&retry.day===localDayKey(new Date())?retry:null}
+function retryDetail(run,detail){const retry=scanRetryState(run);if(!retry?.attempts.length)return detail;return 'تمت إعادة الفحص '+retry.attempts.length+' مرة ضمن الدورة '+run.cycle+' لنفس المعلم والحصة بسبب نتيجة غير محسومة. '+detail+' · أسباب المحاولات السابقة: '+retry.attempts.map((a,i)=>(i+1)+': '+a.detail).join(' | ')}
+async function retryUnresolved(run,item,detail){
+ const previous=scanRetryState(run),attempts=previous?.attempts||[];
+ if(attempts.length>=MAX_UNRESOLVED_RETRIES)return false;
+ if(!run.backtestMode){const p=PERIODS.find(p=>p.n===run.period),bounds=p&&periodBounds(p,new Date(),'past'),active=periodNow(new Date());if(!bounds||!active||active.n!==run.period||Date.now()>=bounds.end.getTime())return false}
+ run.scanRetry={period:run.period,cycle:run.cycle,index:run.index,day:localDayKey(new Date()),attempts:[...attempts,{scanId:item.scanId,at:Date.now(),detail:String(detail).slice(0,350)}]};
+ const ids=new Set([...(run.probeTabIds||[]),run.tabId].filter(id=>Number.isInteger(id)));
+ run.current=null;run.tabId=null;run.probeTabIds=[];await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
+ for(const id of ids){try{await chrome.tabs.remove(id)}catch{}}
+ // Re-read persisted state so a manual pause/stop during cleanup wins.
+ const latest=await getRun();if(!latest?.running||latest.period!==run.period||latest.cycle!==run.cycle||latest.index!==run.index)return true;
+ await setStatus('غير محسوم — إعادة الدخول لنفس المعلم '+item.teacher+'؛ المحاولة الإضافية '+run.scanRetry.attempts.length+' من '+MAX_UNRESOLVED_RETRIES+' ضمن الدورة '+run.cycle,{period:run.period,teacher:item.teacher,cycle:run.cycle,retry:run.scanRetry.attempts.length});
+ await navigateCurrent(latest);return true;
+}
 async function receiveResult(message){
+ if(!message.scanId||resolvingScans.has(message.scanId))return;
+ resolvingScans.add(message.scanId);try{return await receiveResultOnce(message)}finally{resolvingScans.delete(message.scanId)}
+}
+async function receiveResultOnce(message){
  const run=await getRun();if(!run?.running||!run.current)return;
  const item=run.current;
  if(!message.scanId||message.scanId!==item.scanId)return;
@@ -306,7 +327,9 @@ async function receiveResult(message){
   const verified=Array.isArray(stored.mirsadEvidenceRecords)&&stored.mirsadEvidenceRecords.some(record=>record.status==="absent"&&record.evidenceVerified===true&&record.scanId===message.scanId&&String(record.teacher)===String(evidenceTeacher)&&String(record.period)===String(run.period));
   if(!verified){status="unresolved";detail="لم يُعتمد الغياب لعدم وجود لقطة محفوظة ومتحقق منها لاسم المعلم ضمن المدعوين؛ الحالة غير محسومة."}
  }
- const resultRecord={scanId:item.scanId,teacher:resultTeacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status,detail,scannedAt,cycle:run.cycle||0};
+ if(status==="unresolved"&&await retryUnresolved(run,item,detail))return;
+ detail=retryDetail(run,detail);const retryCount=scanRetryState(run)?.attempts.length||0;run.scanRetry=null;
+ const resultRecord={retryCount,scanId:item.scanId,teacher:resultTeacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status,detail,scannedAt,cycle:run.cycle||0};
  run.results.push(resultRecord);await saveRun(run);
  if(!run.testMode&&!run.backtestMode){await appendDailyReport(resultRecord);await LocalBackup.enqueue(resultRecord).catch(e=>setStatus("تعذر تثبيت النسخة المحلية: "+String(e.message)));await CloudMonitoring.record(run,resultRecord).catch(()=>{})}
 
@@ -338,15 +361,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
   const afterCapture=await chrome.storage.local.get('mirsadEvidenceRecords');
   const lateProof=(afterCapture.mirsadEvidenceRecords||[]).find(e=>e.scanId===item.scanId&&e.status==='absent'&&e.evidenceVerified===true&&Number(e.period)===Number(run.period));
   if(lateProof){await receiveResult({scanId:item.scanId,result:{status:'absent',teacher:lateProof.teacher,evidenceTeacher:lateProof.teacher,detail:'غائب: إثبات المنظّم ضمن المدعوين محفوظ ومتحقق منه لنفس الفحص.'}});return}
-  const timeoutRecord={scanId:item.scanId,teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status:"unresolved",detail:'تعذر إكمال فحص Teams خلال مهلة التحميل والانضمام (90 ثانية). '+(diagnostic.ok?'حُفظت صورة تشخيصية باسم المعلم والحصة.':'تعذر حفظ الصورة التشخيصية: '+diagnostic.error),scannedAt:Date.now(),cycle:run.cycle||0};
-  run.results.push(timeoutRecord);
-  if(!run.testMode&&!run.backtestMode){await appendDailyReport(timeoutRecord);await LocalBackup.enqueue(timeoutRecord).catch(()=>{});await CloudMonitoring.record(run,timeoutRecord).catch(()=>{})}
-  run.index++;run.current=null;
-  if(run.testMode&&!run.backtestMode){run.running=false;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await closeProbeTab(run);await setStatus("انتهت مهلة الاختبار المباشر دون نتيجة من Teams. أُغلقت صفحة الاختبار تلقائيًا؛ لم يُسجّل غياب.",{testMode:true,last:run.results[run.results.length-1]});return}
-  await saveRun(run);
-  await closeProbeTab(run);
-  await setStatus("انتهت مهلة فحص "+item.teacher+"؛ أُغلق تبويب الفحص وسُجلت غير محسومة.",{period:run.period,teacher:item.teacher,cycle:run.cycle});
-  await navigateCurrent(run);return;
+  await receiveResult({scanId:item.scanId,result:{status:'unresolved',teacher:item.teacher,detail:'تعذر إكمال فحص Teams خلال مهلة التحميل والانضمام (90 ثانية). '+(diagnostic.ok?'حُفظت صورة تشخيصية باسم المعلم والحصة.':'تعذر حفظ الصورة التشخيصية: '+diagnostic.error)}});return;
  }
  if(alarm.name!==NEXT_ALARM)return;
  if(run.waitingForReconnect){
