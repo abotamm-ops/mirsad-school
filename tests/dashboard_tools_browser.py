@@ -10,7 +10,7 @@ with sync_playwright() as p:
  ctx.add_init_script("try{localStorage.setItem('mirsad_archive_password_v1','fixture-admin')}catch{}")
  ctx.route('https://mirsad-school.onrender.com/**',lambda r:r.fulfill(path=str(R/(urlsplit(r.request.url).path.lstrip('/') or 'index.html'))))
  ctx.route('https://script.google.com/**',lambda r:r.fulfill(json={'ok':True,'role':'admin'} if r.request.post_data_json['action']=='adminLogin' else {'ok':True,'dates':['2026-11-02'],'authMode':'site-password'} if r.request.post_data_json['action']=='dates' else data))
- page=ctx.new_page();page.on('pageerror',lambda e:errors.append(str(e)));page.clock.install(time=datetime(2026,11,2,3,40,5,tzinfo=timezone.utc));page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable tbody tr')
+ page=ctx.new_page();page.on('pageerror',lambda e:errors.append(str(e)));page.clock.install(time=datetime(2026,11,2,3,40,0,tzinfo=timezone.utc));page.clock.pause_at(datetime(2026,11,2,3,40,5,tzinfo=timezone.utc));page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable tbody tr')
  assert page.locator('#lessonElapsed').inner_text()=='00:10:05';assert page.locator('#nextLessonCountdown').inner_text()=='00:35:55'
  page.clock.run_for(2000);assert page.locator('#lessonElapsed').inner_text()=='00:10:07'
  page.locator('[data-view=reports]').click();page.locator('#directorSignaturePanel summary').click();canvas=page.locator('#directorSignatureCanvas');canvas.scroll_into_view_if_needed();box=canvas.bounding_box()
