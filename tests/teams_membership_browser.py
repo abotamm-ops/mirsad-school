@@ -17,5 +17,7 @@ with sync_playwright() as p:
  setup('<h3>منظمو الاجتماع</h3>'+row(name)+'<h3>من تمت دعوتهم (1)</h3>'+row('طالب آخر',organizer=False));assert decide()['status']=='present'
  setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (1)</h3>'+row(name));assert decide()['status']=='absent'
  for label in ['من تمت دعوتهم (2)','من تمت دعوتهم ٢']:
-  setup('<h3>منظمو الاجتماع</h3>'+row(name)+'<h3>'+label+'</h3>'+row('طالب آخر',organizer=False));assert decide()['status']=='unresolved'
- b.close();print('PASS organizer identity comes from its badge; invited wins even with misleading in-call row ID, Arabic/English labels and conflicting presence; incomplete invited counts stay unresolved; complete non-membership means present')
+  setup('<h3>منظمو الاجتماع</h3>'+row(name)+'<h3>'+label+'</h3>'+row('طالب آخر',organizer=False));assert decide()['status']=='present'
+ setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (0)</h3>');assert decide()['status']=='present'
+ setup('<h3>الحضور (1)</h3>'+row('طالب أول',organizer=False)+'<h3>من تمت دعوتهم (1)</h3>'+row('طالب آخر',organizer=False));assert decide()['status']=='unresolved'
+ b.close();print('PASS organizer identity comes from its badge; invited wins even with misleading in-call row ID, Arabic/English labels and conflicting presence; invitee count mismatch does not block presence; identified organizer outside invitees means present')

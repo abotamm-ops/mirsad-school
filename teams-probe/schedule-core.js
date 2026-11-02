@@ -150,7 +150,8 @@
     const exactRow=text=>String(text||'').split(/\n+/).some(row=>normalize(row)===normalize(organizerName));
     if(!organizerName)return {status:'unresolved',teacher:''};
     if(exactRow(invitedText))return {status:'absent',teacher:organizerName};
-    if(!inviteesReadable||!fullyScanned)return {status:'unresolved',teacher:organizerName};
+    // School rule: once Teams identifies the organizer, only invited membership means absent.
+    // Count/scroll completeness is diagnostic and must not block a present result.
     return {status:'present',teacher:organizerName};
   }
 

@@ -317,7 +317,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.41؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.43؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
@@ -506,15 +506,15 @@
     }
     const organizer=await scanOrganizerAcrossPage(teacher,sections);
     if(!organizer.name)return {status:"unresolved",teacher,reason:"organizer-not-found",retryable:!organizer.ambiguous,detail:organizer.ambiguous?"ظهر أكثر من اسم محتمل مرتبط بوسم «المنظّم»؛ لم تُسجّل حالة حضور أو غياب.":"تعذّر العثور على اسم مرتبط بوسم «المنظّم» بعد البحث والتمرير في الصفحة؛ لم تُسجّل حالة حضور أو غياب."};
-    // The organizer is absent if listed among invitees, otherwise present only
-    // after the entire readable invitee list has been verified.
+    // The identified organizer is absent among invitees; otherwise immediately present.
+    // Invitee counts and scan completeness do not gate presence.
     const decision=organizer.inInvitees?{status:"absent",teacher:organizer.name}:scheduleCore?.classifyOrganizerMembership(organizer.name,organizer.invitedText,organizer.inviteesReadable,organizer.fullyScanned,organizer.presentText);
     if(decision?.status==="absent"){
       const evidenceReady=await prepareInviteeEvidenceView(organizer.name);
       if(!evidenceReady)return {status:"unresolved",teacher,detail:"اسم المنظّم «"+organizer.name+"» ظهر ضمن المدعوين، لكن تعذّر إظهار الاسم وعنوان القائمة معًا للتصوير؛ لم يُسجّل غياب."};
       return {status:"absent",teacher:organizer.name,evidenceTeacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» مرتبط بالمعلم ويظهر تحت «تمت دعوة الآخرين»؛ الحالة غائب. جُهزت القائمة للتصوير.",evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}};
     }
-    if(decision?.status==="present")return {status:"present",teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» غير موجود ضمن المدعوين بعد اكتمال قراءة القائمة؛ الحالة حاضر."};
+    if(decision?.status==="present")return {status:"present",teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» غير موجود ضمن المدعوين؛ الحالة حاضر وفق قاعدة المنظّم."};
     return {status:"unresolved",teacher:organizer.name,detail:(organizer.reason||"تعذر تأكيد اكتمال قائمة المدعوين")+"؛ الأسماء المقروءة من المدعوين=" + organizer.observedCount + ". "+organizer.diagnostics};
   }
 
