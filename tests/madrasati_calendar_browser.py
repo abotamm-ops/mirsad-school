@@ -25,7 +25,18 @@ with sync_playwright() as p:
  rejected("api.CurrentSelectedDateString='2026-11-01'",'تاريخ')
  rejected("api.TimeTable[2].PresenterUrl='https://evil.example/meeting'",'غير صالح')
  rejected("api.TimeTable[2].ClassRoomName='ثاني ب'",'فصل')
- rejected("api.TimeTable[2].SubjectName='درس مختلف'",'مادة')
+ # Subject names and lesson topics differ legitimately. Keep the row route,
+ # never silently attach the conflicting GetCal link or borrow another period.
+ page.evaluate("api=structuredClone(base);api.TimeTable[2].SubjectName='مادة مختلفة'")
+ result=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
+ assert result['lessons'][2]['teams']=='' and result['lessons'][2]['detailUrl'].endswith('Data=3')
+ assert result['lessons'][2]['linkResolution']=='row-fallback'
+ assert all(l['teams'].endswith('period'+str(l['period'])) for l in result['lessons'] if l['period']!=3)
+ # Without an independently identified row route, fail closed.
+ try:
+  page.evaluate("(()=>{const t=MirsadMadrasatiReader.timetable();t.lessons[2].detailUrl='';return MirsadMadrasatiReader.calendarTimetable(t)})()")
+  raise AssertionError('unverifiable subject mismatch accepted')
+ except Exception as e:assert 'مادة' in str(e)
  rejected("api.TimeTable.push(api.TimeTable[0])",'أكثر من درس')
  rejected("api.TimeTable.splice(2,1)",'غير موجودة')
  rejected("api.TimeTable[1].PresenterUrl='https://teams.microsoft.com/meet/conflict'",'يختلف')
@@ -41,6 +52,12 @@ with sync_playwright() as p:
  page.evaluate("document.querySelector('.dayIcon').setAttribute('dayindex','0');api.CurrentSelectedDateString='2026-11-01'")
  result=page.evaluate("new Promise(resolve=>readerListener({type:'MIRSAD_MADRASATI_READ',kind:'timetable',date:'2026-11-01'},{},resolve))")
  assert result['ok'] and result['date']=='2026-11-01' and parse_qs(page.evaluate('calls.at(-1).body'))['index']==['0']
+ page.evaluate("api.TimeTable[2].SubjectName='اسم المادة';api.TimeTable[1].SubjectName='اسم آخر'")
+ result=page.evaluate("new Promise(resolve=>readerListener({type:'MIRSAD_MADRASATI_READ',kind:'timetable',date:'2026-11-01'},{},resolve))")
+ assert result['ok'] and result['date']=='2026-11-01'
+ assert result['lessons'][2]['teams']=='' and result['lessons'][2]['detailUrl'].endswith('Data=3')
+ assert result['lessons'][1]['teams'].endswith('period2')
+
  page.evaluate("document.querySelector('.dayIcon').setAttribute('dayindex','1');api=structuredClone(base);document.querySelector('#_hndTeacherId').value='C'.repeat(32);calls=[]")
  try:page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())');raise AssertionError('different teacher accepted')
  except Exception as e:assert 'هوية' in str(e)
@@ -61,4 +78,8 @@ with sync_playwright() as p:
  page.evaluate("fetch=async()=>({ok:true,url:'https://schools.madrasati.sa/Account/Login'})")
  try:page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())');raise AssertionError('login accepted')
  except Exception as e:assert 'انتهت جلسة' in str(e)
+ # Resolve the mismatched historical row through its own details URL.
+ page.evaluate("fetch=async(url)=>({ok:true,url,text:async()=>'<a href=\"https://teams.microsoft.com/l/meetup-join/detail-period3\">حضور</a>'})")
+ details=page.evaluate("MirsadMadrasatiReader.meetingBatch(['https://schools.madrasati.sa/Teacher/Lessons/viewLectureDetails?Data=3'])")
+ assert details[0]['ok'] and details[0]['url'].endswith('detail-period3')
  b.close();print('PASS GetCal fills all seven period links; exact request contract; date, school/teacher context, CSRF, duplicate/missing periods, class/subject, invalid/conflicting links and session failures guarded; details fallback retained')

@@ -69,7 +69,13 @@
  const lessons=table.lessons.map(lesson=>{
  const item=byPeriod.get(lesson.period);if(!item)throw new Error('الحصة '+lesson.period+' غير موجودة في بيانات روابط مدرستي');
  if(item.ClassRoomName&&norm(item.ClassRoomName)!==norm(lesson.lesson))throw new Error('فصل الحصة '+lesson.period+' لا يطابق بيانات الروابط');
- if(item.SubjectName&&norm(item.SubjectName)!==norm(lesson.title))throw new Error('مادة الحصة '+lesson.period+' لا تطابق بيانات الروابط');
+ // A rendered row can name the lesson (e.g. a unit topic), while GetCal
+ // names its subject. Never attach that JSON link on a title mismatch;
+ // use the exact row's direct link/details route instead, including past days.
+ if(item.SubjectName&&norm(item.SubjectName)!==norm(lesson.title)){
+  if(lesson.teams||lesson.detailUrl)return {...lesson,linkResolution:'row-fallback'};
+  throw new Error('مادة الحصة '+lesson.period+' تختلف عن عنوان الدرس ولا يوجد رابط مباشر أو تفاصيل للتحقق؛ لم يُستبدل الجدول');
+ }
  const raw=item.PresenterUrl;if(raw===null||raw===undefined||raw==='')return lesson;
  let teams;try{const u=new URL(raw);if(u.protocol!=='https:'||!['teams.microsoft.com','teams.live.com'].includes(u.hostname)||!/^\/(?:l\/meetup-join\/|meet\/)/.test(u.pathname))throw new Error();teams=u.href}catch{throw new Error('رابط تيمز في بيانات الحصة '+lesson.period+' غير صالح')}
  if(lesson.teams&&lesson.teams!==teams)throw new Error('رابط الحصة '+lesson.period+' يختلف بين الجدول وبيانات مدرستي');
