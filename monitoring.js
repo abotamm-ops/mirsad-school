@@ -4,6 +4,7 @@ if(new URLSearchParams(location.search).has('experiment')){const officialUrl=new
 const DEFAULT_MONITOR_ENDPOINT='https://script.google.com/macros/s/AKfycbwvkojpc9K_wxKWZhFJj38_OkD5aw18299ceLWdFnKOSMqoGiV3oL74AueuZiKTEHdo/exec',PREVIOUS_MONITOR_ENDPOINTS=['https://script.google.com/macros/s/AKfycbxCujo4KK6XCQGQsj_o8J68Kt7otYa9ropHJqJmUfVxJPNSp9jvGQWe7rF8eXvvhU14/exec','https://script.google.com/macros/s/AKfycbyPULmkjNZ24jMbS5q7Iym5DQbV_EoDf2wMLAqZ_kYsKsuI3sekJfQdR2Euk9yt2wo7/exec','https://script.google.com/macros/s/AKfycbxl9jFw4R8OPgKACyf2wFEsvAIaRF5s2czH4OHdTkF3gJuF9PhR-Br3bCxcsA7mJ-iC/exec'],savedMonitorEndpoint=localStorage.getItem('mirsad-monitor-url');
 const model=MirsadMonitorModel,$=id=>document.getElementById(id),cache=new Map();let administrationMode=false,publicAccess=false,currentView='today',dates=[],endpoint=PREVIOUS_MONITOR_ENDPOINTS.includes(savedMonitorEndpoint)?DEFAULT_MONITOR_ENDPOINT:(savedMonitorEndpoint||DEFAULT_MONITOR_ENDPOINT),readerKey='',selectedDay=null,extensionReady=false,accessEpoch=0,settingsInitialized=false,settingsDirty=false,activeScan=null,lastFollowedScan='',lastActivityContact=0;
 const SAVED_READER_KEY='mirsad-monitor-reader-key',ARCHIVE_PASSWORD_KEY='mirsad_archive_password_v1';
+MirsadDirectorSignature.setScope(()=>endpoint);
 $('endpoint').value=endpoint;
 function connectionState(connected){$('connection').hidden=connected&&publicAccess;$('settings').hidden=publicAccess&&!extensionReady;$('connect').hidden=connected;$('manageConnection').hidden=!connected;$('logout').hidden=!connected||publicAccess;$('connectionSummary').textContent=publicAccess?'السجل والصور متاحان لأي شخص لديه الرابط':connected?'الدخول محفوظ على هذا الجهاز — تُعرض النتائج تلقائيًا عند فتح الصفحة':'دخول الإدارة بكلمة مرور الأرشيف المفعّلة أو رمز اطلاع الإدارة؛ يبقى الدخول محفوظًا على هذا الجهاز.'}
 $('manageConnection').onclick=()=>{$('connect').hidden=!$('connect').hidden};
@@ -46,6 +47,7 @@ function detail(cell,date){
 function cellPresentation(cell){return model.presentation(cell)}
 
 function renderTable(target,data){
+ if(target==='todayTable')MirsadLessonClock.setDay(data);
  const root=$(target);root.dataset.date=data?.snapshot?.date||'';root.replaceChildren();
  if(!data?.snapshot){root.append(text('p','لم يبدأ توثيق هذا اليوم بعد. تظهر النتائج بعد تشغيل الرصد.'));if(target==='todayTable')$('todaySummary').replaceChildren();return}
  renderedDays.set(data.snapshot.date,data);
