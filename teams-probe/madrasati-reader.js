@@ -9,21 +9,23 @@
  for(const a of links){const url=sameUrl(a.getAttribute('href'),/^\/SchoolManagment\/Lessons\/TimeTable\/[A-Fa-f0-9]+\/?$/),card=a.closest('.card'),name=norm(card?.querySelector('h5')?.textContent),id=new URL(url).pathname.split('/').filter(Boolean).pop();if(!name)throw new Error('تعذر ربط جدول باسم المعلم');if(seen.has(id))continue;seen.add(id);teachers.push({id,name,url})}
  if(!teachers.length)throw new Error('افتح إدارة بيانات المعلمين في مدرستي حتى تظهر بطاقات المعلمين');
  if(doc.querySelector('.pagination .next:not(.disabled) a[href],.pagination [aria-label="Next"]:not([aria-disabled="true"])'))throw new Error('قائمة المعلمين موزعة على صفحات؛ اعرض القائمة كاملة قبل الجمع');return teachers}
+ function directMeeting(doc){const urls=[...doc.querySelectorAll('a[href]')].map(a=>{try{const u=new URL(a.getAttribute('href'));return u.protocol==='https:'&&['teams.microsoft.com','teams.live.com'].includes(u.hostname)&&/^\/(?:l\/meetup-join\/|meet\/)/.test(u.pathname)?u.href:null}catch{return null}}).filter(Boolean),unique=[...new Set(urls)];if(unique.length>1)throw new Error('وجد أكثر من رابط اجتماع؛ لم يُختَر رابط بالتخمين');return unique[0]||'';}
  function timetable(doc=document){const date=displayedDate(doc),rows=[...doc.querySelectorAll('#divDayLectures tr[id^="hessaNumber"]')],lessons=[];
  if(!doc.querySelector('#divDayLectures'))throw new Error('لم يظهر جدول الحصص؛ تحقق من جلسة مدرستي');
  for(const row of rows){const period=Number(row.id.replace('hessaNumber',''));if(!Number.isInteger(period)||period<1||period>7)throw new Error('رقم حصة غير صالح');const cell=row.querySelector('.event-title'),title=norm(cell?.querySelector('h6')?.textContent);if(!title){if(!norm(cell?.textContent)||/لا توجد (حصة|دروس)|لا يوجد درس/.test(norm(cell?.textContent)))continue;throw new Error('حصة غير مقروءة؛ لم يُرسل جدول ناقص')}
  const detailLinks=[...cell.querySelectorAll('a[href]')].map(a=>sameUrl(a.getAttribute('href'),/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i)).filter(Boolean);if(detailLinks.length>1)throw new Error('يوجد أكثر من درس للحصة نفسها؛ يلزم مراجعة الربط');
  const time=norm(cell.querySelector('.text-black-2')?.textContent),classroom=norm(cell.querySelector('.fs-sm.text-body')?.textContent);if(!time||!classroom)throw new Error('بيانات وقت الحصة أو الفصل ناقصة');
+ const teams=directMeeting(cell);
  const explicitUnprepared=/لم يتم (?:إعداد|اعداد|تحضير)|غير معد/.test(norm(cell.textContent));
  // A complete scheduled row can legitimately have no lesson-details action.
  // Retain its period/subject/class as a linkless lesson; never omit the row.
  const complete=doc.readyState==='complete'&&!doc.querySelector('[aria-busy="true"],#divDayLectures .loading');
  const suspicious=[...cell.querySelectorAll('a[href]')].some(a=>/viewLectureDetails/i.test(a.getAttribute('href')||''));
  if(!detailLinks.length&&(!complete||suspicious))throw Object.assign(new Error('الحصة '+period+' · '+(!complete?'جدول مدرستي لم يكتمل تحميله':'رابط تفاصيل الحصة غير صالح؛ يلزم مراجعته')),{retryable:!complete});
- const missingDetails=!detailLinks.length&&!explicitUnprepared;
- lessons.push({period,title,lesson:classroom,time,detailUrl:detailLinks[0]||'',unprepared:explicitUnprepared||missingDetails,missingDetails})}
+ const missingDetails=!teams&&!detailLinks.length&&!explicitUnprepared;
+ lessons.push({period,title,lesson:classroom,time,teams,detailUrl:detailLinks[0]||'',unprepared:!teams&&(explicitUnprepared||missingDetails),missingDetails})}
  return {date,lessons}}
- function meeting(doc=document){const urls=[...doc.querySelectorAll('a[href]')].map(a=>{try{const u=new URL(a.getAttribute('href'));return u.protocol==='https:'&&['teams.microsoft.com','teams.live.com'].includes(u.hostname)&&/^\/(?:l\/meetup-join\/|meet\/)/.test(u.pathname)?u.href:null}catch{return null}}).filter(Boolean),unique=[...new Set(urls)];if(unique.length>1)throw new Error('وجد أكثر من رابط اجتماع؛ لم يُختَر رابط بالتخمين');if(unique.length===1)return unique[0];
+ function meeting(doc=document){const direct=directMeeting(doc);if(direct)return direct;
  // Only a fully rendered lesson detail can establish that no meeting link was supplied.
  const complete=doc.readyState==='complete'&&[...doc.querySelectorAll('.titlesection2')].some(el=>norm(el.textContent)==='تكليفات الحصة')&&!doc.querySelector('[aria-busy="true"],#divDayLectures .loading');
  const suspicious=[...doc.querySelectorAll('a[href]')].some(a=>{try{return /(^|\.)teams\.(microsoft\.com|live\.com)$/.test(new URL(a.getAttribute('href'),ORIGIN).hostname)}catch{return false}});

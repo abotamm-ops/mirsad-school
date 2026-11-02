@@ -10,6 +10,19 @@ with sync_playwright() as p:
  assert page.evaluate('MirsadMadrasatiReader.directory()[0].name')=='معلم أول'
  html='<span id="dategeo">18 أكتوبر 2026</span><li class="dayIcon" dayindex="0"><a class="active">الأحد</a></li><li class="dayIcon" dayindex="1"><a id="monday">الاثنين</a></li><table><tbody id="divDayLectures"><tr id="hessaNumber1"><td class="event-title"><h6>العلوم</h6><div class="text-black-2">من 06:30 ص إلى 07:15 ص</div><div class="fs-sm text-body">أولى أول</div><a href="https://schools.madrasati.sa/Teacher/Lessons/viewLectureDetails?Data=fixture">مشاهدة التفاصيل</a></td></tr></tbody></table>'
  load(html);assert page.evaluate('MirsadMadrasatiReader.timetable().date')=='2026-10-18';assert page.evaluate('MirsadMadrasatiReader.timetable().lessons[0].period')==1
+ # Today exposes the join link in the timetable, even when details have no link.
+ direct='https://teams.microsoft.com/l/meetup-join/today?context=%7B%22Tid%22%3A%22fixture%22%7D'
+ load(html.replace('</td>','<a href="'+direct+'" onclick="window.clicked=true">حضور الدرس</a></td>'))
+ lesson=page.evaluate('MirsadMadrasatiReader.timetable().lessons[0]');assert lesson['teams']==direct;assert not lesson['unprepared'];assert page.evaluate('!!window.clicked') is False
+ # A direct link also works without a details action; duplicate identical links are safe.
+ today=html.replace('https://schools.madrasati.sa/Teacher/Lessons/viewLectureDetails?Data=fixture',direct)
+ load(today);lesson=page.evaluate('MirsadMadrasatiReader.timetable().lessons[0]');assert lesson['teams']==direct;assert not lesson['missingDetails'];assert not lesson['unprepared']
+ load(today.replace('</td>','<a href="'+direct+'">حضور الدرس</a></td>'));assert page.evaluate('MirsadMadrasatiReader.timetable().lessons[0].teams')==direct
+ load(today.replace('</td>','<a href="https://teams.microsoft.com/meet/different">حضور آخر</a></td>'));assert page.evaluate("(()=>{try{MirsadMadrasatiReader.timetable();return false}catch(e){return e.message.includes('أكثر من رابط')}})()")
+ # Links remain scoped to each lesson, never copied from another period.
+ second='<tr id="hessaNumber2"><td class="event-title"><h6>رياضيات</h6><div class="text-black-2">08:00</div><div class="fs-sm text-body">أول ب</div></td></tr>'
+ load(today.replace('</tbody>',second+'</tbody>'));lessons=page.evaluate('MirsadMadrasatiReader.timetable().lessons');assert lessons[0]['teams']==direct;assert lessons[1]['teams']=='';assert lessons[1]['unprepared']
+ load(html)
  # A weekday tab changes immediately but old rows remain until the asynchronous response.
  page.evaluate('''()=>{document.querySelector('#monday').onclick=()=>{document.querySelector('a.active').classList.remove('active');document.querySelector('#monday').classList.add('active');setTimeout(()=>document.querySelector('#divDayLectures h6').textContent='درس الاثنين',1000)}}''')
  # Handler enforces the real origin; expose selectDay through a local-only test transform.
