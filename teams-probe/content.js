@@ -213,7 +213,7 @@
   function participantRows(headings) {
     const rows=[...document.querySelectorAll(participantSelector)]
       .filter(visible).filter(el=>!el.parentElement?.closest(participantSelector));
-    return rows.filter(el=>!el.matches('[data-tid$="-seeMore"],[data-cid="roster-seeMore"]')).map(el=>{
+    return rows.map(el=>{
       const identifier=[el.getAttribute('data-tid'),el.id].find(value=>participantIdPrefixes.some(prefix=>value?.startsWith(prefix)))||'';
       const prefix=participantIdPrefixes.find(prefix=>identifier.startsWith(prefix));
       // Refactored Teams uses the same participant container across roster groups,
@@ -235,110 +235,31 @@
     }).filter(x=>x.name && x.name.length<=130);
   }
 
-  // Student rows in the Fluent roster do not always carry the legacy
-  // participantsFromMeeting identifier. Keep this broader name reader separate
-  // from the organizer classifier, and accept explicit persona names only.
-  const studentRowSelector=participantSelector+', [role="treeitem"], [role="listitem"]';
-  function studentRosterRows(headings){
-    const candidates=[...document.querySelectorAll(studentRowSelector)].filter(visible);
-    return candidates.filter(el=>!candidates.some(child=>child!==el&&el.contains(child))).map(el=>{
-      const field=el.querySelector('.fui-TreeItemPersonaLayout__main [title], [data-tid="participant-name"], [data-tid="roster-participant-name"], [id^="roster-avatar-img-"]');
-      const name=normalize(field?.getAttribute('title')||field?.innerText||field?.textContent||'');
-      return {el,name,group:rosterGroupForRow(el,headings),organizer:false};
-    }).filter(row=>row.name&&row.name.length<=180&&!exactHeading(row.name));
-  }
-
-  function participantStatusHeading(el){
-    const row=el.closest(studentRowSelector);
-    // Fluent also renders group headings as treeitems. A row role alone
-    // must never remove the actual invited heading from the reader.
-    return !!row&&(row.matches(participantSelector)||!!row.querySelector('.fui-TreeItemPersonaLayout__main [title], [data-tid="participant-name"], [data-tid="roster-participant-name"], [id^="roster-avatar-img-"]'));
-  }
-
-  const invitedMoreSelector='[data-tid="participantsFromMeeting-seeMore"]';
-  async function expandInvitedRoster(until,stats={clicks:0}){
-    const labels=/^(?:المزيد|عرض المزيد|إظهار المزيد|اظهار المزيد|عرض الكل|إظهار الكل|اظهار الكل|مشاهدة الكل|show more|see more|show all|see all)(?:\s*[（(]?\d+[）)]?)?$/i;
-    for(let clicks=0;clicks<8&&Date.now()<until;clicks++){
-      const headings=rosterHeadingsInOrder().filter(h=>!participantStatusHeading(h.el));
-      // This exact Teams control identifies the INVITED subview even when
-      // its virtualized group heading has scrolled out of the DOM.
-      const direct=[...document.querySelectorAll(invitedMoreSelector)].find(el=>visible(el)&&!el.closest('[aria-disabled="true"]'));
-      const button=direct||[...document.querySelectorAll('button,[role="button"],a,span,div')].filter(el=>{
-        const text=el.textContent||'';
-        return text.length<90&&labels.test(normalize(text))&&![...el.children].some(child=>labels.test(normalize(child.textContent||'')));
-      }).find(el=>{
-        const control=el.closest('button,[role="button"],a')||el;
-        const href=control.getAttribute('href');
-        if(!visible(el)||control.disabled||control.getAttribute('aria-disabled')==='true'||(control.matches('a')&&href&&!href.startsWith('#')&&!/^javascript:void\(0\);?$/.test(href))||!labels.test(normalize(el.innerText||el.textContent||''))||rosterGroupForRow(el,headings)!=='invited')return false;
-        // Require a nearby roster container shared with its invited heading.
-        let parent=el.parentElement;
-        for(;parent&&parent!==document.body&&parent!==document.documentElement;parent=parent.parentElement){
-          if(parent.querySelector(studentRowSelector)&&headings.some(h=>h.key==='invited'&&parent.contains(h.el)))return true;
-        }
-        return false;
-      });
-      if(!button)return true;
-      const beforeRows=document.querySelectorAll(studentRowSelector).length;
-      stats.clicks++;
-      if(direct)try{button.scrollIntoView({block:"nearest",inline:"nearest"})}catch{}
-      button.click();
-      // Let Teams load the next batch before clicking the same text again.
-      for(let wait=0;wait<(direct?10:5)&&Date.now()<until;wait++){
-        await new Promise(resolve=>setTimeout(resolve,180));
-        const leftPreview=!button.isConnected||!visible(button);
-        if(direct){if(leftPreview&&rosterHeadingsInOrder().some(h=>h.key==='invited'&&!participantStatusHeading(h.el)))break}
-        else if(leftPreview||document.querySelectorAll(studentRowSelector).length!==beforeRows)break;
-      }
-    }
-    return false;
-  }
-
-  async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections, options={}) {
-    const studentUntil=Date.now()+12000;
-    let expandedAll=true;const expansion={clicks:0};
-    if(options.fullRoster)expandedAll=await expandInvitedRoster(studentUntil,expansion);
+  async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections) {
     const observedInvitees=new Set(), organizers=new Set(), observedPresent=new Set();
     let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null;
     let countChanged=false, unreadableRows=false;
     const rowTypes=new Set();let maxVisibleRows=0,maxParsedRows=0;
     const scrollables=[];
     const addScrollable=el=>{
-      if(!el||!el.isConnected||scrollables.some(x=>x.el===el)||el.scrollHeight<=el.clientHeight+8)return;
-      if(el!==document.scrollingElement && !(options.fullRoster?/(auto|scroll|overlay|hidden)/:/(auto|scroll)/).test(window.getComputedStyle(el).overflowY||''))return;
-      scrollables.push({el,top:el.scrollTop,ended:false,bottomChecks:0,needsRewind:!!options.fullRoster,endedHeight:0,moves:0,maxTop:el.scrollTop});
+      if(!el||scrollables.some(x=>x.el===el)||el.scrollHeight<=el.clientHeight+8)return;
+      if(el!==document.scrollingElement && !/(auto|scroll)/.test(window.getComputedStyle(el).overflowY||''))return;
+      scrollables.push({el,top:el.scrollTop,ended:false});
     };
     for(const root of [...(initialSections.present||[]),...(initialSections.invited||[])].map(x=>x.root)){
       let node=root;
-      for(let d=0;node&&(options.fullRoster||d<10);d++,node=node.parentElement)addScrollable(node);
+      for(let d=0;d<10&&node;d++,node=node.parentElement)addScrollable(node);
     }
-    for(const el of document.querySelectorAll(options.fullRoster?studentRowSelector:participantSelector)){
+    for(const el of document.querySelectorAll(participantSelector)){
       let node=el.parentElement;
-      for(let d=0;node&&(options.fullRoster||d<9);d++,node=node.parentElement)addScrollable(node);
+      for(let d=0;d<9&&node;d++,node=node.parentElement)addScrollable(node);
     }
     if(!scrollables.length)addScrollable(document.scrollingElement);
     // Scan inner roster viewports, rather than also scrolling unrelated outer pages.
-    const inner=options.fullRoster
-      ?scrollables.filter(entry=>scrollables.length===1||entry.el!==document.scrollingElement)
-      :scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
+    const inner=scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
     scrollables.splice(0,scrollables.length,...inner);
-    const refreshStudentScrollables=()=>{
-      if(!options.fullRoster)return;
-      for(let i=scrollables.length-1;i>=0;i--)if(!scrollables[i].el.isConnected)scrollables.splice(i,1);
-      // The invited subview can mount its virtual tree and overflow after its
-      // title. Discover live viewport ancestors again, not just at page entry.
-      const walked=new Set();
-      for(const row of document.querySelectorAll(studentRowSelector+', .fui-FlatTree')){
-        for(let node=row.parentElement;node&&!walked.has(node);node=node.parentElement){walked.add(node);addScrollable(node)}
-      }
-      if(scrollables.some(entry=>entry.el!==document.scrollingElement)){
-        const index=scrollables.findIndex(entry=>entry.el===document.scrollingElement);if(index>=0)scrollables.splice(index,1);
-      }
-      for(const entry of scrollables)if(entry.ended&&entry.el.scrollHeight>entry.endedHeight+2){entry.ended=false;entry.bottomChecks=0}
-    };
     const collect=()=>{
-      // RSVP text inside a person row ("لا توجد استجابة") is a status,
-      // not a group header. Otherwise only the first invited name is collected.
-      const headings=rosterHeadingsInOrder().filter(h=>!options.fullRoster||!participantStatusHeading(h.el));
+      const headings=rosterHeadingsInOrder();
       for(const h of headings.filter(x=>x.key==='invited')){
         sawInvitees=true;
         const n=expectedInviteeCount(h.label);
@@ -347,7 +268,6 @@
       }
       const elements=[...document.querySelectorAll(participantSelector)].filter(visible).filter(el=>!el.parentElement?.closest(participantSelector));
       const parsed=participantRows(headings);
-      if(options.fullRoster){const known=new Set(parsed.map(row=>row.el));for(const row of studentRosterRows(headings))if(!known.has(row.el))parsed.push(row)}
       maxVisibleRows=Math.max(maxVisibleRows,elements.length);maxParsedRows=Math.max(maxParsedRows,parsed.length);
       for(const el of elements){
         const tid=el.getAttribute('data-tid')||'';
@@ -372,72 +292,34 @@
         entry.el.dispatchEvent(new Event('scroll', {bubbles:true}));
         await new Promise(resolve => setTimeout(resolve, 140));
       }
-      entry.needsRewind=false;collect();
+      collect();
     }
     collect();
-    let remaining=options.fullRoster?120:64;const until=options.fullRoster?studentUntil:Date.now()+15000;
-    while((options.fullRoster||!inInvitees) && remaining-->0 && Date.now()<until){
-      refreshStudentScrollables();
+    let remaining=64;
+    while(!inInvitees && remaining-->0){
       const active=scrollables.filter(x=>!x.ended);
-      if(!active.length){
-        if(options.fullRoster&&(!sawInvitees||(expectedCount!==null&&observedInvitees.size<expectedCount))){await new Promise(resolve=>setTimeout(resolve,180));collect();continue}
-        break;
-      }
+      if(!active.length)break;
       const entry=active[0],el=entry.el;
-      if(options.fullRoster&&entry.needsRewind){
-        entry.needsRewind=false;el.scrollTop=0;el.dispatchEvent(new Event('scroll',{bubbles:true}));
-        await new Promise(resolve=>setTimeout(resolve,180));collect();continue;
-      }
-      const step=options.fullRoster?Math.max(24,Math.min(192,Math.floor(el.clientHeight*.6))):Math.max(120,Math.floor(el.clientHeight*.75));
-      const next=Math.min(el.scrollHeight-el.clientHeight,el.scrollTop+step);
-      if(next<=el.scrollTop+2){
-        if(!options.fullRoster){entry.ended=true;continue}
-        // Reaching today's bottom can trigger another virtualized page. Wait
-        // for stable height and names instead of ending on the first bottom.
-        const beforeHeight=el.scrollHeight,beforeCount=observedInvitees.size;
-        expandedAll=await expandInvitedRoster(until,expansion);
-        el.dispatchEvent(new Event('scroll',{bubbles:true}));
-        await new Promise(resolve=>setTimeout(resolve,220));collect();
-        if(el.scrollHeight===beforeHeight&&observedInvitees.size===beforeCount)entry.bottomChecks++;
-        else entry.bottomChecks=0;
-        entry.ended=entry.bottomChecks>=3;entry.endedHeight=el.scrollHeight;
-        continue;
-      }
-      entry.bottomChecks=0;
-      el.scrollTop=next;entry.moves++;entry.maxTop=Math.max(entry.maxTop,el.scrollTop);
+      const next=Math.min(el.scrollHeight-el.clientHeight,el.scrollTop+Math.max(120,Math.floor(el.clientHeight*.75)));
+      if(next<=el.scrollTop+2){entry.ended=true;continue;}
+      el.scrollTop=next;
       el.dispatchEvent(new Event('scroll',{bubbles:true}));
-      await new Promise(resolve=>setTimeout(resolve,options.fullRoster?180:140));
+      await new Promise(resolve=>setTimeout(resolve,140));
       collect();
     }
     const matches=[...organizers];
     // A stable declared count must match the unique invited rows actually read.
     // Missing or changing rows cannot establish absence from the invited list.
     const inviteesReadable=sawInvitees&&!unreadableRows&&(observedInvitees.size>0||expectedCount===0);
-    const fullyScanned=inviteesReadable&&!countChanged&&(!options.fullRoster||expandedAll)&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>options.fullRoster?x.ended:(x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3));
+    const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3);
     // Preserve the matched row for evidence when an absence has been detected.
-    if(options.fullRoster || matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
+    if(matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
-      inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,sawInvitees,expectedCount,
+      inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.63؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ ضغطات المزيد='+expansion.clicks+'؛ نوافذ تمرير='+scrollables.length+'؛ حركة القوائم='+scrollables.map(e=>e.moves+' حركة، '+e.el.clientHeight+'/'+e.el.scrollHeight+'، أقصى '+e.maxTop).join(' | ')+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.43؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
-  }
-
-  async function captureInvitedStudents(target,result){
-    const capturedAt=Date.now();
-    try{
-      const roster=await scanOrganizerAcrossPage(target.teacher,findSections(),{fullRoster:true});
-      const trustedOrganizer=result.organizerVerified===true&&['present','absent'].includes(result.status)&&!!result.teacher;
-      if(roster.ambiguous||(roster.name&&normalize(roster.name)!==normalize(result.teacher))||(!roster.name&&!trustedOrganizer))return {available:false,reason:'تعارضت هوية المنظم أو لم تتأكد',capturedAt};
-      // The teacher scan already verified the organizer. Virtualization can
-      // unmount that badge during the second pass; do not discard known names.
-      if(!roster.sawInvitees||(!roster.observedCount&&roster.expectedCount!==0))return {available:false,reason:roster.reason||'لم تظهر أسماء تحت قائمة المدعوين',capturedAt};
-      if(!roster.fullyScanned)return {available:false,reason:'لم تكتمل قائمة المدعوين بعد المزيد والتمرير؛ لم تُحفظ أسماء جزئية',diagnostics:roster.diagnostics,capturedAt:Date.now(),expectedCount:roster.expectedCount,observedCount:roster.observedCount};
-      const excluded=new Set([target.teacher,result.teacher,roster.name,...roster.presentText.split('\n')].map(normalize));
-      const names=[...new Map(roster.invitedText.split('\n').map(name=>name.trim()).filter(name=>name&&!excluded.has(normalize(name))).map(name=>[normalize(name),name])).values()];
-      return {available:true,complete:!!roster.fullyScanned,expectedCount:roster.expectedCount,observedCount:roster.observedCount,capturedAt:Date.now(),organizer:roster.name||result.teacher,invitedNames:names};
-    }catch{return {available:false,reason:'تعذرت قراءة قائمة الطلاب؛ نتيجة المعلم مستقلة ومحفوظة',capturedAt}}
   }
 
   function getTextForRoot(root) {
@@ -630,15 +512,15 @@
     if(decision?.status==="absent"){
       const evidenceReady=await prepareInviteeEvidenceView(organizer.name);
       if(!evidenceReady)return {status:"unresolved",teacher,detail:"اسم المنظّم «"+organizer.name+"» ظهر ضمن المدعوين، لكن تعذّر إظهار الاسم وعنوان القائمة معًا للتصوير؛ لم يُسجّل غياب."};
-      return {status:"absent",organizerVerified:true,teacher:organizer.name,evidenceTeacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» مرتبط بالمعلم ويظهر تحت «تمت دعوة الآخرين»؛ الحالة غائب. جُهزت القائمة للتصوير.",evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}};
+      return {status:"absent",teacher:organizer.name,evidenceTeacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» مرتبط بالمعلم ويظهر تحت «تمت دعوة الآخرين»؛ الحالة غائب. جُهزت القائمة للتصوير.",evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}};
     }
-    if(decision?.status==="present")return {status:"present",organizerVerified:true,teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» غير موجود ضمن المدعوين؛ الحالة حاضر وفق قاعدة المنظّم."};
+    if(decision?.status==="present")return {status:"present",teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» غير موجود ضمن المدعوين؛ الحالة حاضر وفق قاعدة المنظّم."};
     return {status:"unresolved",teacher:organizer.name,detail:(organizer.reason||"تعذر تأكيد اكتمال قائمة المدعوين")+"؛ الأسماء المقروءة من المدعوين=" + organizer.observedCount + ". "+organizer.diagnostics};
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "MIRSAD_AUTO_SCAN") {
-      automaticScan(message.teacher || "").then(async result=>{if(["present","absent"].includes(result.status))result.studentAttendance=await captureInvitedStudents({teacher:message.teacher||result.teacher},result);sendResponse(result)}).catch(error => sendResponse({status:"unresolved",teacher:message.teacher||"",detail:"تعذر فحص واجهة Teams بسبب خطأ داخلي: "+String(error?.message||error||"خطأ غير معروف").slice(0,180)+"؛ لم تُسجّل حالة حضور أو غياب."}));
+      automaticScan(message.teacher || "").then(sendResponse).catch(error => sendResponse({status:"unresolved",teacher:message.teacher||"",detail:"تعذر فحص واجهة Teams بسبب خطأ داخلي: "+String(error?.message||error||"خطأ غير معروف").slice(0,180)+"؛ لم تُسجّل حالة حضور أو غياب."}));
       return true;
     }
   });
@@ -825,7 +707,6 @@
           result.detail+=saved?.ok?" حُفظت صورة غير محسوم: "+saved.filename:" تعذر حفظ صورة غير محسوم"+(saved?.error?": "+String(saved.error).slice(0,180):"");
         }catch(error){result.detail+=" تعذر حفظ صورة غير محسوم: "+String(error?.message||error).slice(0,180)}
       }
-      if(target.studentAttendanceEnabled&&['present','absent'].includes(result.status))result.studentAttendance=await captureInvitedStudents(target,result);
       // Do not click Leave unless the meeting UI confirms that we actually joined.
       if (meetingLooksJoined()) await leaveMeetingIfJoined();
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});
