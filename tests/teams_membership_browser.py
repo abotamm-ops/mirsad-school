@@ -53,4 +53,11 @@ with sync_playwright() as p:
  audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present'})",name)
  assert audit['available'] and audit['complete'] and len(audit['invitedNames'])==40,audit
  assert 'طالب حاضر' not in audit['invitedNames'] and page.locator('#studentViewport').evaluate('(el)=>el.scrollTop')==0
+ # Nested overflow: an inner scrollable row must not hide the real roster
+ # viewport. Teams can also append another page after reaching the old bottom.
+ setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (30)</h3><div id="outerRoster" style="height:120px;overflow-y:hidden;position:relative"><div id="rosterSpace" style="height:750px"><div id="rosterWindow" style="position:absolute;top:0"></div></div></div>')
+ page.evaluate("""()=>{const el=document.querySelector('#outerRoster'),win=document.querySelector('#rosterWindow');let loaded=false;const draw=()=>{const count=loaded?30:15,start=Math.min(count-3,Math.floor(el.scrollTop/50));win.style.top=el.scrollTop+'px';win.innerHTML=Array.from({length:3},(_,i)=>'<div role="treeitem" style="height:40px"><div class="fui-TreeItemPersonaLayout__main"><span title="مدعو '+(start+i)+'">مدعو '+(start+i)+'</span></div>'+(i===0?'<div style="height:10px;overflow:auto"><div style="height:35px">رمز</div></div>':'')+'</div>').join('');if(!loaded&&el.scrollTop>=el.scrollHeight-el.clientHeight-2)setTimeout(()=>{loaded=true;document.querySelector('#rosterSpace').style.height='1500px';draw()},320)};el.addEventListener('scroll',draw);draw()}""")
+ audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present'})",name)
+ assert audit['available'] and audit['complete'] and len(audit['invitedNames'])==30,audit
+ assert 'مدعو 29' in audit['invitedNames']
  b.close();print('PASS all 40 virtualized invitees, per-student RSVP statuses, modern persona rows and organizer identity comes from its badge; invited wins even with misleading in-call row ID, Arabic/English labels and conflicting presence; invitee count mismatch does not block presence; identified organizer outside invitees means present')

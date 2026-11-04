@@ -267,7 +267,7 @@
   }
 
   async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections, options={}) {
-    const studentUntil=Date.now()+5000;
+    const studentUntil=Date.now()+12000;
     if(options.fullRoster)await expandInvitedRoster(studentUntil);
     const observedInvitees=new Set(), organizers=new Set(), observedPresent=new Set();
     let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null;
@@ -276,8 +276,8 @@
     const scrollables=[];
     const addScrollable=el=>{
       if(!el||scrollables.some(x=>x.el===el)||el.scrollHeight<=el.clientHeight+8)return;
-      if(el!==document.scrollingElement && !/(auto|scroll)/.test(window.getComputedStyle(el).overflowY||''))return;
-      scrollables.push({el,top:el.scrollTop,ended:false});
+      if(el!==document.scrollingElement && !(options.fullRoster?/(auto|scroll|overlay|hidden)/:/(auto|scroll)/).test(window.getComputedStyle(el).overflowY||''))return;
+      scrollables.push({el,top:el.scrollTop,ended:false,bottomChecks:0});
     };
     for(const root of [...(initialSections.present||[]),...(initialSections.invited||[])].map(x=>x.root)){
       let node=root;
@@ -289,7 +289,9 @@
     }
     if(!scrollables.length)addScrollable(document.scrollingElement);
     // Scan inner roster viewports, rather than also scrolling unrelated outer pages.
-    const inner=scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
+    const inner=options.fullRoster
+      ?scrollables.filter(entry=>scrollables.length===1||entry.el!==document.scrollingElement)
+      :scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
     scrollables.splice(0,scrollables.length,...inner);
     const collect=()=>{
       // RSVP text inside a person row ("لا توجد استجابة") is a status,
@@ -331,29 +333,43 @@
       collect();
     }
     collect();
-    let remaining=64;const until=options.fullRoster?studentUntil:Date.now()+15000;
+    let remaining=options.fullRoster?120:64;const until=options.fullRoster?studentUntil:Date.now()+15000;
     while((options.fullRoster||!inInvitees) && remaining-->0 && Date.now()<until){
       const active=scrollables.filter(x=>!x.ended);
       if(!active.length)break;
       const entry=active[0],el=entry.el;
-      const next=Math.min(el.scrollHeight-el.clientHeight,el.scrollTop+Math.max(120,Math.floor(el.clientHeight*.75)));
-      if(next<=el.scrollTop+2){entry.ended=true;continue;}
+      const step=options.fullRoster?Math.max(24,Math.floor(el.clientHeight*.7)):Math.max(120,Math.floor(el.clientHeight*.75));
+      const next=Math.min(el.scrollHeight-el.clientHeight,el.scrollTop+step);
+      if(next<=el.scrollTop+2){
+        if(!options.fullRoster){entry.ended=true;continue}
+        // Reaching today's bottom can trigger another virtualized page. Wait
+        // for stable height and names instead of ending on the first bottom.
+        const beforeHeight=el.scrollHeight,beforeCount=observedInvitees.size;
+        await expandInvitedRoster(until);
+        el.dispatchEvent(new Event('scroll',{bubbles:true}));
+        await new Promise(resolve=>setTimeout(resolve,220));collect();
+        if(el.scrollHeight===beforeHeight&&observedInvitees.size===beforeCount)entry.bottomChecks++;
+        else entry.bottomChecks=0;
+        entry.ended=entry.bottomChecks>=3;
+        continue;
+      }
+      entry.bottomChecks=0;
       el.scrollTop=next;
       el.dispatchEvent(new Event('scroll',{bubbles:true}));
-      await new Promise(resolve=>setTimeout(resolve,140));
+      await new Promise(resolve=>setTimeout(resolve,options.fullRoster?180:140));
       collect();
     }
     const matches=[...organizers];
     // A stable declared count must match the unique invited rows actually read.
     // Missing or changing rows cannot establish absence from the invited list.
     const inviteesReadable=sawInvitees&&!unreadableRows&&(observedInvitees.size>0||expectedCount===0);
-    const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3);
+    const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>options.fullRoster?x.ended:(x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3));
     // Preserve the matched row for evidence when an absence has been detected.
     if(options.fullRoster || matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.56؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.57؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
