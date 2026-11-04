@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 R=Path(__file__).resolve().parents[1]
 name='سعد مبارك الدوسري'
 source=(R/'teams-probe/content.js').read_text();needle='  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {';assert needle in source
-source=source.replace(needle,"  globalThis.readerTest={findSections,scanOrganizerAcrossPage,participantRows,rosterHeadingsInOrder};return;\n"+needle,1)
+source=source.replace(needle,"  globalThis.readerTest={findSections,scanOrganizerAcrossPage,participantRows,rosterHeadingsInOrder,prepareInviteeEvidenceView};return;\n"+needle,1)
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page()
  def setup(html):
@@ -41,6 +41,15 @@ with sync_playwright() as p:
  setup('<h3>الحضور (0)</h3><h3>من تمت دعوتهم (30)</h3><div id="fullSweep" style="height:120px;overflow:auto;position:relative"><div style="height:1440px"><div id="sweepWindow" style="position:absolute;top:0"></div></div></div>')
  page.evaluate("""name=>{const el=document.querySelector('#fullSweep'),win=document.querySelector('#sweepWindow');window.sweepTrace=[];const draw=()=>{window.sweepTrace.push(el.scrollTop);win.style.top=el.scrollTop+'px';const found=el.scrollTop<5;win.innerHTML='<div data-cid="roster-participant" data-tid="participantsFromMeeting-'+(found?name:'اسم ظاهر')+'"><span>'+(found?name:'اسم ظاهر')+'</span>'+(found?'<span data-tid="ts-roster-organizer-status">المنظّم</span>':'')+'</div>'};el.addEventListener('scroll',draw);draw()}""",name)
  r=decide();assert r['status']=='absent' and max(page.evaluate('window.sweepTrace'))>=1320 and page.locator('#fullSweep').evaluate('(el)=>el.scrollTop')<5,r
+ # Evidence preparation rechecks the actual organizer badge and viewport.
+ assert page.evaluate("name=>readerTest.prepareInviteeEvidenceView(name)",name)
+ page.screenshot(path='/tmp/mirsad-organizer-proof-visible.png')
+ assert page.locator('[data-tid="ts-roster-organizer-status"]').is_visible()
+ page.locator('[data-tid="ts-roster-organizer-status"]').evaluate("el=>el.style.display='none'")
+ assert not page.evaluate("name=>readerTest.prepareInviteeEvidenceView(name)",name)
+ # A mounted matching name without its own organizer badge is never proof.
+ setup('<h3>من تمت دعوتهم (1)</h3>'+row(name,organizer=False))
+ assert not page.evaluate("name=>readerTest.prepareInviteeEvidenceView(name)",name)
  # The pane can become scrollable only after Teams finishes rendering it.
  setup('<h3>الحضور (1)</h3><div id="delayedOrganizer" style="height:120px;overflow:auto;position:relative"><div id="delayedSpace" style="height:48px"><div id="delayedWindow" style="position:absolute;top:0"><div data-cid="roster-participant" data-tid="participantsInCall-اسم ظاهر"><span>اسم ظاهر</span></div></div></div></div><h3>من تمت دعوتهم (0)</h3>')
  page.evaluate("""name=>{const el=document.querySelector('#delayedOrganizer'),win=document.querySelector('#delayedWindow');window.delayedRewound=false;const draw=()=>{win.style.top=el.scrollTop+'px';if(el.scrollTop<5){window.delayedRewound=true;win.innerHTML='<div data-cid="roster-participant" data-tid="participantsInCall-'+name+'"><span>'+name+'</span><span data-tid="ts-roster-organizer-status">المنظّم</span></div>'}else win.innerHTML='<div data-cid="roster-participant" data-tid="participantsInCall-اسم ظاهر"><span>اسم ظاهر</span></div>'};el.addEventListener('scroll',draw);setTimeout(()=>{document.querySelector('#delayedSpace').style.height='1440px';el.scrollTop=1320;draw()},350)}""",name)

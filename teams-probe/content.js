@@ -360,7 +360,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.68؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.69؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
@@ -420,11 +420,17 @@
 
   async function prepareInviteeEvidenceView(teacher) {
     const headings=rosterHeadingsInOrder();
-    const matches=participantRows(headings).filter(row=>row.group==='invited'&&normalize(row.name)===normalize(teacher));
+    const matches=participantRows(headings).filter(row=>row.organizer&&row.group==='invited'&&normalize(row.name)===normalize(teacher));
     for(const match of matches){
       try{match.el.scrollIntoView({block:'nearest',inline:'nearest'})}catch(_){}
       await new Promise(resolve=>setTimeout(resolve,180));
-      if(participantRows(rosterHeadingsInOrder()).some(row=>row.group==='invited'&&normalize(row.name)===normalize(teacher)))return true;
+      if(participantRows(rosterHeadingsInOrder()).some(row=>{
+        if(!row.organizer||row.group!=='invited'||normalize(row.name)!==normalize(teacher))return false;
+        const viewport=participantViewport(row.el),bounds=viewport?.getBoundingClientRect()||{top:0,bottom:innerHeight},rect=row.el.getBoundingClientRect();
+        // Recheck the actual on-screen organizer row immediately before capture,
+        // not just a matching name still mounted outside the scroll viewport.
+        return rect.top>=Math.max(0,bounds.top)-1&&rect.bottom<=Math.min(innerHeight,bounds.bottom)+1;
+      }))return true;
     }
     return false;
   }
