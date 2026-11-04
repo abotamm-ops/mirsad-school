@@ -29,6 +29,12 @@ with sync_playwright() as p:
  assert audit['available'] and not audit['complete'] and audit['invitedNames']==['طالب غائب'],audit
  setup('<h3>من تمت دعوتهم (1)</h3>'+row('طالب غائب',organizer=False))
  assert not page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم'},{teacher:'معلم',status:'present'})")['available']
+ # A previously verified organizer may be unmounted from the virtual roster.
+ setup('<h3>من تمت دعوتهم (3)</h3>'+row('طالب معروف',organizer=False)+'<div data-cid="roster-participant">صف لم يكتمل تحميله</div>')
+ audit=page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم موثق'},{teacher:'معلم موثق',status:'present',organizerVerified:true})")
+ assert audit['available'] and not audit['complete'] and audit['invitedNames']==['طالب معروف'],audit
+ # Without prior organizer proof, the same page still cannot supply an audit.
+ assert not page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم موثق'},{teacher:'معلم موثق',status:'present'})")['available']
  # Modern Teams student rows may only expose Fluent treeitem/persona fields,
  # while the organizer and one row still use the legacy participant attributes.
  modern=lambda n:'<div role="treeitem" style="height:48px"><div class="fui-TreeItemPersonaLayout__main"><span title="'+n+'">'+n+'</span></div></div>'
@@ -60,4 +66,10 @@ with sync_playwright() as p:
  audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present'})",name)
  assert audit['available'] and audit['complete'] and len(audit['invitedNames'])==30,audit
  assert 'مدعو 29' in audit['invitedNames']
+ # Exercise the direct scan message as well as the automatic-run handshake.
+ page.goto('about:blank');page.set_content('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (2)</h3>'+row('طالب أول',organizer=False)+row('طالب ثان',organizer=False))
+ page.evaluate("()=>{window.__mirsadAutoPageHandshake=true;window.chrome={runtime:{onMessage:{addListener:fn=>window.scanListener=fn}}}}")
+ page.add_script_tag(content=(R/'teams-probe/schedule-core.js').read_text());page.add_script_tag(content=(R/'teams-probe/content.js').read_text())
+ direct=page.evaluate("(name)=>new Promise(resolve=>scanListener({type:'MIRSAD_AUTO_SCAN',teacher:name},{},resolve))",name)
+ assert direct['status']=='present' and direct['organizerVerified'] and set(direct['studentAttendance']['invitedNames'])=={'طالب اول','طالب ثان'},direct
  b.close();print('PASS all 40 virtualized invitees, per-student RSVP statuses, modern persona rows and organizer identity comes from its badge; invited wins even with misleading in-call row ID, Arabic/English labels and conflicting presence; invitee count mismatch does not block presence; identified organizer outside invitees means present')

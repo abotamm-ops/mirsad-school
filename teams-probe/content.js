@@ -367,9 +367,9 @@
     // Preserve the matched row for evidence when an absence has been detected.
     if(options.fullRoster || matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
-      inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
+      inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,sawInvitees,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.57؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.58؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
@@ -378,10 +378,14 @@
     const capturedAt=Date.now();
     try{
       const roster=await scanOrganizerAcrossPage(target.teacher,findSections(),{fullRoster:true});
-      if(!roster.name||normalize(roster.name)!==normalize(result.teacher)||!roster.inviteesReadable)return {available:false,reason:'لم تتأكد هوية المنظم أو قراءة قائمة المدعوين',capturedAt};
+      const trustedOrganizer=result.organizerVerified===true&&['present','absent'].includes(result.status)&&!!result.teacher;
+      if(roster.ambiguous||(roster.name&&normalize(roster.name)!==normalize(result.teacher))||(!roster.name&&!trustedOrganizer))return {available:false,reason:'تعارضت هوية المنظم أو لم تتأكد',capturedAt};
+      // The teacher scan already verified the organizer. Virtualization can
+      // unmount that badge during the second pass; do not discard known names.
+      if(!roster.sawInvitees||(!roster.observedCount&&roster.expectedCount!==0))return {available:false,reason:roster.reason||'لم تظهر أسماء تحت قائمة المدعوين',capturedAt};
       const excluded=new Set([target.teacher,result.teacher,roster.name,...roster.presentText.split('\n')].map(normalize));
       const names=[...new Map(roster.invitedText.split('\n').map(name=>name.trim()).filter(name=>name&&!excluded.has(normalize(name))).map(name=>[normalize(name),name])).values()];
-      return {available:true,complete:!!roster.fullyScanned,expectedCount:roster.expectedCount,observedCount:roster.observedCount,capturedAt:Date.now(),organizer:roster.name,invitedNames:names};
+      return {available:true,complete:!!roster.fullyScanned,expectedCount:roster.expectedCount,observedCount:roster.observedCount,capturedAt:Date.now(),organizer:roster.name||result.teacher,invitedNames:names};
     }catch{return {available:false,reason:'تعذرت قراءة قائمة الطلاب؛ نتيجة المعلم مستقلة ومحفوظة',capturedAt}}
   }
 
@@ -575,15 +579,15 @@
     if(decision?.status==="absent"){
       const evidenceReady=await prepareInviteeEvidenceView(organizer.name);
       if(!evidenceReady)return {status:"unresolved",teacher,detail:"اسم المنظّم «"+organizer.name+"» ظهر ضمن المدعوين، لكن تعذّر إظهار الاسم وعنوان القائمة معًا للتصوير؛ لم يُسجّل غياب."};
-      return {status:"absent",teacher:organizer.name,evidenceTeacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» مرتبط بالمعلم ويظهر تحت «تمت دعوة الآخرين»؛ الحالة غائب. جُهزت القائمة للتصوير.",evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}};
+      return {status:"absent",organizerVerified:true,teacher:organizer.name,evidenceTeacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» مرتبط بالمعلم ويظهر تحت «تمت دعوة الآخرين»؛ الحالة غائب. جُهزت القائمة للتصوير.",evidence:{verified:true,teacherInInvitees:true,teacherNotPresent:true,inviteesReadable:true}};
     }
-    if(decision?.status==="present")return {status:"present",teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» غير موجود ضمن المدعوين؛ الحالة حاضر وفق قاعدة المنظّم."};
+    if(decision?.status==="present")return {status:"present",organizerVerified:true,teacher:organizer.name,detail:"اسم المنظّم «"+organizer.name+"» غير موجود ضمن المدعوين؛ الحالة حاضر وفق قاعدة المنظّم."};
     return {status:"unresolved",teacher:organizer.name,detail:(organizer.reason||"تعذر تأكيد اكتمال قائمة المدعوين")+"؛ الأسماء المقروءة من المدعوين=" + organizer.observedCount + ". "+organizer.diagnostics};
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "MIRSAD_AUTO_SCAN") {
-      automaticScan(message.teacher || "").then(sendResponse).catch(error => sendResponse({status:"unresolved",teacher:message.teacher||"",detail:"تعذر فحص واجهة Teams بسبب خطأ داخلي: "+String(error?.message||error||"خطأ غير معروف").slice(0,180)+"؛ لم تُسجّل حالة حضور أو غياب."}));
+      automaticScan(message.teacher || "").then(async result=>{if(["present","absent"].includes(result.status))result.studentAttendance=await captureInvitedStudents({teacher:message.teacher||result.teacher},result);sendResponse(result)}).catch(error => sendResponse({status:"unresolved",teacher:message.teacher||"",detail:"تعذر فحص واجهة Teams بسبب خطأ داخلي: "+String(error?.message||error||"خطأ غير معروف").slice(0,180)+"؛ لم تُسجّل حالة حضور أو غياب."}));
       return true;
     }
   });
