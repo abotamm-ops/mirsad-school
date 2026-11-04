@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 R=Path(__file__).resolve().parents[1]
 name='سعد مبارك الدوسري'
 source=(R/'teams-probe/content.js').read_text();needle='  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {';assert needle in source
-source=source.replace(needle,"  globalThis.readerTest={findSections,scanOrganizerAcrossPage,participantRows,rosterHeadingsInOrder};return;\n"+needle,1)
+source=source.replace(needle,"  globalThis.readerTest={findSections,scanOrganizerAcrossPage,participantRows,rosterHeadingsInOrder,captureInvitedStudents};return;\n"+needle,1)
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page()
  def setup(html):
@@ -20,4 +20,13 @@ with sync_playwright() as p:
   setup('<h3>منظمو الاجتماع</h3>'+row(name)+'<h3>'+label+'</h3>'+row('طالب آخر',organizer=False));assert decide()['status']=='present'
  setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (0)</h3>');assert decide()['status']=='present'
  setup('<h3>الحضور (1)</h3>'+row('طالب أول',organizer=False)+'<h3>من تمت دعوتهم (1)</h3>'+row('طالب آخر',organizer=False));assert decide()['status']=='unresolved'
+ setup('<h3>الحضور (2)</h3>'+row(name,'participantsInCall-')+row('طالب حاضر',organizer=False)+'<h3>من تمت دعوتهم (3)</h3>'+row('طالب غائب',organizer=False)+row('طالب حاضر',organizer=False)+row(name))
+ audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'absent'})",name)
+ assert audit['available'] and audit['invitedNames']==['طالب غائب'],audit
+ assert 'presentText' not in audit
+ setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (4)</h3>'+row('طالب غائب',organizer=False))
+ audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present'})",name)
+ assert audit['available'] and not audit['complete'] and audit['invitedNames']==['طالب غائب'],audit
+ setup('<h3>من تمت دعوتهم (1)</h3>'+row('طالب غائب',organizer=False))
+ assert not page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم'},{teacher:'معلم',status:'present'})")['available']
  b.close();print('PASS organizer identity comes from its badge; invited wins even with misleading in-call row ID, Arabic/English labels and conflicting presence; invitee count mismatch does not block presence; identified organizer outside invitees means present')

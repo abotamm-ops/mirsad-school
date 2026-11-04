@@ -235,7 +235,7 @@
     }).filter(x=>x.name && x.name.length<=130);
   }
 
-  async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections) {
+  async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections, options={}) {
     const observedInvitees=new Set(), organizers=new Set(), observedPresent=new Set();
     let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null;
     let countChanged=false, unreadableRows=false;
@@ -295,8 +295,8 @@
       collect();
     }
     collect();
-    let remaining=64;
-    while(!inInvitees && remaining-->0){
+    let remaining=64;const until=Date.now()+(options.fullRoster?5000:15000);
+    while((options.fullRoster||!inInvitees) && remaining-->0 && Date.now()<until){
       const active=scrollables.filter(x=>!x.ended);
       if(!active.length)break;
       const entry=active[0],el=entry.el;
@@ -313,13 +313,24 @@
     const inviteesReadable=sawInvitees&&!unreadableRows&&(observedInvitees.size>0||expectedCount===0);
     const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3);
     // Preserve the matched row for evidence when an absence has been detected.
-    if(matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
+    if(options.fullRoster || matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.43؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.55؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
+  }
+
+  async function captureInvitedStudents(target,result){
+    const capturedAt=Date.now();
+    try{
+      const roster=await scanOrganizerAcrossPage(target.teacher,findSections(),{fullRoster:true});
+      if(!roster.name||normalize(roster.name)!==normalize(result.teacher)||!roster.inviteesReadable)return {available:false,reason:'لم تتأكد هوية المنظم أو قراءة قائمة المدعوين',capturedAt};
+      const excluded=new Set([target.teacher,result.teacher,roster.name,...roster.presentText.split('\n')].map(normalize));
+      const names=[...new Map(roster.invitedText.split('\n').map(name=>name.trim()).filter(name=>name&&!excluded.has(normalize(name))).map(name=>[normalize(name),name])).values()];
+      return {available:true,complete:!!roster.fullyScanned,expectedCount:roster.expectedCount,observedCount:roster.observedCount,capturedAt:Date.now(),organizer:roster.name,invitedNames:names};
+    }catch{return {available:false,reason:'تعذرت قراءة قائمة الطلاب؛ نتيجة المعلم مستقلة ومحفوظة',capturedAt}}
   }
 
   function getTextForRoot(root) {
@@ -707,6 +718,7 @@
           result.detail+=saved?.ok?" حُفظت صورة غير محسوم: "+saved.filename:" تعذر حفظ صورة غير محسوم"+(saved?.error?": "+String(saved.error).slice(0,180):"");
         }catch(error){result.detail+=" تعذر حفظ صورة غير محسوم: "+String(error?.message||error).slice(0,180)}
       }
+      if(target.studentAttendanceEnabled&&['present','absent'].includes(result.status))result.studentAttendance=await captureInvitedStudents(target,result);
       // Do not click Leave unless the meeting UI confirms that we actually joined.
       if (meetingLooksJoined()) await leaveMeetingIfJoined();
       chrome.runtime.sendMessage({type:"MIRSAD_SCAN_RESULT", scanId:target.scanId, result});

@@ -330,7 +330,7 @@ async function receiveResultOnce(message){
  }
  if(status==="unresolved"&&await retryUnresolved(run,item,detail))return;
  detail=retryDetail(run,detail);const retryCount=scanRetryState(run)?.attempts.length||0;run.scanRetry=null;
- const resultRecord={retryCount,scanId:item.scanId,teacher:resultTeacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status,detail,scannedAt,cycle:run.cycle||0};
+ const resultRecord={retryCount,scanId:item.scanId,teacher:resultTeacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:item.url,status,detail,scannedAt,cycle:run.cycle||0,studentAttendance:message.result?.studentAttendance||null};
  run.results.push(resultRecord);await saveRun(run);
  if(!run.testMode&&!run.backtestMode){await appendDailyReport(resultRecord);await LocalBackup.enqueue(resultRecord).catch(e=>setStatus("تعذر تثبيت النسخة المحلية: "+String(e.message)));await CloudMonitoring.record(run,resultRecord).catch(()=>{})}
 
@@ -554,7 +554,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==="MIRSAD_SET_MANUAL_STATUS"){
   (async()=>{const key="mirsadManualAttendanceOverrides";const saved=await chrome.storage.local.get(key);const overrides=saved[key]&&typeof saved[key]==="object"?saved[key]:{};const k=String(message.day||localDayKey())+"|"+String(message.period||"")+"|"+String(message.teacher||"");if(!message.teacher||!message.period){sendResponse({ok:false});return}if(message.status==="clear")delete overrides[k];else if(["present","absent"].includes(message.status))overrides[k]={status:message.status,updatedAt:Date.now(),updatedBy:"manual"};else{sendResponse({ok:false});return}await chrome.storage.local.set({[key]:overrides});sendResponse({ok:true})})().catch(()=>sendResponse({ok:false}));return true
  }
- if(message?.type==="MIRSAD_PAGE_READY"){getRun().then(run=>sendResponse(run?.running&&run.current?{active:true,teacher:run.current.teacher,period:run.period,index:run.index,scanId:run.current.scanId}:{active:false}));return true}
+ if(message?.type==="MIRSAD_PAGE_READY"){getRun().then(run=>sendResponse(run?.running&&run.current?{active:true,teacher:run.current.teacher,period:run.period,index:run.index,scanId:run.current.scanId,studentAttendanceEnabled:!run.testMode&&!run.backtestMode&&!run.immediateMode}:{active:false}));return true}
  if(message?.type==="MIRSAD_CAPTURE_EVIDENCE"){
   captureEvidenceForScan(message,sender).then(sendResponse).catch(error=>sendResponse({ok:false,error:String(error.message)}));return true
  }
