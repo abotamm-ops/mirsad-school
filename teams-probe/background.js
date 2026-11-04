@@ -154,6 +154,7 @@ async function getScheduleTab(openIfMissing=false){
  return openingScheduleTab;
 }
 async function startMonitoring(immediate=false){
+ if(CloudMonitoring.linksBusy?.())throw new Error('انتظر اكتمال حفظ رابط الحصة');
  await MirsadClassicReady;await refreshScheduleSettings();
  const existing=await getRun();try{await CloudMonitoring.assertSelected(existing?.running||existing?.paused?existing:null)}catch(e){if(existing?.running)await pauseMonitoring();throw e}
  if(!immediate&&existing?.paused){await resumeMonitoring();return}
@@ -485,6 +486,7 @@ async function pauseMonitoring(){
  await setStatus("الرصد متوقف مؤقتًا؛ اضغط استئناف للمتابعة من نفس المعلم والدورة.");return {ok:true};
 }
 async function resumeMonitoring(){
+ if(CloudMonitoring.linksBusy?.())throw new Error('انتظر اكتمال حفظ رابط الحصة');
  await CloudMonitoring.assertSelected(await getRun());await refreshScheduleSettings();const run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};
  run.paused=false;run.running=true;run.autoResume=run.pauseAutoResume!==false;run.current=null;await saveRun(run);
  await setStatus("تم استئناف الرصد من موضع التوقف، مع مراعاة وقت الحصة الحالية.");
@@ -501,6 +503,7 @@ async function stopAndResetMonitoring(){
 }
 
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
+ if(message?.type==='MIRSAD_MANUAL_LESSON_LINK'){if(!sender.tab||!/^https:\/\/mirsad-school\.onrender\.com\/automatic-monitoring\.html(?:[?#]|$)/.test(sender.tab.url||'')){sendResponse({ok:false,error:'مصدر غير مسموح'});return false}CloudMonitoring.manualLessonLink(message.payload||{}).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
  if(message?.type==='MIRSAD_CLASSIC_MATCH'){let valid=false;try{const u=new URL(sender?.tab?.url);valid=u.origin==='https://mirsad-school.onrender.com'&&u.pathname==='/automatic-monitoring.html'}catch{}if(!valid){sendResponse({ok:false});return false}CloudMonitoring.syncVisible(message.reference).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
 
  if(message?.type==='MIRSAD_PURGED_DAY'){let valid=false;try{const u=new URL(sender?.tab?.url);valid=u.origin==='https://mirsad-school.onrender.com'&&u.pathname==='/automatic-monitoring.html'}catch{}if(!valid){sendResponse({ok:false});return false}CloudMonitoring.resetAfterPurge(message.date,message.requestId).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}

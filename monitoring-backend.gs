@@ -211,6 +211,32 @@ function monitorRequest_(p){
  var date=p.date||monitorToday_();if(p.action==='startDay'&&date!==monitorToday_())throw new Error('بداية اليوم تكون لتاريخ اليوم في السعودية فقط');var folder=monitorDay_(root,date,p.action==='startDay');
  if(p.action==='day'&&p.versionId)return {...monitorDayDTO_(monitorArchivedData_(folder,p.versionId)),readOnly:true};
  var file=monitorFile_(folder,'attendance.json'),data=monitorRead_(file,null);
+ if(p.action==='fillMissingLinks'||p.action==='manualLessonLink'){
+  if(!writer||experimentId)throw new Error('تعديل الرابط خاص بإضافة المدرسة المرتبطة برمز الرفع');
+  if(date!==monitorToday_()||!data||data.snapshot.sourceType!=='madrasati')throw new Error('تعديل الروابط خاص بجدول الرصد الحالي');
+  var edits=[],snap=data.snapshot,sourceFile=monitorFile_(root,'mirsad-timetable-source.json'),source=monitorRead_(sourceFile,{mode:'madrasati'});
+  if(p.action==='manualLessonLink'){
+   if(p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير الجدول؛ حدّث الصفحة وأعد المحاولة');
+   var row=snap.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
+   if(!row)throw new Error('الحصة غير موجودة؛ حدّث الصفحة');if(row.url){if(row.url===p.url)return {merged:true,saved:true,filled:0,snapshot:snap,folderUrl:folder.getUrl()};throw new Error('أصبح للحصة رابط؛ حدّث الصفحة')}
+   if(typeof p.url!=='string'||p.url.length>8000||!/^https:\/\/(teams\.microsoft\.com|teams\.live\.com)\/(l\/meetup-join\/|meet\/)[^\s#]+(?:#[^\s]*)?$/.test(p.url)||/[\u0000-\u0020\u007f]/.test(p.url))throw new Error('رابط تيمز غير صالح');
+   edits.push({row:row,url:p.url});
+  }else{
+   var payload=monitorMadrasatiPayload_(p.payload);
+   if(source.schoolId&&source.schoolId.toLowerCase()!==payload.schoolId.toLowerCase())throw new Error('المدرسة لا تطابق الجدول المحفوظ');
+   var matching=payload.importedForDate===date&&payload.scheduleDate===snap.sourceScheduleDate&&payload.teachers.length===snap.teachers.length&&payload.lessons.length===snap.lessons.length&&snap.teachers.every(function(t){return payload.teachers.some(function(n){return monitorName_(n)===monitorName_(t.name)})});
+   if(!matching)return {merged:false};
+   for(var row of snap.lessons){var incoming=payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(row.teacherName)&&Number(l.cellIndex)-1===row.period});if(!incoming||incoming.title!==row.subject||incoming.lesson!==row.className)return {merged:false};if(!row.url&&incoming.teams)edits.push({row:row,url:incoming.teams})}
+  }
+  if(edits.length){
+   data.adjustments=data.adjustments||[];
+   edits.forEach(function(edit){edit.row.url=edit.url;data.adjustments.push({type:'link-fill',teacherId:edit.row.teacherId,period:edit.row.period,url:edit.url,manual:p.action==='manualLessonLink',at:Date.now(),sequence:Math.max(0,...data.adjustments.map(function(a){return a.sequence||0}))+1});
+    if(source.payload?.importedForDate===date&&source.payload?.scheduleDate===snap.sourceScheduleDate){var lesson=source.payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(edit.row.teacherName)&&Number(l.cellIndex)-1===edit.row.period&&l.title===edit.row.subject&&l.lesson===edit.row.className});if(lesson&&!lesson.teams){lesson.teams=edit.url;lesson.linkState='linked'}}
+   });
+   monitorWrite_(folder,'attendance.json',data);source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);
+  }
+  return {merged:true,saved:true,filled:edits.length,snapshot:snap,folderUrl:folder.getUrl()};
+ }
  if(p.action==='startDay'){
   if(!experimentId&&p.sourceType==='naqar')throw new Error('نقار ملغى؛ مدرستي هي المصدر الوحيد');
   var selectedSource=monitorRead_(monitorFile_(root,'mirsad-timetable-source.json'),{mode:'naqar'});if(!experimentId&&selectedSource.mode==='madrasati')return monitorPrepareCurrent_(root,p);
