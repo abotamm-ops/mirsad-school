@@ -26,15 +26,22 @@ with sync_playwright() as p:
  assert 'presentText' not in audit
  setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (4)</h3>'+row('طالب غائب',organizer=False))
  audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present'})",name)
- assert audit['available'] and not audit['complete'] and audit['invitedNames']==['طالب غائب'],audit
+ assert not audit['available'] and 'invitedNames' not in audit,audit
  setup('<h3>من تمت دعوتهم (1)</h3>'+row('طالب غائب',organizer=False))
  assert not page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم'},{teacher:'معلم',status:'present'})")['available']
  # A previously verified organizer may be unmounted from the virtual roster.
  setup('<h3>من تمت دعوتهم (3)</h3>'+row('طالب معروف',organizer=False)+'<div data-cid="roster-participant">صف لم يكتمل تحميله</div>')
  audit=page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم موثق'},{teacher:'معلم موثق',status:'present',organizerVerified:true})")
- assert audit['available'] and not audit['complete'] and audit['invitedNames']==['طالب معروف'],audit
+ assert not audit['available'] and 'invitedNames' not in audit,audit
+ setup('<h3>من تمت دعوتهم (1)</h3>'+row('طالب معروف',organizer=False))
+ audit=page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم موثق'},{teacher:'معلم موثق',status:'present',organizerVerified:true})")
+ assert audit['available'] and audit['complete'] and audit['invitedNames']==['طالب معروف'],audit
  # Without prior organizer proof, the same page still cannot supply an audit.
  assert not page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'معلم موثق'},{teacher:'معلم موثق',status:'present'})")['available']
+ # Fluent uses treeitem for GROUP HEADERS too, not just participant rows.
+ setup('<div role="treeitem"><span>الحضور (1)</span></div>'+row(name,'participantsInCall-')+'<div role="treeitem"><span>من تمت دعوتهم (2)</span></div>'+row('طالب أول',organizer=False)+row('طالب ثان',organizer=False))
+ audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present',organizerVerified:true})",name)
+ assert audit['available'] and audit['complete'] and set(audit['invitedNames'])=={'طالب اول','طالب ثان'},audit
  # Modern Teams student rows may only expose Fluent treeitem/persona fields,
  # while the organizer and one row still use the legacy participant attributes.
  modern=lambda n:'<div role="treeitem" style="height:48px"><div class="fui-TreeItemPersonaLayout__main"><span title="'+n+'">'+n+'</span></div></div>'
@@ -48,11 +55,14 @@ with sync_playwright() as p:
  audit=page.evaluate("async()=>readerTest.captureInvitedStudents({teacher:'اسامة اليحيى'},{teacher:'اسامة اليحيى',status:'present'})")
  assert audit['available'] and audit['complete'] and set(audit['invitedNames'])=={n.replace('آ','ا') for n in supplied},audit
  # Only the invited roster's "more" button is expanded, not unrelated UI.
- setup('<button id="outsideMore" onclick="window.wrongClick=true">المزيد</button><section><h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (8)</h3><div id="moreNames">'+modern(students[0])+'</div><button id="rosterMore">المزيد</button></section>')
+ setup('<button id="outsideMore" onclick="window.wrongClick=true">المزيد</button><section><div role="treeitem"><span>الحضور (1)</span></div>'+row(name,'participantsInCall-')+'<div role="treeitem"><span>من تمت دعوتهم (8)</span></div><div id="moreNames">'+modern(students[0])+'</div><button id="rosterMore">المزيد</button></section>')
  page.evaluate("""(names)=>document.querySelector('#rosterMore').onclick=()=>{document.querySelector('#moreNames').innerHTML=names.map(n=>'<div role="treeitem"><div class="fui-TreeItemPersonaLayout__main"><span title="'+n+'">'+n+'</span></div><span>لا توجد استجابة</span></div>').join('');document.querySelector('#rosterMore').remove()}""",students)
  audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present'})",name)
  assert audit['complete'] and set(audit['invitedNames'])==set(students),audit
  assert not page.evaluate('Boolean(window.wrongClick)')
+ setup('<section><h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (1)</h3>'+row('طالب وحيد',organizer=False)+'<button>المزيد</button></section>')
+ audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present',organizerVerified:true})",name)
+ assert not audit['available'] and 'invitedNames' not in audit,audit
  # A virtualized list replaces its rows while the viewport scrolls.
  setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+modern('طالب حاضر')+'<h3>من تمت دعوتهم (40)</h3><div id="studentViewport" style="height:120px;overflow-y:auto;position:relative"><div style="height:2000px"><div id="studentWindow" style="position:absolute;top:0"></div></div></div>')
  page.evaluate("""()=>{const el=document.querySelector('#studentViewport'),win=document.querySelector('#studentWindow');const draw=()=>{const start=Math.min(37,Math.floor(el.scrollTop/50));win.style.top=el.scrollTop+'px';win.innerHTML=Array.from({length:3},(_,i)=>'<div role="treeitem" style="height:40px"><div class="fui-TreeItemPersonaLayout__main"><span title="غائب '+(start+i)+'">غائب '+(start+i)+'</span></div></div>').join('')};el.addEventListener('scroll',draw);draw()}""")

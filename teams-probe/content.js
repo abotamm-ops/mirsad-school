@@ -248,10 +248,17 @@
     }).filter(row=>row.name&&row.name.length<=180&&!exactHeading(row.name));
   }
 
+  function participantStatusHeading(el){
+    const row=el.closest(studentRowSelector);
+    // Fluent also renders group headings as treeitems. A row role alone
+    // must never remove the actual invited heading from the reader.
+    return !!row&&(row.matches(participantSelector)||!!row.querySelector('.fui-TreeItemPersonaLayout__main [title], [data-tid="participant-name"], [data-tid="roster-participant-name"], [id^="roster-avatar-img-"]'));
+  }
+
   async function expandInvitedRoster(until){
     const labels=/^(?:المزيد|عرض المزيد|إظهار المزيد|اظهار المزيد|عرض الكل|إظهار الكل|اظهار الكل|مشاهدة الكل|show more|see more|show all|see all)(?:\s*[（(]?\d+[）)]?)?$/i;
     for(let clicks=0;clicks<8&&Date.now()<until;clicks++){
-      const headings=rosterHeadingsInOrder().filter(h=>!h.el.closest(studentRowSelector));
+      const headings=rosterHeadingsInOrder().filter(h=>!participantStatusHeading(h.el));
       const button=[...document.querySelectorAll('button,[role="button"]')].find(el=>{
         if(!visible(el)||el.disabled||el.getAttribute('aria-disabled')==='true'||!labels.test(normalize(el.innerText||el.textContent||''))||rosterGroupForRow(el,headings)!=='invited')return false;
         // Require a nearby roster container shared with its invited heading.
@@ -261,14 +268,16 @@
         }
         return false;
       });
-      if(!button)break;
+      if(!button)return true;
       button.click();await new Promise(resolve=>setTimeout(resolve,180));
     }
+    return false;
   }
 
   async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections, options={}) {
     const studentUntil=Date.now()+12000;
-    if(options.fullRoster)await expandInvitedRoster(studentUntil);
+    let expandedAll=true;
+    if(options.fullRoster)expandedAll=await expandInvitedRoster(studentUntil);
     const observedInvitees=new Set(), organizers=new Set(), observedPresent=new Set();
     let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null;
     let countChanged=false, unreadableRows=false;
@@ -296,7 +305,7 @@
     const collect=()=>{
       // RSVP text inside a person row ("لا توجد استجابة") is a status,
       // not a group header. Otherwise only the first invited name is collected.
-      const headings=rosterHeadingsInOrder().filter(h=>!options.fullRoster||!h.el.closest(studentRowSelector));
+      const headings=rosterHeadingsInOrder().filter(h=>!options.fullRoster||!participantStatusHeading(h.el));
       for(const h of headings.filter(x=>x.key==='invited')){
         sawInvitees=true;
         const n=expectedInviteeCount(h.label);
@@ -345,7 +354,7 @@
         // Reaching today's bottom can trigger another virtualized page. Wait
         // for stable height and names instead of ending on the first bottom.
         const beforeHeight=el.scrollHeight,beforeCount=observedInvitees.size;
-        await expandInvitedRoster(until);
+        expandedAll=await expandInvitedRoster(until);
         el.dispatchEvent(new Event('scroll',{bubbles:true}));
         await new Promise(resolve=>setTimeout(resolve,220));collect();
         if(el.scrollHeight===beforeHeight&&observedInvitees.size===beforeCount)entry.bottomChecks++;
@@ -363,13 +372,13 @@
     // A stable declared count must match the unique invited rows actually read.
     // Missing or changing rows cannot establish absence from the invited list.
     const inviteesReadable=sawInvitees&&!unreadableRows&&(observedInvitees.size>0||expectedCount===0);
-    const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>options.fullRoster?x.ended:(x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3));
+    const fullyScanned=inviteesReadable&&!countChanged&&(!options.fullRoster||expandedAll)&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>options.fullRoster?x.ended:(x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3));
     // Preserve the matched row for evidence when an absence has been detected.
     if(options.fullRoster || matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,sawInvitees,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.58؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.59؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
@@ -383,6 +392,7 @@
       // The teacher scan already verified the organizer. Virtualization can
       // unmount that badge during the second pass; do not discard known names.
       if(!roster.sawInvitees||(!roster.observedCount&&roster.expectedCount!==0))return {available:false,reason:roster.reason||'لم تظهر أسماء تحت قائمة المدعوين',capturedAt};
+      if(!roster.fullyScanned)return {available:false,reason:'لم تكتمل قائمة المدعوين بعد المزيد والتمرير؛ لم تُحفظ أسماء جزئية',capturedAt:Date.now(),expectedCount:roster.expectedCount,observedCount:roster.observedCount};
       const excluded=new Set([target.teacher,result.teacher,roster.name,...roster.presentText.split('\n')].map(normalize));
       const names=[...new Map(roster.invitedText.split('\n').map(name=>name.trim()).filter(name=>name&&!excluded.has(normalize(name))).map(name=>[normalize(name),name])).values()];
       return {available:true,complete:!!roster.fullyScanned,expectedCount:roster.expectedCount,observedCount:roster.observedCount,capturedAt:Date.now(),organizer:roster.name||result.teacher,invitedNames:names};

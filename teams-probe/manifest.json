@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
-  "version": "0.6.58",
+  "version": "0.6.59",
   "description": "الرصد باسم المنظّم من Teams بدورة أو دورتين أو ثلاث وفاصل مستقل بين الأولى والثانية وبين الثانية والثالثة.",
   "permissions": [
     "activeTab",
