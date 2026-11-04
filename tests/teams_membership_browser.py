@@ -78,6 +78,13 @@ with sync_playwright() as p:
  audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'absent',organizerVerified:true})",name)
  assert page.evaluate('window.openedFullRoster') and audit['available'] and audit['complete'] and len(audit['invitedNames'])==30,audit
  assert 'طالب 29' in audit['invitedNames']
+ # Exact control revealed by the user's DevTools screenshot. The preview
+ # is scrolled so its invited heading is not mounted, yet the semantic ID remains.
+ setup('<button data-tid="participantsInCall-seeMore" onclick="window.wrongGroup=true">عرض المزيد</button><aside id="semanticPane">'+''.join(row('طالب '+str(i),organizer=False) for i in range(6))+'<div role="treeitem"><div class="fui-TreeItemLayout__main"><span data-cid="roster-seeMore" data-tid="participantsFromMeeting-seeMore" id="semanticMore">عرض المزيد</span></div></div></aside>')
+ page.evaluate("""()=>{window.semanticClicks=0;document.querySelector('#semanticMore').onclick=()=>{window.semanticClicks++;setTimeout(()=>{document.querySelector('#semanticPane').innerHTML='<h3>تمت دعوة الآخرين (30)</h3>'+Array.from({length:30},(_,i)=>'<div data-cid="roster-participant" data-tid="participantsFromMeeting-طالب '+i+'"><span title="طالب '+i+'">طالب '+i+'</span><span>لا توجد استجابة</span></div>').join('')},300)}}""")
+ audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'absent',organizerVerified:true})",name)
+ assert audit['available'] and audit['complete'] and len(audit['invitedNames'])==30,audit
+ assert page.evaluate('window.semanticClicks')==1 and not page.evaluate('Boolean(window.wrongGroup)')
  # A virtualized list replaces its rows while the viewport scrolls.
  setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+modern('طالب حاضر')+'<h3>من تمت دعوتهم (40)</h3><div id="studentViewport" style="height:120px;overflow-y:auto;position:relative"><div style="height:2000px"><div id="studentWindow" style="position:absolute;top:0"></div></div></div>')
  page.evaluate("""()=>{const el=document.querySelector('#studentViewport'),win=document.querySelector('#studentWindow');const draw=()=>{const start=Math.min(37,Math.floor(el.scrollTop/50));win.style.top=el.scrollTop+'px';win.innerHTML=Array.from({length:3},(_,i)=>'<div role="treeitem" style="height:40px"><div class="fui-TreeItemPersonaLayout__main"><span title="غائب '+(start+i)+'">غائب '+(start+i)+'</span></div></div>').join('')};el.addEventListener('scroll',draw);draw()}""")

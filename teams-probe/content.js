@@ -213,7 +213,7 @@
   function participantRows(headings) {
     const rows=[...document.querySelectorAll(participantSelector)]
       .filter(visible).filter(el=>!el.parentElement?.closest(participantSelector));
-    return rows.map(el=>{
+    return rows.filter(el=>!el.matches('[data-tid$="-seeMore"],[data-cid="roster-seeMore"]')).map(el=>{
       const identifier=[el.getAttribute('data-tid'),el.id].find(value=>participantIdPrefixes.some(prefix=>value?.startsWith(prefix)))||'';
       const prefix=participantIdPrefixes.find(prefix=>identifier.startsWith(prefix));
       // Refactored Teams uses the same participant container across roster groups,
@@ -255,11 +255,15 @@
     return !!row&&(row.matches(participantSelector)||!!row.querySelector('.fui-TreeItemPersonaLayout__main [title], [data-tid="participant-name"], [data-tid="roster-participant-name"], [id^="roster-avatar-img-"]'));
   }
 
+  const invitedMoreSelector='[data-tid="participantsFromMeeting-seeMore"]';
   async function expandInvitedRoster(until,stats={clicks:0}){
     const labels=/^(?:المزيد|عرض المزيد|إظهار المزيد|اظهار المزيد|عرض الكل|إظهار الكل|اظهار الكل|مشاهدة الكل|show more|see more|show all|see all)(?:\s*[（(]?\d+[）)]?)?$/i;
     for(let clicks=0;clicks<8&&Date.now()<until;clicks++){
       const headings=rosterHeadingsInOrder().filter(h=>!participantStatusHeading(h.el));
-      const button=[...document.querySelectorAll('button,[role="button"],a,span,div')].filter(el=>{
+      // This exact Teams control identifies the INVITED subview even when
+      // its virtualized group heading has scrolled out of the DOM.
+      const direct=[...document.querySelectorAll(invitedMoreSelector)].find(el=>visible(el)&&!el.closest('[aria-disabled="true"]'));
+      const button=direct||[...document.querySelectorAll('button,[role="button"],a,span,div')].filter(el=>{
         const text=el.textContent||'';
         return text.length<90&&labels.test(normalize(text))&&![...el.children].some(child=>labels.test(normalize(child.textContent||'')));
       }).find(el=>{
@@ -275,11 +279,15 @@
       });
       if(!button)return true;
       const beforeRows=document.querySelectorAll(studentRowSelector).length;
-      stats.clicks++;button.click();
+      stats.clicks++;
+      if(direct)try{button.scrollIntoView({block:"nearest",inline:"nearest"})}catch{}
+      button.click();
       // Let Teams load the next batch before clicking the same text again.
-      for(let wait=0;wait<5&&Date.now()<until;wait++){
+      for(let wait=0;wait<(direct?10:5)&&Date.now()<until;wait++){
         await new Promise(resolve=>setTimeout(resolve,180));
-        if(!button.isConnected||!visible(button)||document.querySelectorAll(studentRowSelector).length!==beforeRows)break;
+        const leftPreview=!button.isConnected||!visible(button);
+        if(direct){if(leftPreview&&rosterHeadingsInOrder().some(h=>h.key==='invited'&&!participantStatusHeading(h.el)))break}
+        else if(leftPreview||document.querySelectorAll(studentRowSelector).length!==beforeRows)break;
       }
     }
     return false;
@@ -389,7 +397,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,sawInvitees,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.61؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ ضغطات المزيد='+expansion.clicks+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.62؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ ضغطات المزيد='+expansion.clicks+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
