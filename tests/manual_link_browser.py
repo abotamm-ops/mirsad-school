@@ -31,6 +31,7 @@ with sync_playwright() as p:
  page.wait_for_function('!!window.manualRequest')
  request=page.evaluate('window.manualRequest');row=fixture['snapshot']['lessons'][1]
  assert request['date']=='2026-11-01' and request['teacherId']==row['teacherId'] and request['period']==2
+ assert request['expectedUrl']==''
  assert request['expectedRevision']==fixture['snapshot']['scheduleRevision']
  # Correlation prevents an unrelated/stale response from closing the editor.
  page.evaluate("window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:'wrong'}},location.origin)")
@@ -42,7 +43,17 @@ with sync_playwright() as p:
  assert page.locator('#todayTable a.teams-lesson-link').nth(1).get_attribute('href')==url
  page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .lesson-state').click()
  assert page.get_by_role('textbox',name='رابط تيمز للحصة').input_value()==url
- assert page.get_by_role('textbox',name='رابط تيمز للحصة').get_attribute('readonly') is not None
- assert page.get_by_role('button',name='حفظ رابط تيمز',exact=True).count()==0
+ assert page.get_by_role('textbox',name='رابط تيمز للحصة').get_attribute('readonly') is None
+ assert page.get_by_role('button',name='حفظ رابط تيمز',exact=True).count()==1
+ page.evaluate('window.manualRequest=null')
+ corrected='https://teams.microsoft.com/meet/corrected-fixture'
+ page.get_by_role('textbox',name='رابط تيمز للحصة').fill(corrected)
+ page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
+ page.wait_for_function('!!window.manualRequest');edit=page.evaluate('window.manualRequest')
+ assert edit['expectedUrl']==url and edit['url']==corrected
+ fixture['snapshot']['lessons'][1]['url']=corrected
+ page.evaluate("r=>window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:r.requestId}},location.origin)",edit)
+ page.wait_for_function("!document.querySelector('#details').open")
+ assert page.locator('#todayTable a.teams-lesson-link').nth(1).get_attribute('href')==corrected
  assert not errors,errors
  b.close();print('PASS manual link editor validation, exact date/teacher/period/revision request, correlated confirmation and persisted table refresh without browser errors')
