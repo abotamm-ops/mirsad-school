@@ -241,23 +241,25 @@
     let countChanged=false, unreadableRows=false;
     const rowTypes=new Set();let maxVisibleRows=0,maxParsedRows=0;
     const scrollables=[];
+    const searchUntil=Date.now()+10000;
     const addScrollable=el=>{
-      if(!el||scrollables.some(x=>x.el===el)||el.scrollHeight<=el.clientHeight+8)return;
-      if(el!==document.scrollingElement && !/(auto|scroll)/.test(window.getComputedStyle(el).overflowY||''))return;
-      scrollables.push({el,top:el.scrollTop,ended:false});
+      if(!el||!el.isConnected||scrollables.some(x=>x.el===el)||el.clientHeight<40||el.scrollHeight<=el.clientHeight+8)return;
+      if(el!==document.scrollingElement && !/(auto|scroll|overlay|hidden)/.test(window.getComputedStyle(el).overflowY||''))return;
+      scrollables.push({el,top:el.scrollTop,ended:false,rewound:false});
     };
-    for(const root of [...(initialSections.present||[]),...(initialSections.invited||[])].map(x=>x.root)){
-      let node=root;
-      for(let d=0;d<10&&node;d++,node=node.parentElement)addScrollable(node);
-    }
-    for(const el of document.querySelectorAll(participantSelector)){
-      let node=el.parentElement;
-      for(let d=0;d<9&&node;d++,node=node.parentElement)addScrollable(node);
-    }
-    if(!scrollables.length)addScrollable(document.scrollingElement);
-    // Scan inner roster viewports, rather than also scrolling unrelated outer pages.
-    const inner=scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
-    scrollables.splice(0,scrollables.length,...inner);
+    const discoverScrollables=()=>{
+      for(let i=scrollables.length-1;i>=0;i--)if(!scrollables[i].el.isConnected)scrollables.splice(i,1);
+      const sections=findSections(),roots=[...(sections.present||[]),...(sections.invited||[])].map(x=>x.root);
+      const walked=new Set();
+      for(const root of [...roots,...document.querySelectorAll(participantSelector)]){
+        for(let node=root;node&&!walked.has(node);node=node.parentElement){walked.add(node);addScrollable(node)}
+      }
+      if(!scrollables.length)addScrollable(document.scrollingElement);
+      // Prefer the innermost roster viewport over scrolling the whole app.
+      const inner=scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
+      scrollables.splice(0,scrollables.length,...inner);
+    };
+    discoverScrollables();
     const collect=()=>{
       const headings=rosterHeadingsInOrder();
       for(const h of headings.filter(x=>x.key==='invited')){
@@ -287,19 +289,28 @@
     // Rewind each roster scroller before the forward scan so that present
     // organizers are discovered as reliably as invited organizers.
     for (const entry of scrollables) {
+      if(inInvitees)break; // Keep an already visible organizer in place for absence proof.
       if (entry.el.scrollTop > 2) {
         entry.el.scrollTop = 0;
         entry.el.dispatchEvent(new Event('scroll', {bubbles:true}));
         await new Promise(resolve => setTimeout(resolve, 140));
       }
-      collect();
+      entry.rewound=true;collect();
     }
     collect();
     let remaining=64;
-    while(!inInvitees && remaining-->0){
+    while(!inInvitees && remaining-->0&&Date.now()<searchUntil){
+      discoverScrollables();
       const active=scrollables.filter(x=>!x.ended);
-      if(!active.length)break;
+      if(!active.length){
+        if(!organizers.size){await new Promise(resolve=>setTimeout(resolve,180));collect();continue}
+        break;
+      }
       const entry=active[0],el=entry.el;
+      if(!entry.rewound){
+        entry.rewound=true;el.scrollTop=0;el.dispatchEvent(new Event('scroll',{bubbles:true}));
+        await new Promise(resolve=>setTimeout(resolve,180));collect();continue;
+      }
       const next=Math.min(el.scrollHeight-el.clientHeight,el.scrollTop+Math.max(120,Math.floor(el.clientHeight*.75)));
       if(next<=el.scrollTop+2){entry.ended=true;continue;}
       el.scrollTop=next;
@@ -317,7 +328,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.43؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.65؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
