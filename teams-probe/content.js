@@ -303,9 +303,9 @@
     const rowTypes=new Set();let maxVisibleRows=0,maxParsedRows=0;
     const scrollables=[];
     const addScrollable=el=>{
-      if(!el||scrollables.some(x=>x.el===el)||el.scrollHeight<=el.clientHeight+8)return;
+      if(!el||!el.isConnected||scrollables.some(x=>x.el===el)||el.scrollHeight<=el.clientHeight+8)return;
       if(el!==document.scrollingElement && !(options.fullRoster?/(auto|scroll|overlay|hidden)/:/(auto|scroll)/).test(window.getComputedStyle(el).overflowY||''))return;
-      scrollables.push({el,top:el.scrollTop,ended:false,bottomChecks:0});
+      scrollables.push({el,top:el.scrollTop,ended:false,bottomChecks:0,needsRewind:!!options.fullRoster,endedHeight:0,moves:0,maxTop:el.scrollTop});
     };
     for(const root of [...(initialSections.present||[]),...(initialSections.invited||[])].map(x=>x.root)){
       let node=root;
@@ -321,6 +321,20 @@
       ?scrollables.filter(entry=>scrollables.length===1||entry.el!==document.scrollingElement)
       :scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
     scrollables.splice(0,scrollables.length,...inner);
+    const refreshStudentScrollables=()=>{
+      if(!options.fullRoster)return;
+      for(let i=scrollables.length-1;i>=0;i--)if(!scrollables[i].el.isConnected)scrollables.splice(i,1);
+      // The invited subview can mount its virtual tree and overflow after its
+      // title. Discover live viewport ancestors again, not just at page entry.
+      const walked=new Set();
+      for(const row of document.querySelectorAll(studentRowSelector+', .fui-FlatTree')){
+        for(let node=row.parentElement;node&&!walked.has(node);node=node.parentElement){walked.add(node);addScrollable(node)}
+      }
+      if(scrollables.some(entry=>entry.el!==document.scrollingElement)){
+        const index=scrollables.findIndex(entry=>entry.el===document.scrollingElement);if(index>=0)scrollables.splice(index,1);
+      }
+      for(const entry of scrollables)if(entry.ended&&entry.el.scrollHeight>entry.endedHeight+2){entry.ended=false;entry.bottomChecks=0}
+    };
     const collect=()=>{
       // RSVP text inside a person row ("لا توجد استجابة") is a status,
       // not a group header. Otherwise only the first invited name is collected.
@@ -358,15 +372,23 @@
         entry.el.dispatchEvent(new Event('scroll', {bubbles:true}));
         await new Promise(resolve => setTimeout(resolve, 140));
       }
-      collect();
+      entry.needsRewind=false;collect();
     }
     collect();
     let remaining=options.fullRoster?120:64;const until=options.fullRoster?studentUntil:Date.now()+15000;
     while((options.fullRoster||!inInvitees) && remaining-->0 && Date.now()<until){
+      refreshStudentScrollables();
       const active=scrollables.filter(x=>!x.ended);
-      if(!active.length)break;
+      if(!active.length){
+        if(options.fullRoster&&(!sawInvitees||(expectedCount!==null&&observedInvitees.size<expectedCount))){await new Promise(resolve=>setTimeout(resolve,180));collect();continue}
+        break;
+      }
       const entry=active[0],el=entry.el;
-      const step=options.fullRoster?Math.max(24,Math.floor(el.clientHeight*.7)):Math.max(120,Math.floor(el.clientHeight*.75));
+      if(options.fullRoster&&entry.needsRewind){
+        entry.needsRewind=false;el.scrollTop=0;el.dispatchEvent(new Event('scroll',{bubbles:true}));
+        await new Promise(resolve=>setTimeout(resolve,180));collect();continue;
+      }
+      const step=options.fullRoster?Math.max(24,Math.min(192,Math.floor(el.clientHeight*.6))):Math.max(120,Math.floor(el.clientHeight*.75));
       const next=Math.min(el.scrollHeight-el.clientHeight,el.scrollTop+step);
       if(next<=el.scrollTop+2){
         if(!options.fullRoster){entry.ended=true;continue}
@@ -378,11 +400,11 @@
         await new Promise(resolve=>setTimeout(resolve,220));collect();
         if(el.scrollHeight===beforeHeight&&observedInvitees.size===beforeCount)entry.bottomChecks++;
         else entry.bottomChecks=0;
-        entry.ended=entry.bottomChecks>=3;
+        entry.ended=entry.bottomChecks>=3;entry.endedHeight=el.scrollHeight;
         continue;
       }
       entry.bottomChecks=0;
-      el.scrollTop=next;
+      el.scrollTop=next;entry.moves++;entry.maxTop=Math.max(entry.maxTop,el.scrollTop);
       el.dispatchEvent(new Event('scroll',{bubbles:true}));
       await new Promise(resolve=>setTimeout(resolve,options.fullRoster?180:140));
       collect();
@@ -397,7 +419,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,sawInvitees,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.62؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ ضغطات المزيد='+expansion.clicks+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.63؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ ضغطات المزيد='+expansion.clicks+'؛ نوافذ تمرير='+scrollables.length+'؛ حركة القوائم='+scrollables.map(e=>e.moves+' حركة، '+e.el.clientHeight+'/'+e.el.scrollHeight+'، أقصى '+e.maxTop).join(' | ')+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
