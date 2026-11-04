@@ -235,6 +235,15 @@
     }).filter(x=>x.name && x.name.length<=130);
   }
 
+  // Use the same ancestor lookup verified in the user's Teams console.
+  // Short clipped participant rows are not participant-list viewports.
+  function participantViewport(row){
+    for(let el=row;el;el=el.parentElement){
+      if(el.clientHeight>80&&el.scrollHeight>el.clientHeight+10&&/(auto|scroll|hidden)/.test(getComputedStyle(el).overflowY))return el;
+    }
+    return null;
+  }
+
   async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections) {
     const observedInvitees=new Set(), organizers=new Set(), observedPresent=new Set();
     let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null;
@@ -243,21 +252,18 @@
     const scrollables=[];
     const searchUntil=Date.now()+10000;
     const addScrollable=el=>{
-      if(!el||!el.isConnected||scrollables.some(x=>x.el===el)||el.clientHeight<40||el.scrollHeight<=el.clientHeight+8)return;
+      if(!el||!el.isConnected||scrollables.some(x=>x.el===el)||el.clientHeight<=80||el.scrollHeight<=el.clientHeight+10)return;
       if(el!==document.scrollingElement && !/(auto|scroll|overlay|hidden)/.test(window.getComputedStyle(el).overflowY||''))return;
       scrollables.push({el,top:el.scrollTop,ended:false,rewound:false});
     };
     const discoverScrollables=()=>{
       for(let i=scrollables.length-1;i>=0;i--)if(!scrollables[i].el.isConnected)scrollables.splice(i,1);
-      const sections=findSections(),roots=[...(sections.present||[]),...(sections.invited||[])].map(x=>x.root);
-      const walked=new Set();
-      for(const root of [...roots,...document.querySelectorAll(participantSelector)]){
-        for(let node=root;node&&!walked.has(node);node=node.parentElement){walked.add(node);addScrollable(node)}
+      // Start from actual participant rows, as in the successful manual test,
+      // and take each row's first genuine scrolling ancestor. Group-heading
+      // wrappers and short internal clipping elements must not win selection.
+      for(const row of document.querySelectorAll(participantSelector)){
+        if(visible(row))addScrollable(participantViewport(row));
       }
-      if(!scrollables.length)addScrollable(document.scrollingElement);
-      // Prefer the innermost roster viewport over scrolling the whole app.
-      const inner=scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
-      scrollables.splice(0,scrollables.length,...inner);
     };
     discoverScrollables();
     const collect=()=>{
@@ -328,7 +334,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.65؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.66؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
