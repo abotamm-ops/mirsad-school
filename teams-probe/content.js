@@ -235,7 +235,40 @@
     }).filter(x=>x.name && x.name.length<=130);
   }
 
+  // Student rows in the Fluent roster do not always carry the legacy
+  // participantsFromMeeting identifier. Keep this broader name reader separate
+  // from the organizer classifier, and accept explicit persona names only.
+  const studentRowSelector=participantSelector+', [role="treeitem"], [role="listitem"]';
+  function studentRosterRows(headings){
+    const candidates=[...document.querySelectorAll(studentRowSelector)].filter(visible);
+    return candidates.filter(el=>!candidates.some(child=>child!==el&&el.contains(child))).map(el=>{
+      const field=el.querySelector('.fui-TreeItemPersonaLayout__main [title], [data-tid="participant-name"], [data-tid="roster-participant-name"], [id^="roster-avatar-img-"]');
+      const name=normalize(field?.getAttribute('title')||field?.innerText||field?.textContent||'');
+      return {el,name,group:rosterGroupForRow(el,headings),organizer:false};
+    }).filter(row=>row.name&&row.name.length<=180&&!exactHeading(row.name));
+  }
+
+  async function expandInvitedRoster(until){
+    const labels=/^(?:المزيد|عرض المزيد|إظهار المزيد|اظهار المزيد|عرض الكل|إظهار الكل|اظهار الكل|مشاهدة الكل|show more|see more|show all|see all)(?:\s*[（(]?\d+[）)]?)?$/i;
+    for(let clicks=0;clicks<8&&Date.now()<until;clicks++){
+      const headings=rosterHeadingsInOrder().filter(h=>!h.el.closest(studentRowSelector));
+      const button=[...document.querySelectorAll('button,[role="button"]')].find(el=>{
+        if(!visible(el)||el.disabled||el.getAttribute('aria-disabled')==='true'||!labels.test(normalize(el.innerText||el.textContent||''))||rosterGroupForRow(el,headings)!=='invited')return false;
+        // Require a nearby roster container shared with its invited heading.
+        let parent=el.parentElement;
+        for(let depth=0;depth<6&&parent&&parent!==document.body;depth++,parent=parent.parentElement){
+          if(parent.querySelector(studentRowSelector)&&headings.some(h=>h.key==='invited'&&parent.contains(h.el)))return true;
+        }
+        return false;
+      });
+      if(!button)break;
+      button.click();await new Promise(resolve=>setTimeout(resolve,180));
+    }
+  }
+
   async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections, options={}) {
+    const studentUntil=Date.now()+5000;
+    if(options.fullRoster)await expandInvitedRoster(studentUntil);
     const observedInvitees=new Set(), organizers=new Set(), observedPresent=new Set();
     let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null;
     let countChanged=false, unreadableRows=false;
@@ -250,7 +283,7 @@
       let node=root;
       for(let d=0;d<10&&node;d++,node=node.parentElement)addScrollable(node);
     }
-    for(const el of document.querySelectorAll(participantSelector)){
+    for(const el of document.querySelectorAll(options.fullRoster?studentRowSelector:participantSelector)){
       let node=el.parentElement;
       for(let d=0;d<9&&node;d++,node=node.parentElement)addScrollable(node);
     }
@@ -259,7 +292,9 @@
     const inner=scrollables.filter(entry=>!scrollables.some(other=>other!==entry&&entry.el.contains(other.el)));
     scrollables.splice(0,scrollables.length,...inner);
     const collect=()=>{
-      const headings=rosterHeadingsInOrder();
+      // RSVP text inside a person row ("لا توجد استجابة") is a status,
+      // not a group header. Otherwise only the first invited name is collected.
+      const headings=rosterHeadingsInOrder().filter(h=>!options.fullRoster||!h.el.closest(studentRowSelector));
       for(const h of headings.filter(x=>x.key==='invited')){
         sawInvitees=true;
         const n=expectedInviteeCount(h.label);
@@ -268,6 +303,7 @@
       }
       const elements=[...document.querySelectorAll(participantSelector)].filter(visible).filter(el=>!el.parentElement?.closest(participantSelector));
       const parsed=participantRows(headings);
+      if(options.fullRoster){const known=new Set(parsed.map(row=>row.el));for(const row of studentRosterRows(headings))if(!known.has(row.el))parsed.push(row)}
       maxVisibleRows=Math.max(maxVisibleRows,elements.length);maxParsedRows=Math.max(maxParsedRows,parsed.length);
       for(const el of elements){
         const tid=el.getAttribute('data-tid')||'';
@@ -295,7 +331,7 @@
       collect();
     }
     collect();
-    let remaining=64;const until=Date.now()+(options.fullRoster?5000:15000);
+    let remaining=64;const until=options.fullRoster?studentUntil:Date.now()+15000;
     while((options.fullRoster||!inInvitees) && remaining-->0 && Date.now()<until){
       const active=scrollables.filter(x=>!x.ended);
       if(!active.length)break;
@@ -317,7 +353,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.55؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.56؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
