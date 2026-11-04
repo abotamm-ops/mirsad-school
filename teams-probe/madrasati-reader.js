@@ -36,7 +36,7 @@
  const urls=[...new Set(values)];if(urls.some(url=>typeof url!=='string'||!sameUrl(url,/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i)))throw new Error('رابط تفاصيل خارج مدرستي');
  const results=new Array(urls.length);let next=0;
  await Promise.all(Array.from({length:Math.min(4,urls.length)},async()=>{while(next<urls.length){const index=next++,detailUrl=urls[index];try{
- const response=await fetch(detailUrl,{method:'GET',credentials:'same-origin',redirect:'error',signal:AbortSignal.timeout(20000)});
+ const response=await fetch(detailUrl,{method:'GET',credentials:'same-origin',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000)});
  if(!response.ok)throw new Error('تعذر تحميل تفاصيل الدرس ('+response.status+')');
  if(!sameUrl(response.url,/^\/Teacher\/Lessons\/viewLectureDetails\/?$/i))throw new Error('انتهت جلسة مدرستي؛ سجل الدخول مجددًا');
  const html=await response.text();if(html.length>4000000)throw new Error('حجم صفحة الدرس غير متوقع');
@@ -59,7 +59,7 @@
  const date=document.querySelector('#_hndCurrentDate')?.value,index=document.querySelector('.dayIcon:has(a.active)')?.getAttribute('dayindex'),token=document.querySelector('#csrfid')?.value;
  if(!date||!token||!/^\d$/.test(index||'')||Number(index)!==new Date(table.date+'T12:00:00Z').getUTCDay())throw new Error('لم تكتمل بيانات طلب روابط مدرستي؛ حدّث صفحة الجدول ثم أعد التحميل');
  const body=new URLSearchParams({Date:date,index,SchoolId:school,TechearId:teacher});
- const response=await fetch(ORIGIN+'/SchoolManagment/Lessons/GetCal',{method:'POST',credentials:'same-origin',redirect:'error',headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest','requestverificationtoken':token},body:body.toString(),signal:AbortSignal.timeout(20000)});
+ const response=await fetch(ORIGIN+'/SchoolManagment/Lessons/GetCal',{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest','requestverificationtoken':token},body:body.toString(),signal:AbortSignal.timeout(20000)});
  if(!response.ok)throw new Error('تعذر جلب روابط مدرستي من GetCal ('+response.status+')؛ لم يُستبدل الجدول');
  if(!sameUrl(response.url,/^\/SchoolManagment\/Lessons\/GetCal\/?$/i))throw new Error('انتهت جلسة مدرستي أثناء جلب الروابط؛ سجل الدخول مجددًا');
  let data;try{data=await response.json()}catch{throw new Error('رد روابط مدرستي ليس بيانات جدول؛ تحقق من جلسة الدخول')}
