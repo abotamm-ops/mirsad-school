@@ -55,5 +55,18 @@ with sync_playwright() as p:
  page.evaluate("r=>window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:r.requestId}},location.origin)",edit)
  page.wait_for_function("!document.querySelector('#details').open")
  assert page.locator('#todayTable a.teams-lesson-link').nth(1).get_attribute('href')==corrected
+ page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .lesson-state').click()
+ page.evaluate('window.manualRequest=null')
+ page.get_by_role('textbox',name='رابط تيمز للحصة').fill('')
+ page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
+ page.wait_for_function('!!window.manualRequest');clear=page.evaluate('window.manualRequest')
+ assert clear['url']=='' and clear['expectedUrl']==corrected
+ fixture['snapshot']['lessons'][1]['url']=''
+ fixture['snapshot']['lessons'][1]['attendanceUrl']=corrected
+ page.evaluate("r=>window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:r.requestId}},location.origin)",clear)
+ page.wait_for_function("!document.querySelector('#details').open")
+ assert page.locator('#todayTable a.teams-lesson-link').count()==1
+ page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .round-info').click()
+ assert page.get_by_role('textbox',name='رابط تيمز للحصة').input_value()==''
  assert not errors,errors
  b.close();print('PASS manual link editor validation, exact date/teacher/period/revision request, correlated confirmation and persisted table refresh without browser errors')

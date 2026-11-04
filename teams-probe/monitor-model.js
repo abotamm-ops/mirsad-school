@@ -23,7 +23,7 @@
    const conclusive=rounds.filter(r=>['present','absent'].includes(r.status));
    const override=[...audit].reverse().find(a=>a.type==='override'&&a.teacherId===lesson.teacherId&&a.period===lesson.period&&(!reset||a.sequence>reset.sequence));
    const ended=lessonEnded(data,lesson.period,options.now||new Date());
-   const inferred=!reset&&!conclusive.length&&ended&&(lesson.url===''||!scans.length||scans.every(r=>r.status==='no-link'));
+   const inferred=!reset&&!conclusive.length&&ended&&((lesson.attendanceUrl??lesson.url)===''||!scans.length||scans.every(r=>r.status==='no-link'));
    const complete=rounds.every(r=>['present','absent'].includes(r.status));
    const finalState=override?override.status:inferred?'absent':data.snapshot.roundCount===3?(complete?state(rounds,3):rounds.some(r=>!r.pending&&!['present','absent'].includes(r.status))?'unresolved':'pending'):conclusive.length?state(conclusive,conclusive.length):scans.some(r=>r.status==='unresolved')?'unresolved':'pending';
    return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred,ended,reset:!!reset&&!scans.length&&!override,

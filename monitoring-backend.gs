@@ -241,7 +241,7 @@ function monitorRequest_(p){
   var edits=[],snap=data.snapshot,sourceFile=monitorFile_(root,'mirsad-timetable-source.json'),source=monitorRead_(sourceFile,{mode:'madrasati'});
   if(p.action==='manualLessonLink'){
    if(p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير الجدول؛ حدّث الصفحة وأعد المحاولة');
-   var manualUrl=monitorNormalizeTeamsLink_(p.url);if(!manualUrl)throw new Error('رابط تيمز غير صالح');var row=snap.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
+   if(typeof p.url!=='string')throw new Error('رابط تيمز غير صالح');var manualUrl=p.url.trim()?monitorNormalizeTeamsLink_(p.url):'';if(p.url.trim()&&!manualUrl)throw new Error('رابط تيمز غير صالح');var row=snap.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
    if(!row)throw new Error('الحصة غير موجودة؛ حدّث الصفحة');if(row.url===manualUrl)return {merged:true,saved:true,filled:0,snapshot:snap,folderUrl:folder.getUrl()};if(row.url&&(typeof p.expectedUrl!=='string'||p.expectedUrl!==row.url)||!row.url&&p.expectedUrl)throw new Error('تغير رابط الحصة منذ فتح النافذة؛ حدّث الصفحة وأعد المحاولة');
    edits.push({row:row,url:manualUrl,oldUrl:row.url||''});
   }else{
@@ -254,8 +254,8 @@ function monitorRequest_(p){
   }
   if(edits.length){
    data.adjustments=data.adjustments||[];
-   edits.forEach(function(edit){var previousUrl=edit.row.url||'';edit.row.url=edit.url;data.adjustments.push({type:previousUrl?'link-edit':'link-fill',previousUrl:previousUrl,teacherId:edit.row.teacherId,period:edit.row.period,url:edit.url,manual:p.action==='manualLessonLink',at:Date.now(),sequence:Math.max(0,...data.adjustments.map(function(a){return a.sequence||0}))+1});
-    if(source.payload?.importedForDate===date&&source.payload?.scheduleDate===snap.sourceScheduleDate){var lesson=source.payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(edit.row.teacherName)&&Number(l.cellIndex)-1===edit.row.period&&l.title===edit.row.subject&&l.lesson===edit.row.className});if(lesson&&(!lesson.teams||p.action==='manualLessonLink'&&lesson.teams===previousUrl)){lesson.teams=edit.url;lesson.linkState='linked'}}
+   edits.forEach(function(edit){var previousUrl=edit.row.url||'';if(p.action==='manualLessonLink'&&!edit.url&&edit.row.attendanceUrl===undefined)edit.row.attendanceUrl=previousUrl;edit.row.url=edit.url;data.adjustments.push({type:!edit.url?'link-clear':previousUrl?'link-edit':'link-fill',previousUrl:previousUrl,teacherId:edit.row.teacherId,period:edit.row.period,url:edit.url,manual:p.action==='manualLessonLink',at:Date.now(),sequence:Math.max(0,...data.adjustments.map(function(a){return a.sequence||0}))+1});
+    if(source.payload?.importedForDate===date&&source.payload?.scheduleDate===snap.sourceScheduleDate){var lesson=source.payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(edit.row.teacherName)&&Number(l.cellIndex)-1===edit.row.period&&l.title===edit.row.subject&&l.lesson===edit.row.className});if(lesson&&(!lesson.teams||p.action==='manualLessonLink'&&lesson.teams===previousUrl)){lesson.teams=edit.url;lesson.linkState=edit.url?'linked':'unprepared'}}
    });
    monitorWrite_(folder,'attendance.json',data);source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);
   }
@@ -377,7 +377,7 @@ var MONITOR_TEACHER_MODEL_=(function(){var module={exports:{}};
    const conclusive=rounds.filter(r=>['present','absent'].includes(r.status));
    const override=[...audit].reverse().find(a=>a.type==='override'&&a.teacherId===lesson.teacherId&&a.period===lesson.period&&(!reset||a.sequence>reset.sequence));
    const ended=lessonEnded(data,lesson.period,options.now||new Date());
-   const inferred=!reset&&!conclusive.length&&ended&&(lesson.url===''||!scans.length||scans.every(r=>r.status==='no-link'));
+   const inferred=!reset&&!conclusive.length&&ended&&((lesson.attendanceUrl??lesson.url)===''||!scans.length||scans.every(r=>r.status==='no-link'));
    const complete=rounds.every(r=>['present','absent'].includes(r.status));
    const finalState=override?override.status:inferred?'absent':data.snapshot.roundCount===3?(complete?state(rounds,3):rounds.some(r=>!r.pending&&!['present','absent'].includes(r.status))?'unresolved':'pending'):conclusive.length?state(conclusive,conclusive.length):scans.some(r=>r.status==='unresolved')?'unresolved':'pending';
    return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred,ended,reset:!!reset&&!scans.length&&!override,
