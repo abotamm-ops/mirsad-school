@@ -246,7 +246,7 @@
 
   async function scanOrganizerAcrossPage(_scheduledTeacher, initialSections) {
     const observedInvitees=new Set(), organizers=new Set(), observedPresent=new Set();
-    let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null;
+    let expectedCount=null, sawInvitees=false, inInvitees=false, organizerRow=null, inviteeOrganizerVisible=false;
     let countChanged=false, unreadableRows=false;
     const rowTypes=new Set();let maxVisibleRows=0,maxParsedRows=0;
     const scrollables=[];
@@ -288,6 +288,14 @@
         if(row.group==='present')observedPresent.add(row.name);
       }
       if(organizers.size===1 && observedInvitees.has([...organizers][0]))inInvitees=true;
+      // Membership is remembered, but a rewind can unmount its participant row.
+      // Continue downward until that same organizer is visible again for proof.
+      const sole=organizers.size===1?[...organizers][0]:null;
+      inviteeOrganizerVisible=!!sole&&parsed.some(row=>{
+        if(row.group!=='invited'||normalize(row.name)!==normalize(sole))return false;
+        const viewport=participantViewport(row.el),bounds=viewport?.getBoundingClientRect()||{top:0,bottom:innerHeight},rect=row.el.getBoundingClientRect();
+        return rect.bottom>bounds.top&&rect.top<bounds.bottom;
+      });
     };
     collect();
     // Teams often opens the participants panel scrolled part-way down. The
@@ -295,7 +303,6 @@
     // Rewind each roster scroller before the forward scan so that present
     // organizers are discovered as reliably as invited organizers.
     for (const entry of scrollables) {
-      if(inInvitees)break; // Keep an already visible organizer in place for absence proof.
       if (entry.el.scrollTop > 2) {
         entry.el.scrollTop = 0;
         entry.el.dispatchEvent(new Event('scroll', {bubbles:true}));
@@ -305,7 +312,7 @@
     }
     collect();
     let remaining=64;
-    while(!inInvitees && remaining-->0&&Date.now()<searchUntil){
+    while((!inInvitees||!inviteeOrganizerVisible) && remaining-->0&&Date.now()<searchUntil){
       discoverScrollables();
       const active=scrollables.filter(x=>!x.ended);
       if(!active.length){
@@ -334,7 +341,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.66؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.67؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }

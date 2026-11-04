@@ -29,10 +29,10 @@ with sync_playwright() as p:
  setup('<h3>الحضور (0)</h3><h3>من تمت دعوتهم (30)</h3><div id="belowViewport" style="height:120px;overflow:auto;position:relative"><div style="height:1440px"><div id="belowWindow" style="position:absolute;top:0"></div></div></div>')
  page.evaluate("""name=>{const el=document.querySelector('#belowViewport'),win=document.querySelector('#belowWindow');const draw=()=>{win.style.top=el.scrollTop+'px';const found=el.scrollTop>=1250;win.innerHTML='<div data-cid="roster-participant" data-tid="participantsFromMeeting-'+(found?name:'اسم ظاهر')+'"><span>'+(found?name:'اسم ظاهر')+'</span>'+(found?'<span data-tid="ts-roster-organizer-status">المنظّم</span>':'')+'</div>'};el.addEventListener('scroll',draw);draw()}""",name)
  r=decide();assert r['name']==name and r['status']=='absent' and r['invited'],r
- # If the invited organizer is already visible at the bottom, retain that
- # view for the screenshot instead of rewinding away from the evidence.
- page.evaluate("()=>{const el=document.querySelector('#belowViewport');el.scrollTop=1320;el.dispatchEvent(new Event('scroll'))}")
- r=decide();assert r['status']=='absent' and page.locator('#belowViewport').evaluate('(el)=>el.scrollTop')>=1250,r
+ # Even an already visible invited organizer must trigger the original
+ # rewind and downward search, returning to the organizer for evidence.
+ page.evaluate("()=>{const el=document.querySelector('#belowViewport');el.scrollTop=1320;el.dispatchEvent(new Event('scroll'));window.searchTrace=[];el.addEventListener('scroll',()=>window.searchTrace.push(el.scrollTop))}")
+ r=decide();assert r['status']=='absent' and page.locator('#belowViewport').evaluate('(el)=>el.scrollTop')>=1250 and 0 in page.evaluate('window.searchTrace'),r
  # A short participant row can itself overflow; it is not the roster viewport.
  setup('<h3>الحضور (1)</h3><div id="actualViewport" style="height:120px;overflow:auto;position:relative"><div style="height:1440px"><div id="actualWindow" style="position:absolute;top:0"></div></div></div><h3>من تمت دعوتهم (0)</h3>')
  page.evaluate("""name=>{const el=document.querySelector('#actualViewport'),win=document.querySelector('#actualWindow');window.actualRewound=false;const draw=()=>{win.style.top=el.scrollTop+'px';const found=el.scrollTop<5;window.actualRewound||=found;win.innerHTML='<div data-cid="roster-participant" data-tid="participantsInCall-'+(found?name:'اسم ظاهر')+'" style="height:48px;min-height:0;padding:0;overflow:hidden"><div style="height:96px"><span>'+(found?name:'اسم ظاهر')+'</span>'+(found?'<span data-tid="ts-roster-organizer-status">المنظّم</span>':'')+'</div></div>'};el.addEventListener('scroll',draw);el.scrollTop=1320;draw()}""",name)
