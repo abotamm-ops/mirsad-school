@@ -312,7 +312,7 @@
     }
     collect();
     let remaining=64;
-    while((!inInvitees||!inviteeOrganizerVisible) && remaining-->0&&Date.now()<searchUntil){
+    while(remaining-->0&&Date.now()<searchUntil){
       discoverScrollables();
       const active=scrollables.filter(x=>!x.ended);
       if(!active.length){
@@ -331,17 +331,36 @@
       await new Promise(resolve=>setTimeout(resolve,140));
       collect();
     }
+    const sweptToEnd=scrollables.every(x=>x.ended||x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3);
+    // A full sweep may virtualize away the organizer found near the top.
+    // Re-find that verified invited person before handing the view to evidence.
+    if(inInvitees&&organizers.size===1&&!inviteeOrganizerVisible){
+      for(const entry of scrollables){
+        if(!entry.el.isConnected)continue;
+        entry.el.scrollTop=0;entry.ended=false;
+        entry.el.dispatchEvent(new Event('scroll',{bubbles:true}));
+      }
+      await new Promise(resolve=>setTimeout(resolve,180));collect();
+      let proofSteps=64;
+      while(!inviteeOrganizerVisible&&proofSteps-->0&&Date.now()<searchUntil){
+        discoverScrollables();const entry=scrollables.find(x=>!x.ended);if(!entry)break;
+        const el=entry.el,next=Math.min(el.scrollHeight-el.clientHeight,el.scrollTop+Math.max(120,Math.floor(el.clientHeight*.75)));
+        if(next<=el.scrollTop+2){entry.ended=true;continue}
+        el.scrollTop=next;el.dispatchEvent(new Event('scroll',{bubbles:true}));
+        await new Promise(resolve=>setTimeout(resolve,140));collect();
+      }
+    }
     const matches=[...organizers];
     // A stable declared count must match the unique invited rows actually read.
     // Missing or changing rows cannot establish absence from the invited list.
     const inviteesReadable=sawInvitees&&!unreadableRows&&(observedInvitees.size>0||expectedCount===0);
-    const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&scrollables.every(x=>x.ended || x.el.scrollTop>=x.el.scrollHeight-x.el.clientHeight-3);
+    const fullyScanned=inviteesReadable&&!countChanged&&(expectedCount===null||observedInvitees.size===expectedCount)&&sweptToEnd;
     // Preserve the matched row for evidence when an absence has been detected.
     if(matches.length!==1 || !inInvitees)for(const entry of scrollables)entry.el.scrollTop=entry.top;
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.67؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.68؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }
