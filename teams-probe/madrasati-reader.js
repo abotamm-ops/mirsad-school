@@ -23,7 +23,7 @@
  const suspicious=[...cell.querySelectorAll('a[href]')].some(a=>/viewLectureDetails/i.test(a.getAttribute('href')||''));
  if(!detailLinks.length&&(!complete||suspicious))throw Object.assign(new Error('الحصة '+period+' · '+(!complete?'جدول مدرستي لم يكتمل تحميله':'رابط تفاصيل الحصة غير صالح؛ يلزم مراجعته')),{retryable:!complete});
  const missingDetails=!teams&&!detailLinks.length&&!explicitUnprepared;
- lessons.push({period,title,lesson:classroom,time,teams,detailUrl:detailLinks[0]||'',unprepared:!teams&&(explicitUnprepared||missingDetails),missingDetails})}
+ lessons.push({period,title,lesson:classroom,time,teams,linkSource:teams?'row-direct':'',detailUrl:detailLinks[0]||'',unprepared:!teams&&(explicitUnprepared||missingDetails),missingDetails})}
  return {date,lessons}}
  function meeting(doc=document){const direct=directMeeting(doc);if(direct)return direct;
  // Only a fully rendered lesson detail can establish that no meeting link was supplied.
@@ -79,7 +79,7 @@
  const raw=item.PresenterUrl;if(raw===null||raw===undefined||raw==='')return lesson;
  let teams;try{const u=new URL(raw);if(u.protocol!=='https:'||!['teams.microsoft.com','teams.live.com'].includes(u.hostname)||!/^\/(?:l\/meetup-join\/|meet\/)/.test(u.pathname))throw new Error();teams=u.href}catch{throw new Error('رابط تيمز في بيانات الحصة '+lesson.period+' غير صالح')}
  if(lesson.teams&&lesson.teams!==teams)throw new Error('رابط الحصة '+lesson.period+' يختلف بين الجدول وبيانات مدرستي');
- return {...lesson,teams,unprepared:false,missingDetails:false};
+ return {...lesson,teams,linkSource:'calendar',unprepared:false,missingDetails:false};
  });return {...table,lessons};
  }
  function validDate(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;const value=new Date(date+'T12:00:00Z');return Number.isFinite(value.getTime())&&value.toISOString().slice(0,10)===date}

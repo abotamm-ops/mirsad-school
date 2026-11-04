@@ -222,6 +222,7 @@ function monitorRequest_(p){
    if(typeof p.url!=='string'||p.url.length>8000||!/^https:\/\/(teams\.microsoft\.com|teams\.live\.com)\/(l\/meetup-join\/|meet\/)[^\s#]+(?:#[^\s]*)?$/.test(p.url)||/[\u0000-\u0020\u007f]/.test(p.url))throw new Error('رابط تيمز غير صالح');
    edits.push({row:row,url:p.url});
   }else{
+   if(p.expectedRevision&&p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير جدول اليوم منذ المعاينة؛ أعد فحص الروابط');
    var payload=monitorMadrasatiPayload_(p.payload);
    if(source.schoolId&&source.schoolId.toLowerCase()!==payload.schoolId.toLowerCase())throw new Error('المدرسة لا تطابق الجدول المحفوظ');
    var matching=payload.importedForDate===date&&payload.scheduleDate===snap.sourceScheduleDate&&payload.teachers.length===snap.teachers.length&&payload.lessons.length===snap.lessons.length&&snap.teachers.every(function(t){return payload.teachers.some(function(n){return monitorName_(n)===monitorName_(t.name)})});
@@ -235,7 +236,7 @@ function monitorRequest_(p){
    });
    monitorWrite_(folder,'attendance.json',data);source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);
   }
-  return {merged:true,saved:true,filled:edits.length,snapshot:snap,folderUrl:folder.getUrl()};
+  return {merged:true,saved:true,filled:edits.length,completed:edits.map(function(e){return {teacherId:e.row.teacherId,teacher:e.row.teacherName,period:e.row.period,url:e.url}}),snapshot:snap,folderUrl:folder.getUrl()};
  }
  if(p.action==='startDay'){
   if(!experimentId&&p.sourceType==='naqar')throw new Error('نقار ملغى؛ مدرستي هي المصدر الوحيد');

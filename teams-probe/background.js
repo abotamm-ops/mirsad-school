@@ -503,6 +503,7 @@ async function stopAndResetMonitoring(){
 }
 
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
+ if(message?.type==='MIRSAD_APPLY_MISSING_LINKS'){const page=chrome.runtime.getURL('link-completion.html');if(sender.url?.split('?')[0]!==page){sendResponse({ok:false,error:'مصدر غير مسموح'});return false}CloudMonitoring.applyMissingReport(message.reportId).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
  if(message?.type==='MIRSAD_MANUAL_LESSON_LINK'){if(!sender.tab||!/^https:\/\/mirsad-school\.onrender\.com\/automatic-monitoring\.html(?:[?#]|$)/.test(sender.tab.url||'')){sendResponse({ok:false,error:'مصدر غير مسموح'});return false}CloudMonitoring.manualLessonLink(message.payload||{}).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
  if(message?.type==='MIRSAD_CLASSIC_MATCH'){let valid=false;try{const u=new URL(sender?.tab?.url);valid=u.origin==='https://mirsad-school.onrender.com'&&u.pathname==='/automatic-monitoring.html'}catch{}if(!valid){sendResponse({ok:false});return false}CloudMonitoring.syncVisible(message.reference).then(sendResponse).catch(e=>sendResponse({ok:false,error:e.message}));return true}
 
