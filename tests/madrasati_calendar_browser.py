@@ -10,7 +10,7 @@ with sync_playwright() as p:
  html+='<input id="_hndCurrentDate" value="11/1/2026 12:00:00 AM"><input id="_hndSchoolId" value="'+SCHOOL+'"><input id="_hndTeacherId" value="'+TEACHER+'"><input id="csrfid" value="fixture-csrf">'
  html+='<table><tbody id="divDayLectures">'+''.join('<tr id="hessaNumber'+str(i)+'"><td class="event-title"><h6>درس '+str(i)+'</h6><div class="text-black-2">08:00</div><div class="fs-sm text-body">أول أ</div><a href="https://schools.madrasati.sa/Teacher/Lessons/viewLectureDetails?Data='+str(i)+'">التفاصيل</a>'+('<a href="https://teams.microsoft.com/l/meetup-join/period2">حضور الدرس</a>' if i==2 else '')+'</td></tr>' for i in range(1,8))+'</tbody></table>'
  page.route('**/*',lambda r:r.fulfill(body=html,content_type='text/html') if r.request.url==URL else r.abort())
- page.goto(URL);page.evaluate('globalThis.chrome={runtime:{onMessage:{addListener(f){window.readerListener=f}}}}');page.add_script_tag(path=str(R/'teams-probe/madrasati-reader.js'))
+ page.goto(URL);page.evaluate('globalThis.chrome={runtime:{onMessage:{addListener(f){window.readerListener=f}}}}');page.add_script_tag(path=str(R/'teams-probe/schedule-core.js'));page.add_script_tag(path=str(R/'teams-probe/madrasati-reader.js'))
  page.evaluate('''()=>{window.calls=[];window.api={CurrentSelectedDateString:'02 نوفمبر 2026',TimeTable:Array.from({length:7},(_,i)=>({SlotNumber:i+1,SubjectName:'درس '+(i+1),ClassRoomName:'أول أ',PresenterUrl:'https://teams.microsoft.com/l/meetup-join/period'+(i+1)}))};window.base=structuredClone(api);window.fetch=async(url,options)=>{calls.push({url,...options});return {ok:true,status:200,url,json:async()=>structuredClone(api)}}}''')
  result=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
  assert len(result['lessons'])==7 and all(l['teams'].endswith('period'+str(l['period'])) and not l['unprepared'] for l in result['lessons'])
@@ -18,6 +18,12 @@ with sync_playwright() as p:
  assert parse_qs(call['body'])=={'Date':['11/1/2026 12:00:00 AM'],'index':['1'],'SchoolId':[SCHOOL],'TechearId':[TEACHER]}
  assert call['method']=='POST' and call['credentials']=='same-origin' and call['redirect']=='error'
  assert call['headers']['requestverificationtoken']=='fixture-csrf' and len(page.evaluate('calls'))==1
+ # Launcher + different subject label must still resolve the seventh future
+ # lesson from GetCal, without waiting for lesson details to gain a link.
+ page.evaluate("api.TimeTable[6].SubjectName='اسم المادة';api.TimeTable[6].PresenterUrl='https://teams.microsoft.com/dl/launcher/launcher.html?url='+encodeURIComponent('/_#/l/meetup-join/period7?anon=true');api.TimeTable[1].PresenterUrl='https://teams.microsoft.com/dl/launcher/launcher.html?url='+encodeURIComponent('/_#/l/meetup-join/period2?anon=true')")
+ launcher_result=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
+ assert launcher_result['lessons'][6]['teams']=='https://teams.microsoft.com/l/meetup-join/period7?anon=true'
+ assert launcher_result['lessons'][1]['teams']=='https://teams.microsoft.com/l/meetup-join/period2'
  def rejected(edit,expected):
   page.evaluate('api=structuredClone(base)');page.evaluate(edit)
   try:page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())');raise AssertionError('invalid response accepted')
@@ -25,13 +31,16 @@ with sync_playwright() as p:
  rejected("api.CurrentSelectedDateString='2026-11-01'",'تاريخ')
  rejected("api.TimeTable[2].PresenterUrl='https://evil.example/meeting'",'غير صالح')
  rejected("api.TimeTable[2].ClassRoomName='ثاني ب'",'فصل')
- # Subject names and lesson topics differ legitimately. Keep the row route,
- # never silently attach the conflicting GetCal link or borrow another period.
+ # Subject labels and topic titles differ. Date/teacher/period/class identify
+ # the lesson; a matching class allows GetCal before attendance becomes active.
  page.evaluate("api=structuredClone(base);api.TimeTable[2].SubjectName='مادة مختلفة'")
  result=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
+ assert result['lessons'][2]['teams'].endswith('period3') and result['lessons'][2]['title']=='درس 3'
+ assert all(l['teams'].endswith('period'+str(l['period'])) for l in result['lessons'])
+ # Without a JSON classroom identity, require the independent row route.
+ page.evaluate("delete api.TimeTable[2].ClassRoomName")
+ result=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
  assert result['lessons'][2]['teams']=='' and result['lessons'][2]['detailUrl'].endswith('Data=3')
- assert result['lessons'][2]['linkResolution']=='row-fallback'
- assert all(l['teams'].endswith('period'+str(l['period'])) for l in result['lessons'] if l['period']!=3)
  # Without an independently identified row route, fail closed.
  try:
   page.evaluate("(()=>{const t=MirsadMadrasatiReader.timetable();t.lessons[2].detailUrl='';return MirsadMadrasatiReader.calendarTimetable(t)})()")
@@ -55,7 +64,7 @@ with sync_playwright() as p:
  page.evaluate("api.TimeTable[2].SubjectName='اسم المادة';api.TimeTable[1].SubjectName='اسم آخر'")
  result=page.evaluate("new Promise(resolve=>readerListener({type:'MIRSAD_MADRASATI_READ',kind:'timetable',date:'2026-11-01'},{},resolve))")
  assert result['ok'] and result['date']=='2026-11-01'
- assert result['lessons'][2]['teams']=='' and result['lessons'][2]['detailUrl'].endswith('Data=3')
+ assert result['lessons'][2]['teams'].endswith('period3')
  assert result['lessons'][1]['teams'].endswith('period2')
 
  page.evaluate("document.querySelector('.dayIcon').setAttribute('dayindex','1');api=structuredClone(base);document.querySelector('#_hndTeacherId').value='C'.repeat(32);calls=[]")

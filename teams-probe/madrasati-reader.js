@@ -9,7 +9,7 @@
  for(const a of links){const url=sameUrl(a.getAttribute('href'),/^\/SchoolManagment\/Lessons\/TimeTable\/[A-Fa-f0-9]+\/?$/),card=a.closest('.card'),name=norm(card?.querySelector('h5')?.textContent),id=new URL(url).pathname.split('/').filter(Boolean).pop();if(!name)throw new Error('تعذر ربط جدول باسم المعلم');if(seen.has(id))continue;seen.add(id);teachers.push({id,name,url})}
  if(!teachers.length)throw new Error('افتح إدارة بيانات المعلمين في مدرستي حتى تظهر بطاقات المعلمين');
  if(doc.querySelector('.pagination .next:not(.disabled) a[href],.pagination [aria-label="Next"]:not([aria-disabled="true"])'))throw new Error('قائمة المعلمين موزعة على صفحات؛ اعرض القائمة كاملة قبل الجمع');return teachers}
- function directMeeting(doc){const urls=[...doc.querySelectorAll('a[href]')].map(a=>{try{const u=new URL(a.getAttribute('href'));return u.protocol==='https:'&&['teams.microsoft.com','teams.live.com'].includes(u.hostname)&&/^\/(?:l\/meetup-join\/|meet\/)/.test(u.pathname)?u.href:null}catch{return null}}).filter(Boolean),unique=[...new Set(urls)];if(unique.length>1)throw new Error('وجد أكثر من رابط اجتماع؛ لم يُختَر رابط بالتخمين');return unique[0]||'';}
+ function directMeeting(doc){const urls=[...doc.querySelectorAll('a[href]')].map(a=>MirsadScheduleCore.normalizeTeamsUrl(a.getAttribute('href'))).filter(Boolean),unique=[...new Map(urls.map(url=>[MirsadScheduleCore.teamsMeetingKey(url),url])).values()];if(unique.length>1)throw new Error('وجد أكثر من رابط اجتماع؛ لم يُختَر رابط بالتخمين');return unique[0]||'';}
  function timetable(doc=document){const date=displayedDate(doc),rows=[...doc.querySelectorAll('#divDayLectures tr[id^="hessaNumber"]')],lessons=[];
  if(!doc.querySelector('#divDayLectures'))throw new Error('لم يظهر جدول الحصص؛ تحقق من جلسة مدرستي');
  for(const row of rows){const period=Number(row.id.replace('hessaNumber',''));if(!Number.isInteger(period)||period<1||period>7)throw new Error('رقم حصة غير صالح');const cell=row.querySelector('.event-title'),title=norm(cell?.querySelector('h6')?.textContent);if(!title){if(!norm(cell?.textContent)||/لا توجد (حصة|دروس)|لا يوجد درس/.test(norm(cell?.textContent)))continue;throw new Error('حصة غير مقروءة؛ لم يُرسل جدول ناقص')}
@@ -69,17 +69,18 @@
  const lessons=table.lessons.map(lesson=>{
  const item=byPeriod.get(lesson.period);if(!item)throw new Error('الحصة '+lesson.period+' غير موجودة في بيانات روابط مدرستي');
  if(item.ClassRoomName&&norm(item.ClassRoomName)!==norm(lesson.lesson))throw new Error('فصل الحصة '+lesson.period+' لا يطابق بيانات الروابط');
- // A rendered row can name the lesson (e.g. a unit topic), while GetCal
- // names its subject. Never attach that JSON link on a title mismatch;
- // use the exact row's direct link/details route instead, including past days.
- if(item.SubjectName&&norm(item.SubjectName)!==norm(lesson.title)){
+ // SubjectName is a subject label, not the rendered lesson topic. A
+ // difference is not a different lesson when teacher/date/slot/class match.
+ // Without a JSON class identity, retain the independent row/details fallback.
+ const subjectDiff=item.SubjectName&&norm(item.SubjectName)!==norm(lesson.title);
+ if(subjectDiff&&!item.ClassRoomName){
   if(lesson.teams||lesson.detailUrl)return {...lesson,linkResolution:'row-fallback'};
-  throw new Error('مادة الحصة '+lesson.period+' تختلف عن عنوان الدرس ولا يوجد رابط مباشر أو تفاصيل للتحقق؛ لم يُستبدل الجدول');
+  throw new Error('مادة الحصة '+lesson.period+' تختلف عن عنوان الدرس وبيانات الفصل غير متاحة للتحقق');
  }
  const raw=item.PresenterUrl;if(raw===null||raw===undefined||raw==='')return lesson;
- let teams;try{const u=new URL(raw);if(u.protocol!=='https:'||!['teams.microsoft.com','teams.live.com'].includes(u.hostname)||!/^\/(?:l\/meetup-join\/|meet\/)/.test(u.pathname))throw new Error();teams=u.href}catch{throw new Error('رابط تيمز في بيانات الحصة '+lesson.period+' غير صالح')}
- if(lesson.teams&&lesson.teams!==teams)throw new Error('رابط الحصة '+lesson.period+' يختلف بين الجدول وبيانات مدرستي');
- return {...lesson,teams,linkSource:'calendar',unprepared:false,missingDetails:false};
+ const teams=MirsadScheduleCore.normalizeTeamsUrl(raw);if(!teams)throw new Error('رابط تيمز في بيانات الحصة '+lesson.period+' غير صالح');
+ if(lesson.teams&&!MirsadScheduleCore.sameTeamsMeeting(lesson.teams,teams))throw new Error('رابط الحصة '+lesson.period+' يختلف بين الجدول وبيانات مدرستي');
+ return {...lesson,teams:lesson.teams||teams,linkSource:lesson.teams?'row-direct':'calendar',unprepared:false,missingDetails:false};
  });return {...table,lessons};
  }
  function validDate(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;const value=new Date(date+'T12:00:00Z');return Number.isFinite(value.getTime())&&value.toISOString().slice(0,10)===date}

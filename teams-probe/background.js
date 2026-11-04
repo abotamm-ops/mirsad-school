@@ -280,7 +280,7 @@ async function navigateCurrent(run){
  run.current={...item,retryCount:scanRetryState(run)?.attempts.length||0,scanDeadlineAt:Date.now()+SCAN_TIMEOUT_MS,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())+"-retry"+String(scanRetryState(run)?.attempts.length||0)};await saveRun(run);
  await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+SCAN_TIMEOUT_MS});
  await setStatus("الحصة "+p.n+" — "+item.teacher+" ("+(run.index+1)+"/"+run.periodItems.length+")، الدورة "+run.cycle+(run.current.retryCount?" — إعادة الفحص "+run.current.retryCount+" من 2":""),{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle});
- try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:item.url,active:true});void MirsadScanActivity.open(tabId,run).catch(()=>{})}
+ try{const tabId=await ensureProbeTab(run);await chrome.tabs.update(tabId,{url:scheduleCore.normalizeTeamsUrl(item.url)||item.url,active:true});void MirsadScanActivity.open(tabId,run).catch(()=>{})}
  catch(_){await receiveResult({scanId:run.current.scanId,result:{status:"unresolved",teacher:item.teacher,detail:"تعذر فتح الرابط"}})}
 }
 async function advancePeriod(run,after){

@@ -1,3 +1,27 @@
+  function monitorNormalizeTeamsLink_(value) {
+    let raw=String(value||'').trim();
+    for(let depth=0;depth<5;depth++){
+      if(!raw||raw.length>8000||/[\u0000-\u0020\u007f\\]/.test(raw))return '';
+      const match=/^https:\/\/(teams\.microsoft\.com|teams\.live\.com)(\/.*)$/i.exec(raw);
+      if(!match)return '';
+      const origin='https://'+match[1].toLowerCase(),path=match[2];
+      if(/^\/(?:l\/meetup-join\/|meet\/)[^/?#]+(?:[/?#].*)?$/.test(path)){
+        try{const hashAt=path.indexOf('#'),plain=hashAt<0?path:path.slice(0,hashAt),q=plain.indexOf('?'),pathname=q<0?plain:plain.slice(0,q),query=q<0?'':plain.slice(q+1),canonicalPath=pathname.split('/').map(part=>encodeURIComponent(decodeURIComponent(part))).join('/'),canonicalQuery=query?query.split('&').map(part=>{const i=part.indexOf('='),key=i<0?part:part.slice(0,i),value=i<0?'':part.slice(i+1);return encodeURIComponent(decodeURIComponent(key.replace(/\+/g,' ')))+'='+encodeURIComponent(decodeURIComponent(value.replace(/\+/g,' ')))}).sort().join('&'):'';return origin+canonicalPath+(canonicalQuery?'?'+canonicalQuery:'')+(hashAt<0?'':path.slice(hashAt))}catch{return ''}
+      }
+      if(path.startsWith('/_#/')){raw=origin+path.slice(3);continue}
+      if(!/^\/dl\/launcher\/launcher\.html\?/.test(path))return '';
+      const targets=[];
+      try{for(const part of path.slice(path.indexOf('?')+1).split('#')[0].split('&')){const at=part.indexOf('=');if(at<0)continue;if(decodeURIComponent(part.slice(0,at))==='url')targets.push(decodeURIComponent(part.slice(at+1).replace(/\+/g,' ')))}}catch{return ''}
+      if(targets.length!==1)return '';
+      let target=targets[0];
+      try{for(let n=0;n<2&&target.startsWith('%');n++)target=decodeURIComponent(target)}catch{return ''}
+      if(target.startsWith('/')&&!target.startsWith('//'))raw=origin+target;
+      else if(/^https:\/\//i.test(target))raw=target;
+      else return '';
+    }
+    return '';
+  }
+
 // Independent Google Apps Script web app. Never merge with timetable/absence services.
 var MONITOR_ROOT='1t6dLow9LsdUtZZFH4CgnUleNMXEBHc2c';
 function configureMonitoringService(){var p=PropertiesService.getScriptProperties();if(!p.getProperty('MONITOR_API_KEY'))p.setProperty('MONITOR_API_KEY',Utilities.getUuid()+Utilities.getUuid());if(!p.getProperty('MONITOR_READER_KEY'))p.setProperty('MONITOR_READER_KEY',Utilities.getUuid()+Utilities.getUuid());return 'Set MONITOR_API_KEY and MONITOR_READER_KEY in Script properties. Never paste values into chat.'}
@@ -6,7 +30,7 @@ function monitorMadrasatiPayload_(p){
  if(!p||p.source!=='madrasati'||(!monitorDateValid_(p.scheduleDate)||(p.importedForDate||p.scheduleDate)!==monitorToday_())||!Array.isArray(p.teachers)||!p.teachers.length||p.teachers.length>500||p.totalTeachers!==p.teachers.length||!Array.isArray(p.lessons)||p.lessons.length>3500||p.totalLessons!==p.lessons.length)throw new Error('جدول مدرستي ناقص أو تاريخ استيراده غير صالح');
  if(!/^[A-Fa-f0-9]{32}$/.test(p.schoolId||'')||!/^https:\/\/schools\.madrasati\.sa\/SchoolManagment\/Teachers\?/i.test(p.sourceUrl||''))throw new Error('مصدر المدرسة غير صالح');
  var sourceSchool=/[?&]schoolid=([A-Fa-f0-9]{32})(?:&|$)/i.exec(p.sourceUrl);if(!sourceSchool||sourceSchool[1].toLowerCase()!==p.schoolId.toLowerCase())throw new Error('رابط المصدر لا يطابق المدرسة');
- var names={},teachers=p.teachers.map(function(name){var key=monitorName_(name);if(!key||names[key]||String(name).length>180)throw new Error('أسماء المعلمين غير صالحة');names[key]=true;return String(name).trim()}),seen={},lessons=p.lessons.map(function(l,i){var period=Number(l.cellIndex)-1,key=monitorName_(l.teacher)+'|'+period;if(!names[monitorName_(l.teacher)]||!Number.isInteger(period)||period<1||period>7||seen[key]||!String(l.lesson||'').trim()||!String(l.title||'').trim()||!String(l.time||'').trim())throw new Error('بيانات الحصة غير مكتملة أو مكررة');seen[key]=true;var teams=String(l.teams||'');if(teams&&!/^https:\/\/(teams\.microsoft\.com|teams\.live\.com)\/(l\/meetup-join\/|meet\/)/.test(teams))throw new Error('رابط تيمز غير صالح');if(!teams&&l.linkState!=='unprepared')throw new Error('تعذر قراءة الرابط لا يعني عدم تحضير الحصة');return {n:i+1,teacher:String(l.teacher),cellIndex:period+1,lesson:String(l.lesson).slice(0,200),title:String(l.title).slice(0,300),time:String(l.time).slice(0,100),teams:teams,status:'موجود'}});
+ var names={},teachers=p.teachers.map(function(name){var key=monitorName_(name);if(!key||names[key]||String(name).length>180)throw new Error('أسماء المعلمين غير صالحة');names[key]=true;return String(name).trim()}),seen={},lessons=p.lessons.map(function(l,i){var period=Number(l.cellIndex)-1,key=monitorName_(l.teacher)+'|'+period;if(!names[monitorName_(l.teacher)]||!Number.isInteger(period)||period<1||period>7||seen[key]||!String(l.lesson||'').trim()||!String(l.title||'').trim()||!String(l.time||'').trim())throw new Error('بيانات الحصة غير مكتملة أو مكررة');seen[key]=true;var rawTeams=String(l.teams||''),teams=monitorNormalizeTeamsLink_(rawTeams);if(rawTeams&&!teams)throw new Error('رابط تيمز غير صالح');if(!teams&&l.linkState!=='unprepared')throw new Error('تعذر قراءة الرابط لا يعني عدم تحضير الحصة');return {n:i+1,teacher:String(l.teacher),cellIndex:period+1,lesson:String(l.lesson).slice(0,200),title:String(l.title).slice(0,300),time:String(l.time).slice(0,100),teams:teams,status:'موجود'}});
  return {source:'madrasati',schoolId:p.schoolId,sourceUrl:p.sourceUrl,updatedAt:new Date().toISOString(),scheduleDate:p.scheduleDate,importedForDate:p.importedForDate||p.scheduleDate,totalLessons:lessons.length,teachers:teachers,lessons:lessons};
 }
 function monitorToday_(){return Utilities.formatDate(new Date(),'Asia/Riyadh','yyyy-MM-dd')}
@@ -217,10 +241,9 @@ function monitorRequest_(p){
   var edits=[],snap=data.snapshot,sourceFile=monitorFile_(root,'mirsad-timetable-source.json'),source=monitorRead_(sourceFile,{mode:'madrasati'});
   if(p.action==='manualLessonLink'){
    if(p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير الجدول؛ حدّث الصفحة وأعد المحاولة');
-   var row=snap.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
-   if(!row)throw new Error('الحصة غير موجودة؛ حدّث الصفحة');if(row.url){if(row.url===p.url)return {merged:true,saved:true,filled:0,snapshot:snap,folderUrl:folder.getUrl()};throw new Error('أصبح للحصة رابط؛ حدّث الصفحة')}
-   if(typeof p.url!=='string'||p.url.length>8000||!/^https:\/\/(teams\.microsoft\.com|teams\.live\.com)\/(l\/meetup-join\/|meet\/)[^\s#]+(?:#[^\s]*)?$/.test(p.url)||/[\u0000-\u0020\u007f]/.test(p.url))throw new Error('رابط تيمز غير صالح');
-   edits.push({row:row,url:p.url});
+   var manualUrl=monitorNormalizeTeamsLink_(p.url);if(!manualUrl)throw new Error('رابط تيمز غير صالح');var row=snap.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
+   if(!row)throw new Error('الحصة غير موجودة؛ حدّث الصفحة');if(row.url){if(row.url===manualUrl)return {merged:true,saved:true,filled:0,snapshot:snap,folderUrl:folder.getUrl()};throw new Error('أصبح للحصة رابط؛ حدّث الصفحة')}
+   edits.push({row:row,url:manualUrl});
   }else{
    if(p.expectedRevision&&p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير جدول اليوم منذ المعاينة؛ أعد فحص الروابط');
    var payload=monitorMadrasatiPayload_(p.payload);

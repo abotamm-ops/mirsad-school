@@ -26,7 +26,8 @@ with sync_playwright() as p:
  page.wait_for_function("document.querySelector('#detailBody').textContent.includes('ألصق رابط حضور')")
  assert not page.evaluate('!!window.manualRequest')
  url='https://teams.microsoft.com/l/meetup-join/manual-fixture'
- field.fill(url);assert 'صيغة الرابط صحيحة' in page.locator('#detailBody').inner_text();page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
+ from urllib.parse import quote
+ field.fill('https://teams.microsoft.com/dl/launcher/launcher.html?url='+quote('/_#/l/meetup-join/manual-fixture',safe=''));assert 'صيغة الرابط صحيحة' in page.locator('#detailBody').inner_text();page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
  page.wait_for_function('!!window.manualRequest')
  request=page.evaluate('window.manualRequest');row=fixture['snapshot']['lessons'][1]
  assert request['date']=='2026-11-01' and request['teacherId']==row['teacherId'] and request['period']==2

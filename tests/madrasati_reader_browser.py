@@ -5,7 +5,7 @@ R=Path(__file__).resolve().parents[1]
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page();page.route('**/*',lambda r:r.abort())
  def load(html):
-  page.set_content('<meta charset="utf-8">'+html,wait_until='domcontentloaded');page.evaluate('globalThis.chrome={runtime:{onMessage:{addListener(f){globalThis.readerListener=f}}}};delete globalThis.__mirsadMadrasatiReader');page.add_script_tag(path=str(R/'teams-probe/madrasati-reader.js'))
+  page.set_content('<meta charset="utf-8">'+html,wait_until='domcontentloaded');page.evaluate('globalThis.chrome={runtime:{onMessage:{addListener(f){globalThis.readerListener=f}}}};delete globalThis.__mirsadMadrasatiReader');page.add_script_tag(path=str(R/'teams-probe/schedule-core.js'));page.add_script_tag(path=str(R/'teams-probe/madrasati-reader.js'))
  load('<div class="card"><h5>معلم أول</h5><a href="https://schools.madrasati.sa/SchoolManagment/Lessons/TimeTable/'+ 'A'*32+'?Schoolid='+ 'B'*32+'">الجدول</a></div>')
  assert page.evaluate('MirsadMadrasatiReader.directory()[0].name')=='معلم أول'
  html='<span id="dategeo">18 أكتوبر 2026</span><li class="dayIcon" dayindex="0"><a class="active">الأحد</a></li><li class="dayIcon" dayindex="1"><a id="monday">الاثنين</a></li><table><tbody id="divDayLectures"><tr id="hessaNumber1"><td class="event-title"><h6>العلوم</h6><div class="text-black-2">من 06:30 ص إلى 07:15 ص</div><div class="fs-sm text-body">أولى أول</div><a href="https://schools.madrasati.sa/Teacher/Lessons/viewLectureDetails?Data=fixture">مشاهدة التفاصيل</a></td></tr></tbody></table>'

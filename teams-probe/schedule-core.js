@@ -111,6 +111,33 @@
     return matches.length === 1 ? matches[0].n : null;
   }
 
+  function normalizeTeamsUrl(value) {
+    let raw=String(value||'').trim();
+    for(let depth=0;depth<5;depth++){
+      if(!raw||raw.length>8000||/[\u0000-\u0020\u007f\\]/.test(raw))return '';
+      const match=/^https:\/\/(teams\.microsoft\.com|teams\.live\.com)(\/.*)$/i.exec(raw);
+      if(!match)return '';
+      const origin='https://'+match[1].toLowerCase(),path=match[2];
+      if(/^\/(?:l\/meetup-join\/|meet\/)[^/?#]+(?:[/?#].*)?$/.test(path)){
+        try{const hashAt=path.indexOf('#'),plain=hashAt<0?path:path.slice(0,hashAt),q=plain.indexOf('?'),pathname=q<0?plain:plain.slice(0,q),query=q<0?'':plain.slice(q+1),canonicalPath=pathname.split('/').map(part=>encodeURIComponent(decodeURIComponent(part))).join('/'),canonicalQuery=query?query.split('&').map(part=>{const i=part.indexOf('='),key=i<0?part:part.slice(0,i),value=i<0?'':part.slice(i+1);return encodeURIComponent(decodeURIComponent(key.replace(/\+/g,' ')))+'='+encodeURIComponent(decodeURIComponent(value.replace(/\+/g,' ')))}).sort().join('&'):'';return origin+canonicalPath+(canonicalQuery?'?'+canonicalQuery:'')+(hashAt<0?'':path.slice(hashAt))}catch{return ''}
+      }
+      if(path.startsWith('/_#/')){raw=origin+path.slice(3);continue}
+      if(!/^\/dl\/launcher\/launcher\.html\?/.test(path))return '';
+      const targets=[];
+      try{for(const part of path.slice(path.indexOf('?')+1).split('#')[0].split('&')){const at=part.indexOf('=');if(at<0)continue;if(decodeURIComponent(part.slice(0,at))==='url')targets.push(decodeURIComponent(part.slice(at+1).replace(/\+/g,' ')))}}catch{return ''}
+      if(targets.length!==1)return '';
+      let target=targets[0];
+      try{for(let n=0;n<2&&target.startsWith('%');n++)target=decodeURIComponent(target)}catch{return ''}
+      if(target.startsWith('/')&&!target.startsWith('//'))raw=origin+target;
+      else if(/^https:\/\//i.test(target))raw=target;
+      else return '';
+    }
+    return '';
+  }
+
+  function teamsMeetingKey(value){const link=normalizeTeamsUrl(value);return link?link.split(/[?#]/)[0]:''}
+  function sameTeamsMeeting(a,b){const key=teamsMeetingKey(a);return !!key&&key===teamsMeetingKey(b)}
+
   function validTeamsUrl(value) {
     try {
       const url = new URL(value);
@@ -161,5 +188,5 @@
     return "unresolved";
   }
 
-  globalThis.MirsadScheduleCore = Object.freeze({ normalize, asciiDigits, parseTimeRange, makeManualPeriods, periodAtMinute, periodNumber, mapHeaders, resolveCellPeriod, validTeamsUrl, selectPeriodItems, selectPeriodLinks, classifyOrganizerMembership, summarizeAttendanceStatuses });
+  globalThis.MirsadScheduleCore = Object.freeze({ normalize, asciiDigits, parseTimeRange, makeManualPeriods, periodAtMinute, periodNumber, mapHeaders, resolveCellPeriod, validTeamsUrl, normalizeTeamsUrl, teamsMeetingKey, sameTeamsMeeting, selectPeriodItems, selectPeriodLinks, classifyOrganizerMembership, summarizeAttendanceStatuses });
 })();
