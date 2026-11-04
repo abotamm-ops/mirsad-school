@@ -18,9 +18,9 @@ with sync_playwright() as p:
   r.fulfill(json=value)
  context.route('https://script.google.com/**',api)
  page=context.new_page();page.clock.install(time=datetime(2026,11,1,5,0,tzinfo=timezone.utc));page.on('pageerror',lambda e:errors.append(str(e)));page.goto('https://mirsad-school.onrender.com/index.html');page.wait_for_selector('#todayTable tbody tr');assert page.url.endswith('/automatic-monitoring.html');assert page.locator('#todayTable tbody tr').count()==2
- assert page.locator('.add-lesson-link').count()==1
+ assert page.locator('.add-lesson-link').count()==0
  page.evaluate("window.addEventListener('message',e=>{if(e.data?.source==='mirsad-monitor-control'&&e.data.type==='manualLink')window.manualRequest=e.data.payload})")
- page.locator('.add-lesson-link').click()
+ page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .round-info').click()
  field=page.get_by_role('textbox',name='رابط تيمز للحصة');field.fill('https://evil.example/meet/x');assert 'غير صالح' in page.locator('#detailBody').inner_text()
  page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
  page.wait_for_function("document.querySelector('#detailBody').textContent.includes('ألصق رابط حضور')")
@@ -39,5 +39,9 @@ with sync_playwright() as p:
  page.wait_for_function("!document.querySelector('#details').open")
  assert page.locator('#todayTable a.teams-lesson-link').count()==2
  assert page.locator('#todayTable a.teams-lesson-link').nth(1).get_attribute('href')==url
+ page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .lesson-state').click()
+ assert page.get_by_role('textbox',name='رابط تيمز للحصة').input_value()==url
+ assert page.get_by_role('textbox',name='رابط تيمز للحصة').get_attribute('readonly') is not None
+ assert page.get_by_role('button',name='حفظ رابط تيمز',exact=True).count()==0
  assert not errors,errors
  b.close();print('PASS manual link editor validation, exact date/teacher/period/revision request, correlated confirmation and persisted table refresh without browser errors')
