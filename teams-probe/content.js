@@ -259,8 +259,13 @@
     const labels=/^(?:المزيد|عرض المزيد|إظهار المزيد|اظهار المزيد|عرض الكل|إظهار الكل|اظهار الكل|مشاهدة الكل|show more|see more|show all|see all)(?:\s*[（(]?\d+[）)]?)?$/i;
     for(let clicks=0;clicks<8&&Date.now()<until;clicks++){
       const headings=rosterHeadingsInOrder().filter(h=>!participantStatusHeading(h.el));
-      const button=[...document.querySelectorAll('button,[role="button"]')].find(el=>{
-        if(!visible(el)||el.disabled||el.getAttribute('aria-disabled')==='true'||!labels.test(normalize(el.innerText||el.textContent||''))||rosterGroupForRow(el,headings)!=='invited')return false;
+      const button=[...document.querySelectorAll('button,[role="button"],a,span,div')].filter(el=>{
+        const text=el.textContent||'';
+        return text.length<90&&labels.test(normalize(text))&&![...el.children].some(child=>labels.test(normalize(child.textContent||'')));
+      }).find(el=>{
+        const control=el.closest('button,[role="button"],a')||el;
+        const href=control.getAttribute('href');
+        if(!visible(el)||control.disabled||control.getAttribute('aria-disabled')==='true'||(control.matches('a')&&href&&!href.startsWith('#')&&!/^javascript:void\(0\);?$/.test(href))||!labels.test(normalize(el.innerText||el.textContent||''))||rosterGroupForRow(el,headings)!=='invited')return false;
         // Require a nearby roster container shared with its invited heading.
         let parent=el.parentElement;
         for(let depth=0;depth<6&&parent&&parent!==document.body;depth++,parent=parent.parentElement){
@@ -269,7 +274,13 @@
         return false;
       });
       if(!button)return true;
-      button.click();await new Promise(resolve=>setTimeout(resolve,180));
+      const beforeRows=document.querySelectorAll(studentRowSelector).length;
+      button.click();
+      // Let Teams load the next batch before clicking the same text again.
+      for(let wait=0;wait<5&&Date.now()<until;wait++){
+        await new Promise(resolve=>setTimeout(resolve,180));
+        if(!button.isConnected||!visible(button)||document.querySelectorAll(studentRowSelector).length!==beforeRows)break;
+      }
     }
     return false;
   }
@@ -378,7 +389,7 @@
     return {name:matches.length===1?matches[0]:"",ambiguous:matches.length>1,
       inInvitees:matches.length===1&&inInvitees,fullyScanned,inviteesReadable,sawInvitees,expectedCount,
       reason:!sawInvitees?'تعذّر الوصول إلى عنوان قائمة المدعوين':unreadableRows?'قائمة المدعوين مطوية أو تحتوي صفوفًا تعذّر استخراج أسمائها':!inviteesReadable?'تعذرت قراءة أي صف من قائمة المدعوين':!fullyScanned?(expectedCount!==null&&observedInvitees.size!==expectedCount?'لم تكتمل أسماء المدعوين: '+observedInvitees.size+' من '+expectedCount:countChanged?'تغير عدد المدعوين أثناء الفحص':'تعذر إنهاء تمرير قائمة المدعوين'):'',
-      diagnostics:'إصدار القارئ=0.6.59؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
+      diagnostics:'إصدار القارئ=0.6.60؛ صفوف مكتشفة='+maxVisibleRows+'؛ صفوف مسماة='+maxParsedRows+'؛ أنواع الصفوف='+[...rowTypes].slice(0,6).join(',')+'؛ نوافذ تمرير='+scrollables.length+'؛ عدد المدعوين المعلن='+(expectedCount??'غير متاح')+'؛ تغير العدد='+countChanged,
       observedCount:observedInvitees.size,invitedText:[...observedInvitees].join('\n'),
       presentText:[...observedPresent].join('\n')};
   }

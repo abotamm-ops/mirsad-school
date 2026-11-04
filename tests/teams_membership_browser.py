@@ -63,6 +63,13 @@ with sync_playwright() as p:
  setup('<section><h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>من تمت دعوتهم (1)</h3>'+row('طالب وحيد',organizer=False)+'<button>المزيد</button></section>')
  audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present',organizerVerified:true})",name)
  assert not audit['available'] and 'invitedNames' not in audit,audit
+ # Live screenshot: "عرض المزيد" is a text/link control, not necessarily a button.
+ for tag in ['a','span','div']:
+  setup('<section id="invitedPanel"><h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+'<h3>تمت دعوة الآخرين (30)</h3><div id="sixNames"></div><'+tag+' id="textMore" style="display:block;cursor:pointer">عرض المزيد</'+tag+'></section>')
+  page.evaluate("""()=>{let count=6;window.moreClicks=0;const draw=()=>{document.querySelector('#sixNames').innerHTML=Array.from({length:count},(_,i)=>'<div role="treeitem"><div class="fui-TreeItemPersonaLayout__main"><span title="طالب '+i+'">طالب '+i+'</span></div><span>لا توجد استجابة</span></div>').join('')};draw();document.querySelector('#textMore').onclick=()=>{window.moreClicks++;setTimeout(()=>{count=Math.min(30,count+6);draw();if(count===30)document.querySelector('#textMore').remove()},250)}}""")
+  audit=page.evaluate("async(name)=>readerTest.captureInvitedStudents({teacher:name},{teacher:name,status:'present',organizerVerified:true})",name)
+  assert audit['available'] and audit['complete'] and len(audit['invitedNames'])==30,(tag,audit)
+  assert page.evaluate('window.moreClicks')==4,(tag,page.evaluate('window.moreClicks'))
  # A virtualized list replaces its rows while the viewport scrolls.
  setup('<h3>الحضور (1)</h3>'+row(name,'participantsInCall-')+modern('طالب حاضر')+'<h3>من تمت دعوتهم (40)</h3><div id="studentViewport" style="height:120px;overflow-y:auto;position:relative"><div style="height:2000px"><div id="studentWindow" style="position:absolute;top:0"></div></div></div>')
  page.evaluate("""()=>{const el=document.querySelector('#studentViewport'),win=document.querySelector('#studentWindow');const draw=()=>{const start=Math.min(37,Math.floor(el.scrollTop/50));win.style.top=el.scrollTop+'px';win.innerHTML=Array.from({length:3},(_,i)=>'<div role="treeitem" style="height:40px"><div class="fui-TreeItemPersonaLayout__main"><span title="غائب '+(start+i)+'">غائب '+(start+i)+'</span></div></div>').join('')};el.addEventListener('scroll',draw);draw()}""")
