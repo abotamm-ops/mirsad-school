@@ -34,6 +34,7 @@ function monitorMadrasatiPayload_(p){
  return {source:'madrasati',schoolId:p.schoolId,sourceUrl:p.sourceUrl,updatedAt:new Date().toISOString(),scheduleDate:p.scheduleDate,importedForDate:p.importedForDate||p.scheduleDate,totalLessons:lessons.length,teachers:teachers,lessons:lessons};
 }
 function monitorToday_(){return Utilities.formatDate(new Date(),'Asia/Riyadh','yyyy-MM-dd')}
+function monitorLinkClass_(v){return monitorName_(v).replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2069]/g,'')}
 function monitorName_(v){return String(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim()}
 function monitorEqual_(a,b){a=String(a||'');b=String(b||'');var diff=a.length^b.length;for(var i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return !!a.length&&diff===0}
 function monitorPrivate_(folder){if(PropertiesService.getScriptProperties().getProperty('MONITOR_PUBLIC_READ')==='true')return folder;var access=folder.getSharingAccess();if(access===DriveApp.Access.ANYONE||access===DriveApp.Access.ANYONE_WITH_LINK)throw new Error('الوصول العام غير مقبول: '+folder.getName()+' — '+String(access)+'. إذا كان الوصول موروثًا من مجلد أب، شغّل createPrivateMonitoringFolder بحساب المالك لتجهيز مجلد خاص مستقل.');return folder}
@@ -248,14 +249,17 @@ function monitorRequest_(p){
    if(p.expectedRevision&&p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير جدول اليوم منذ المعاينة؛ أعد فحص الروابط');
    var payload=monitorMadrasatiPayload_(p.payload);
    if(source.schoolId&&source.schoolId.toLowerCase()!==payload.schoolId.toLowerCase())throw new Error('المدرسة لا تطابق الجدول المحفوظ');
-   var matching=payload.importedForDate===date&&payload.scheduleDate===snap.sourceScheduleDate&&payload.teachers.length===snap.teachers.length&&payload.lessons.length===snap.lessons.length&&snap.teachers.every(function(t){return payload.teachers.some(function(n){return monitorName_(n)===monitorName_(t.name)})});
-   if(!matching)return {merged:false};
-   for(var row of snap.lessons){var incoming=payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(row.teacherName)&&Number(l.cellIndex)-1===row.period});if(!incoming||incoming.title!==row.subject||incoming.lesson!==row.className)return {merged:false};if(!row.url&&incoming.teams)edits.push({row:row,url:incoming.teams})}
+   if(payload.importedForDate!==date||payload.scheduleDate!==snap.sourceScheduleDate)return {merged:false};
+   // A teacher/date/period/class identifies the scheduled slot; a topic-title
+   // change or an unrelated timetable difference must not block its URL.
+   // Existing URLs and all lesson metadata remain untouched.
+   for(var row of snap.lessons){if(row.url)continue;var matches=payload.lessons.filter(function(l){return monitorName_(l.teacher)===monitorName_(row.teacherName)&&Number(l.cellIndex)-1===row.period});if(matches.length!==1)continue;var incoming=matches[0];if(!monitorLinkClass_(incoming.lesson)||monitorLinkClass_(incoming.lesson)!==monitorLinkClass_(row.className))continue;if(incoming.teams)edits.push({row:row,url:incoming.teams})}
+
   }
   if(edits.length){
    data.adjustments=data.adjustments||[];
    edits.forEach(function(edit){var previousUrl=edit.row.url||'';if(p.action==='manualLessonLink'&&!edit.url&&edit.row.attendanceUrl===undefined)edit.row.attendanceUrl=previousUrl;edit.row.url=edit.url;data.adjustments.push({type:!edit.url?'link-clear':previousUrl?'link-edit':'link-fill',previousUrl:previousUrl,teacherId:edit.row.teacherId,period:edit.row.period,url:edit.url,manual:p.action==='manualLessonLink',at:Date.now(),sequence:Math.max(0,...data.adjustments.map(function(a){return a.sequence||0}))+1});
-    if(source.payload?.importedForDate===date&&source.payload?.scheduleDate===snap.sourceScheduleDate){var lesson=source.payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(edit.row.teacherName)&&Number(l.cellIndex)-1===edit.row.period&&l.title===edit.row.subject&&l.lesson===edit.row.className});if(lesson&&(!lesson.teams||p.action==='manualLessonLink'&&lesson.teams===previousUrl)){lesson.teams=edit.url;lesson.linkState=edit.url?'linked':'unprepared'}}
+    if(source.payload?.importedForDate===date&&source.payload?.scheduleDate===snap.sourceScheduleDate){var lesson=source.payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(edit.row.teacherName)&&Number(l.cellIndex)-1===edit.row.period&&monitorLinkClass_(l.lesson)===monitorLinkClass_(edit.row.className)});if(lesson&&(!lesson.teams||p.action==='manualLessonLink'&&lesson.teams===previousUrl)){lesson.teams=edit.url;lesson.linkState=edit.url?'linked':'unprepared'}}
    });
    monitorWrite_(folder,'attendance.json',data);source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);
   }

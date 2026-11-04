@@ -24,6 +24,10 @@ with sync_playwright() as p:
  launcher_result=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
  assert launcher_result['lessons'][6]['teams']=='https://teams.microsoft.com/l/meetup-join/period7?anon=true'
  assert launcher_result['lessons'][1]['teams']=='https://teams.microsoft.com/l/meetup-join/period2'
+ # JSON order must not swap first and seventh: slot number is authoritative.
+ page.evaluate('api=structuredClone(base);api.TimeTable.reverse()')
+ unordered=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
+ assert all(l['teams'].endswith('period'+str(l['period'])) for l in unordered['lessons'])
  def rejected(edit,expected):
   page.evaluate('api=structuredClone(base)');page.evaluate(edit)
   try:page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())');raise AssertionError('invalid response accepted')
