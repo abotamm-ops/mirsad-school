@@ -1,1 +1,1 @@
-(()=>{const credit=document.createElement('div');credit.className='mirsad-credit';credit.textContent='إعداد / سامي الماجد';const footer=document.querySelector('footer');(footer||document.body).append(credit)})();
+(()=>{if(document.querySelector('.mirsad-credit'))return;const credit=document.createElement('div');credit.className='mirsad-credit';credit.textContent='إعداد سامي جراد الماجد';const brand=document.querySelector('.page-header .header-brand > div');(brand||document.querySelector('footer')||document.body).append(credit)})();
