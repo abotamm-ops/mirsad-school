@@ -1,4 +1,4 @@
-importScripts("restore-official.js","schedule-core.js","monitor-model.js","visible-schedule.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js","madrasati-source.js","classic-restore.js","live-heartbeat.js");
+importScripts("restore-official.js","schedule-core.js","monitor-model.js","visible-schedule.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js","madrasati-source.js","classic-restore.js","device-state.js","live-heartbeat.js");
 const scheduleCore = globalThis.MirsadScheduleCore;
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
