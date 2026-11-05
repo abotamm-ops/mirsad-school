@@ -1,4 +1,3 @@
 @echo off
-cd /d "%~dp0"
-powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0MirsadChromeGuardian.ps1"
-if errorlevel 1 pause
+start "" "%~dp0MirsadChromeGuardian.exe"
+exit /b

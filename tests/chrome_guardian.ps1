@@ -15,6 +15,9 @@ public static class MirsadChromeWindow {
  public static bool Minimized;
  public static bool Maximized = true;
  public static IntPtr LastRestored;
+ public static IntPtr Pinned;
+ public static void Pin(IntPtr h) { Pinned=h; }
+ public static void Unpin(IntPtr h) { if (Pinned==h) Pinned=IntPtr.Zero; }
  public static bool KeepAwake(bool enabled) { Awake=enabled; return true; }
  public static IntPtr[] Windows() { return Items; }
  public static bool IsMirsad(IntPtr h) { return h.ToInt64()==100 || h.ToInt64()==200; }
@@ -33,7 +36,7 @@ function Check($ok,$message) { if (-not $ok) {throw $message} }
 Check ([MirsadChromeWindow]::Awake) 'Did not request screen/system awake'
 Check ($script:launches.Count -eq 1 -and $script:pending) 'Missing initial browser launch'
 Check ($script:launches[0][1][0] -eq '--profile-directory="Profile 2"') 'Lost selected profile or argument quoting'
-Check ($script:launches[0][1][-1] -eq 'https://mirsad-school.onrender.com/automatic-monitoring.html') 'Unexpected destination'
+Check ($script:launches[0][1][-1] -eq 'https://mirsad-school.onrender.com/automatic-monitoring.html?guardian=1') 'Unexpected destination'
 & $tick
 Check ($script:launches.Count -eq 1) 'Launched duplicate while waiting'
 [MirsadChromeWindow]::Items=@([IntPtr]99)
@@ -42,6 +45,7 @@ Check ($script:watched -eq [IntPtr]::Zero) 'Attached to unrelated Chrome window'
 [MirsadChromeWindow]::Items=@([IntPtr]99,[IntPtr]100)
 & $tick
 Check ($script:watched -eq [IntPtr]100 -and -not $script:pending) 'Did not find newly opened Mirsad window'
+Check ([MirsadChromeWindow]::Pinned -eq [IntPtr]100) 'Mirsad window was not pinned above other apps'
 [MirsadChromeWindow]::Minimized=$true
 & $tick
 Check ([MirsadChromeWindow]::LastRestored -eq [IntPtr]100) 'Did not maximize minimized Mirsad window'
@@ -53,3 +57,14 @@ Check ($script:launches.Count -eq 2 -and $script:pending) 'Did not reopen after 
 & $tick
 Check ($script:watched -eq [IntPtr]200) 'Did not attach to reopened window'
 Write-Output 'PASS PowerShell syntax, Windows interop compilation and real watchdog callback with simulated window discovery, profile quoting, minimizing, closure and bounded relaunch'
+
+# The actual close handler releases pinning and the awake request without killing Chrome.
+$script:timerStopped=$false
+$timer=New-Object PSObject
+$timer | Add-Member ScriptMethod Stop { $script:timerStopped=$true }
+$closeNode=$ast.FindAll({param($n) $n -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and $n.Member.Value -eq 'add_FormClosing'},$true)[0]
+& ($closeNode.Arguments[0].ScriptBlock.GetScriptBlock())
+Check ($script:timerStopped) 'Closing did not stop watchdog timer'
+Check (-not [MirsadChromeWindow]::Awake) 'Closing left the screen/system wake request active'
+Check ([MirsadChromeWindow]::Pinned -eq [IntPtr]::Zero) 'Closing left Chrome always-on-top'
+Write-Output 'PASS one-click close releases always-on-top and power protection'

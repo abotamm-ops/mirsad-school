@@ -98,7 +98,10 @@ function isTeamsMeetingUrl(value){
 }
 async function ensureProbeTab(run){
  if(run?.tabId!=null){try{await chrome.tabs.get(run.tabId);return run.tabId}catch(_){run.tabId=null}}
- const tab=await chrome.tabs.create({url:"about:blank",active:false});
+ // Keep probe tabs in the guardian's pinned window so another Chrome window cannot obscure evidence.
+ const guardianTabs=await chrome.tabs.query({url:'https://mirsad-school.onrender.com/automatic-monitoring.html*'});
+ const guardian=guardianTabs.filter(t=>{try{return new URL(t.url).searchParams.get('guardian')==='1'}catch{return false}}).sort((a,b)=>b.id-a.id)[0];
+ const tab=await chrome.tabs.create({url:"about:blank",active:false,...(Number.isInteger(guardian?.windowId)?{windowId:guardian.windowId}:{})});
  run.tabId=tab.id;await saveRun(run);return tab.id;
 }
 function dateAtOffset(anchor,minuteOffset){
