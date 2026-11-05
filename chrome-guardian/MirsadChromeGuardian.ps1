@@ -25,6 +25,10 @@ public static class MirsadChromeWindow {
     [DllImport("user32.dll", EntryPoint="GetWindowLongW")] static extern int GetWindowLong(IntPtr hwnd, int index);
     public static void Pin(IntPtr hwnd) { if ((GetWindowLong(hwnd,-20) & 8)==0) SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13); }
     public static void Unpin(IntPtr hwnd) { if (IsWindow(hwnd)) SetWindowPos(hwnd,new IntPtr(-2),0,0,0,0,0x13); }
+    [DllImport("user32.dll")] static extern bool ReleaseCapture();
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr SendMessage(IntPtr hwnd, int message, IntPtr wparam, IntPtr lparam);
+    public static void Drag(IntPtr hwnd) { ReleaseCapture(); SendMessage(hwnd,0xA1,new IntPtr(2),IntPtr.Zero); }
+    [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr icon);
     [DllImport("kernel32.dll")] static extern uint SetThreadExecutionState(uint flags);
     public static bool KeepAwake(bool enabled) { return SetThreadExecutionState(enabled ? 0x80000003u : 0x80000000u) != 0; }
     public static IntPtr[] Windows() {
@@ -90,38 +94,95 @@ try {
     $script:failed = $false
     $script:guardianChrome = $chrome
     $script:guardianProfile = $Profile
+    function Set-GuardianRound($control, [int]$radius) {
+        $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+        $d = $radius * 2; $w = $control.Width - 1; $h = $control.Height - 1
+        $path.AddArc(0,0,$d,$d,180,90); $path.AddArc(($w-$d),0,$d,$d,270,90)
+        $path.AddArc(($w-$d),($h-$d),$d,$d,0,90); $path.AddArc(0,($h-$d),$d,$d,90,90)
+        $path.CloseFigure(); $control.Region = New-Object System.Drawing.Region($path); $path.Dispose()
+    }
+    function New-GuardianLabel($parent,$value,$x,$y,$width,$height,$size,$color,$bold=$false) {
+        $label = New-Object System.Windows.Forms.Label
+        $label.Text = $value; $label.SetBounds($x,$y,$width,$height)
+        $style = if ($bold) { [System.Drawing.FontStyle]::Bold } else { [System.Drawing.FontStyle]::Regular }
+        $label.Font = New-Object System.Drawing.Font('Segoe UI',$size,$style)
+        $label.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($color)
+        $label.BackColor = [System.Drawing.Color]::Transparent; $label.TextAlign = 'MiddleRight'
+        $parent.Controls.Add($label); return $label
+    }
+    function New-GuardianButton($parent,$value,$x,$y,$width,$height,$background,$foreground) {
+        $button = New-Object System.Windows.Forms.Button
+        $button.Text = $value; $button.SetBounds($x,$y,$width,$height)
+        $button.FlatStyle = 'Flat'; $button.FlatAppearance.BorderSize = 0
+        $button.Font = New-Object System.Drawing.Font('Segoe UI',11,[System.Drawing.FontStyle]::Bold)
+        $button.BackColor = [System.Drawing.ColorTranslator]::FromHtml($background)
+        $button.ForeColor = [System.Drawing.ColorTranslator]::FromHtml($foreground)
+        $button.Cursor = [System.Windows.Forms.Cursors]::Hand
+        $button.UseVisualStyleBackColor = $false
+        $parent.Controls.Add($button); Set-GuardianRound $button 12
+        return $button
+    }
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'مساعد مرصاد'
-    $form.Size = New-Object System.Drawing.Size(500,260)
-    $form.StartPosition = 'CenterScreen'
-    $form.FormBorderStyle = 'FixedDialog'
-    $form.MaximizeBox = $false
-    $form.TopMost = $true
-    $form.RightToLeft = 'Yes'
-    $form.RightToLeftLayout = $true
+    $form.Text = 'مرصاد | مساعد الرصد'
+    $form.ClientSize = New-Object System.Drawing.Size(560,602)
+    $form.StartPosition = 'CenterScreen'; $form.FormBorderStyle = 'None'
+    $form.MaximizeBox = $false; $form.TopMost = $true
+    $form.RightToLeft = 'Yes'; $form.RightToLeftLayout = $false
+    $form.AutoScaleMode = 'Dpi'; $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96,96)
     $form.Font = New-Object System.Drawing.Font('Segoe UI',11)
-    $form.Icon = [System.Drawing.SystemIcons]::Shield
-    $description = New-Object System.Windows.Forms.Label
-    $description.Text = 'يبقي نافذة مرصاد مفتوحة ومكبّرة وفوق النوافذ الأخرى، ويمنع السكون أثناء عمل المساعد.'
-    $description.SetBounds(20,15,445,60)
-    $description.TextAlign = 'MiddleRight'
-    $form.Controls.Add($description)
-    $stateLabel = New-Object System.Windows.Forms.Label
-    $stateLabel.SetBounds(20,80,445,40)
-    $stateLabel.TextAlign = 'MiddleRight'
-    $stateLabel.Text = 'جارٍ تجهيز المراقبة...'
-    $form.Controls.Add($stateLabel)
-    $startButton = New-Object System.Windows.Forms.Button
-    $startButton.Text = 'تشغيل'
-    $startButton.SetBounds(260,140,200,45)
-    $form.Controls.Add($startButton)
-    $exitButton = New-Object System.Windows.Forms.Button
-    $exitButton.Text = 'إيقاف وإغلاق'
-    $exitButton.SetBounds(30,140,200,45)
-    $exitButton.add_Click({ $form.Close() })
-    $form.Controls.Add($exitButton)
+    $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#F2F6FA')
+    Set-GuardianRound $form 22
+    # A small radar mark, drawn locally; no external images or network calls.
+    $bitmap = New-Object System.Drawing.Bitmap(64,64)
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    $graphics.SmoothingMode = 'AntiAlias'
+    $navyBrush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml('#102A43'))
+    $tealBrush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml('#4DE0C1'))
+    $radarPen = New-Object System.Drawing.Pen([System.Drawing.ColorTranslator]::FromHtml('#4DE0C1'),3)
+    $graphics.FillEllipse($navyBrush,0,0,63,63)
+    $graphics.DrawArc($radarPen,10,10,44,44,180,270); $graphics.DrawArc($radarPen,20,20,24,24,180,270)
+    $graphics.DrawLine($radarPen,32,32,49,15); $graphics.FillEllipse($tealBrush,28,28,8,8)
+    $handle = $bitmap.GetHicon(); $sourceIcon = [System.Drawing.Icon]::FromHandle($handle)
+    $guardianIcon = $sourceIcon.Clone(); [MirsadChromeWindow]::DestroyIcon($handle) | Out-Null
+    $sourceIcon.Dispose(); $graphics.Dispose(); $bitmap.Dispose(); $navyBrush.Dispose(); $tealBrush.Dispose(); $radarPen.Dispose()
+    $form.Icon = $guardianIcon
+    $header = New-Object System.Windows.Forms.Panel
+    $header.SetBounds(0,0,560,164); $header.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#102A43')
+    $form.Controls.Add($header)
+    $header.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
+    $brand = New-GuardianLabel $header 'مرصاد' 190 40 330 58 27 '#FFFFFF' $true
+    $brand.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
+    $subtitle = New-GuardianLabel $header 'مساعد استمرارية الرصد' 160 98 360 32 12 '#9DB6C9'
+    $version = New-GuardianLabel $header 'DESKTOP  /  1.2.0' 26 110 170 28 9 '#65DCC5'
+    $version.TextAlign = 'MiddleLeft'; $version.RightToLeft = 'No'
+    $closeButton = New-GuardianButton $header '×' 18 14 38 30 '#203E55' '#FFFFFF'
+    $closeButton.AccessibleName = 'إيقاف المساعد وإغلاقه'; $closeButton.add_Click({ $form.Close() })
+    $hideButton = New-GuardianButton $header '−' 64 14 38 30 '#203E55' '#FFFFFF'
+    $hideButton.AccessibleName = 'إخفاء المساعد بجانب الساعة'; $hideButton.add_Click({ $form.Hide() })
+    $statusCard = New-Object System.Windows.Forms.Panel
+    $statusCard.SetBounds(24,186,512,108); $statusCard.BackColor = [System.Drawing.Color]::White
+    $form.Controls.Add($statusCard); Set-GuardianRound $statusCard 16
+    $statusHeading = New-GuardianLabel $statusCard 'حالة المساعد' 20 10 470 28 10 '#668096'
+    $stateLabel = New-GuardianLabel $statusCard 'جارٍ تجهيز المراقبة...' 20 40 470 47 13 '#173B56' $true
+    $sectionHeading = New-GuardianLabel $form 'حماية نافذة الرصد' 24 312 512 30 12 '#173B56' $true
+    $featureCard = New-Object System.Windows.Forms.Panel
+    $featureCard.SetBounds(24,352,512,106); $featureCard.BackColor = [System.Drawing.Color]::White
+    $form.Controls.Add($featureCard); Set-GuardianRound $featureCard 16
+    $featureTitles = @('في المقدمة','إعادة الفتح','منع السكون')
+    $featureHints = @('فوق النوافذ العادية','عند إغلاق النافذة','أثناء تشغيل المساعد')
+    for ($i=0; $i -lt 3; $i++) {
+        $x = 352 - $i * 168
+        $title = New-GuardianLabel $featureCard $featureTitles[$i] $x 16 144 32 11 '#117D70' $true
+        $hint = New-GuardianLabel $featureCard $featureHints[$i] $x 50 144 30 9 '#668096'
+        $title.TextAlign = 'MiddleCenter'; $hint.TextAlign = 'MiddleCenter'
+    }
+    $startButton = New-GuardianButton $form 'تشغيل الحماية' 292 482 244 50 '#087F73' '#FFFFFF'
+    $exitButton = New-GuardianButton $form 'إيقاف وإغلاق' 24 482 244 50 '#E2EAF1' '#23445D'
+    $startButton.AccessibleName = 'تشغيل حماية نافذة مرصاد'; $exitButton.add_Click({ $form.Close() })
+    $footer = New-GuardianLabel $form 'إيقاف المساعد يترك Chrome مفتوحًا' 24 546 512 30 9 '#668096'
+    $footer.TextAlign = 'MiddleCenter'
     $tray = New-Object System.Windows.Forms.NotifyIcon
-    $tray.Icon = [System.Drawing.SystemIcons]::Shield
+    $tray.Icon = $guardianIcon
     $tray.Text = 'مساعد مرصاد'
     $menu = New-Object System.Windows.Forms.ContextMenuStrip
     $show = $menu.Items.Add('فتح لوحة المساعد')
@@ -162,7 +223,8 @@ try {
             $timer.Stop()
             if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
             [MirsadChromeWindow]::KeepAwake($false) | Out-Null
-            $stateLabel.Text = 'توقفت المراقبة؛ يمكنك إعادة التشغيل.'
+            $stateLabel.Text = 'توقفت الحماية — أعد المحاولة'
+            $stateLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#B45309')
             $startButton.Enabled = $true
             $tray.Text = 'مرصاد: المراقبة متوقفة'
             [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'توقف مساعد مرصاد', 'OK', 'Error') | Out-Null
@@ -175,12 +237,13 @@ try {
         $script:pending = $false
         $script:failed = $false
         $script:autoHide = $true
-        $stateLabel.Text = 'المراقبة تعمل — ملف Chrome: ' + $script:guardianProfile
+        $stateLabel.Text = 'الحماية تعمل  •  ' + $script:guardianProfile
+        $stateLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#087F73')
         $startButton.Enabled = $false
         $tray.Text = 'مرصاد: مراقبة Chrome تعمل'
         $timer.Start()
     })
-    $form.add_Shown({ $startButton.PerformClick() })
+    $form.add_Shown({ Set-GuardianRound $form 22; Set-GuardianRound $statusCard 16; Set-GuardianRound $featureCard 16; foreach ($button in @($startButton,$exitButton,$hideButton,$closeButton)) { Set-GuardianRound $button 12 }; $startButton.PerformClick() })
     $form.add_FormClosing({ $timer.Stop(); if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null })
     [System.Windows.Forms.Application]::Run($form)
 
@@ -193,6 +256,7 @@ try {
     [MirsadChromeWindow]::KeepAwake($false) | Out-Null
     if ($tray) { $tray.Visible = $false; $tray.Dispose() }
     if ($form) { $form.Dispose() }
+    if ($guardianIcon) { $guardianIcon.Dispose() }
     $mutex.ReleaseMutex()
     $mutex.Dispose()
 }
