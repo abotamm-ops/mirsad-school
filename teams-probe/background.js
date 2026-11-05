@@ -10,12 +10,24 @@ const resolvingScans=new Set();
 const DEFAULT_SCHEDULE_SETTINGS={manualStart:"06:30",periodDuration:45,manualGapMinutes:1,periodCount:7,startPeriod:1,endPeriod:7,scanDelay:1,roundCount:3,roundGapMinutes:5,thirdRoundGapMinutes:5};
 let scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS};
 let PERIODS=[];
+let seventhPeriodPolicy=null;
+function periodDisabled(date,period){return MirsadMonitorModel.isExcludedPeriod(date,period,seventhPeriodPolicy?.date===date?seventhPeriodPolicy:null)}
+async function setSeventhPeriodPolicy(snapshot){
+ const old=seventhPeriodPolicy;seventhPeriodPolicy={date:snapshot.date,seventhPeriodEnabled:snapshot.seventhPeriodEnabled};
+ if(!old||old.date!==snapshot.date)return;
+ const wasDisabled=MirsadMonitorModel.isExcludedPeriod(snapshot.date,7,old),disabled=periodDisabled(snapshot.date,7);
+ if(wasDisabled===disabled)return;
+ const run=await getRun();if(!run?.running)return;
+ if(disabled&&run.period===7){await closeProbeTab(run);run.current=null;run.waitingForCycle2=false;run.nextCycleAt=null;await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await advancePeriod(run,7);return}
+ if(!disabled&&!run.current&&run.period!==7){const p=PERIODS.find(p=>p.n===7),bounds=p?periodBounds(p,new Date(),'active'):null;if(bounds&&Date.now()>=bounds.start.getTime()&&Date.now()<bounds.end.getTime())await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+1000})}
+}
+
 function clockText(n){n=((n%1440)+1440)%1440;return String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0")}
 function parseClock(value){const match=/^(\d{1,2}):(\d{2})$/.exec(scheduleCore.asciiDigits(value||""));if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour<24&&minute<60?hour*60+minute:null}
 function makePeriods(base){if(!Array.isArray(base)||base.length!==7)return [];const b=[];let previousStart=null;for(let i=0;i<base.length;i++){const p=base[i]||{};let start=Number(p.startOffset),end=Number(p.endOffset);if(!Number.isFinite(start)||!Number.isFinite(end))return [];start=((start%1440)+1440)%1440;end=((end%1440)+1440)%1440;if(previousStart!==null&&start<previousStart)start+=1440;if(end<=start)end+=1440;if(end-start>180)return [];b.push({n:i+1,startOffset:start,endOffset:end});previousStart=start}return b.map(p=>({n:p.n,startOffset:p.startOffset,endOffset:p.endOffset,start:clockText(p.startOffset),end:clockText(p.endOffset)}))}
 function makeManualPeriods(startValue,gapValue,durationValue=45,countValue=7,delayValue=1){return scheduleCore.makeManualPeriods(startValue,durationValue,gapValue,countValue,delayValue)}
 function activePeriods(settings){return makeManualPeriods(settings.manualStart,settings.manualGapMinutes,settings.periodDuration,settings.periodCount,settings.scanDelay).filter(p=>p.n>=(settings.startPeriod??1)&&p.n<=(settings.endPeriod??7))}
-async function refreshScheduleSettings(){await MirsadOfficialReady;const saved=await chrome.storage.local.get([SCHEDULE_SETTINGS_KEY,"mirsadDriveDay"]),old=saved[SCHEDULE_SETTINGS_KEY]||{},delay=Number(old.scanDelay),duration=Number(old.periodDuration);scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS,...old,manualStart:old.manualStart||DEFAULT_SCHEDULE_SETTINGS.manualStart,periodDuration:Number.isInteger(duration)&&duration>=1&&duration<=180?duration:DEFAULT_SCHEDULE_SETTINGS.periodDuration,periodCount:7,scanDelay:Number.isInteger(delay)&&delay>=1&&delay<=10?delay:DEFAULT_SCHEDULE_SETTINGS.scanDelay,roundCount:Number.isInteger(Number(old.roundCount))&&Number(old.roundCount)>=1&&Number(old.roundCount)<=3?Number(old.roundCount):3,thirdRoundGapMinutes:Number.isInteger(Number(old.thirdRoundGapMinutes))&&Number(old.thirdRoundGapMinutes)>=1&&Number(old.thirdRoundGapMinutes)<=10?Number(old.thirdRoundGapMinutes):5,roundGapMinutes:Number.isInteger(Number(old.roundGapMinutes))&&Number(old.roundGapMinutes)>=1&&Number(old.roundGapMinutes)<=10?Number(old.roundGapMinutes):5};const desired=Number(old.configuredRoundCount??old.roundCount??3);scheduleSettings.configuredRoundCount=Number.isInteger(desired)&&desired>=1&&desired<=3?desired:3;scheduleSettings.roundCount=scheduleSettings.configuredRoundCount;if(!Number.isInteger(scheduleSettings.startPeriod)||!Number.isInteger(scheduleSettings.endPeriod)||scheduleSettings.startPeriod<1||scheduleSettings.endPeriod>7||scheduleSettings.startPeriod>scheduleSettings.endPeriod){scheduleSettings.startPeriod=1;scheduleSettings.endPeriod=7}PERIODS=activePeriods(scheduleSettings);return scheduleSettings}
+async function refreshScheduleSettings(){await MirsadOfficialReady;const saved=await chrome.storage.local.get([SCHEDULE_SETTINGS_KEY,"mirsadDriveDay"]),old=saved[SCHEDULE_SETTINGS_KEY]||{},delay=Number(old.scanDelay),duration=Number(old.periodDuration);scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS,...old,manualStart:old.manualStart||DEFAULT_SCHEDULE_SETTINGS.manualStart,periodDuration:Number.isInteger(duration)&&duration>=1&&duration<=180?duration:DEFAULT_SCHEDULE_SETTINGS.periodDuration,periodCount:7,scanDelay:Number.isInteger(delay)&&delay>=1&&delay<=10?delay:DEFAULT_SCHEDULE_SETTINGS.scanDelay,roundCount:Number.isInteger(Number(old.roundCount))&&Number(old.roundCount)>=1&&Number(old.roundCount)<=3?Number(old.roundCount):3,thirdRoundGapMinutes:Number.isInteger(Number(old.thirdRoundGapMinutes))&&Number(old.thirdRoundGapMinutes)>=1&&Number(old.thirdRoundGapMinutes)<=10?Number(old.thirdRoundGapMinutes):5,roundGapMinutes:Number.isInteger(Number(old.roundGapMinutes))&&Number(old.roundGapMinutes)>=1&&Number(old.roundGapMinutes)<=10?Number(old.roundGapMinutes):5};const desired=Number(old.configuredRoundCount??old.roundCount??3);scheduleSettings.configuredRoundCount=Number.isInteger(desired)&&desired>=1&&desired<=3?desired:3;scheduleSettings.roundCount=scheduleSettings.configuredRoundCount;if(!Number.isInteger(scheduleSettings.startPeriod)||!Number.isInteger(scheduleSettings.endPeriod)||scheduleSettings.startPeriod<1||scheduleSettings.endPeriod>7||scheduleSettings.startPeriod>scheduleSettings.endPeriod){scheduleSettings.startPeriod=1;scheduleSettings.endPeriod=7}seventhPeriodPolicy=saved.mirsadDriveDay?.snapshot||null;PERIODS=activePeriods(scheduleSettings);return scheduleSettings}
 refreshScheduleSettings().catch(()=>{});
 async function loadPeriodsFromSchedule(tabId,settingsOverride){const activeSettings=settingsOverride||scheduleSettings,response=await chrome.tabs.sendMessage(tabId,{type:"MIRSAD_GET_SCHEDULE",manualPeriodMapping:true});const items=(response?.items||[]).filter(x=>x.teacher&&x.hasLesson);const invalid=items.find(x=>x.validPeriod===false||!Number.isInteger(x.period)||x.period<1||x.period>7);if(invalid)throw new Error("تعذر تحديد رقم الحصة من عمود الجدول بأمان؛ لم يُفتح أي رابط. الخلية التي تعذر ربطها: "+(invalid.reason||invalid.teacher||"غير معروفة"));const periods=activePeriods(activeSettings);if(!periods.length)throw new Error("أدخل بداية الحصة الأولى والمدة والفاصل وعدد الحصص وتأخير الرصد بشكل صحيح.");scheduleSettings={...DEFAULT_SCHEDULE_SETTINGS,...activeSettings};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:scheduleSettings});PERIODS=periods;return {items,periods}}
 
@@ -121,7 +133,7 @@ function periodNow(now=new Date()){
  // Select the active window with the latest start time; ties are ambiguous.
  const active=[];
  for(const p of PERIODS){
-  if(MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(now),p.n))continue;
+  if(periodDisabled(MirsadMonitorModel.day(now),p.n))continue;
   const b=periodBounds(p,now,"active");
   if(b&&now>=b.start&&now<b.end)active.push({period:p,bounds:b});
  }
@@ -136,7 +148,7 @@ function nextPeriod(now=new Date()){
   if(!schoolDay(anchor))continue;
   for(const p of PERIODS){
    const start=dateAtOffset(anchor,p.startOffset);
-   if(start>now&&!MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(start),p.n))candidates.push({period:p,when:start.getTime()});
+   if(start>now&&!periodDisabled(MirsadMonitorModel.day(start),p.n))candidates.push({period:p,when:start.getTime()});
   }
  }
  candidates.sort((a,b)=>a.when-b.when);
@@ -188,7 +200,7 @@ async function startMonitoring(immediate=false){
 async function restoreSuspendedRun(run){if(!run?.immediateMode)return false;await closeProbeTab(run);const previous=run.suspendedRun;if(previous?.running){await saveRun(previous);if(Number.isFinite(run.suspendedNextAt))await chrome.alarms.create(NEXT_ALARM,{when:Math.max(Date.now()+1000,run.suspendedNextAt)});else if(previous.period)await navigateCurrent(previous);else{const active=periodNow(),next=active?null:nextPeriod();if(active)await beginPeriod(previous,active.n);else await chrome.alarms.create(NEXT_ALARM,{when:next.when})}}else{run.running=false;run.current=null;run.immediateMode=false;await saveRun(run)}return true}
 async function beginPeriod(run,periodNo){
  if(!run?.running)return;
- if(MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(),periodNo)){await advancePeriod(run,periodNo);return}
+ if(periodDisabled(MirsadMonitorModel.day(),periodNo)){await advancePeriod(run,periodNo);return}
  const p=PERIODS.find(x=>x.n===periodNo);if(!p)return;
  const now=new Date(), bounds=periodBounds(p,now,"activeOrNext"), start=bounds.start, end=bounds.end;
  if(!run.backtestMode&&now<start){await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:start.getTime()});await setStatus("ينتظر بداية الحصة "+p.n+" عند "+p.start,{waiting:true,period:p.n});return}
@@ -212,7 +224,7 @@ async function beginPeriod(run,periodNo){
 }
 async function navigateCurrent(run){
  if(!run?.running)return;
- if(MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(),run.period)){run.current=null;run.waitingForCycle2=false;run.nextCycleAt=null;await saveRun(run);await advancePeriod(run,run.period);return}try{await CloudMonitoring.assertSelected(run)}catch(e){await pauseMonitoring();await setStatus(e.message);return}
+ if(periodDisabled(MirsadMonitorModel.day(),run.period)){run.current=null;run.waitingForCycle2=false;run.nextCycleAt=null;await saveRun(run);await advancePeriod(run,run.period);return}try{await CloudMonitoring.assertSelected(run)}catch(e){await pauseMonitoring();await setStatus(e.message);return}
  // Hard gate: choose the period that is active NOW, never the next/previous
  // period merely because the run state or link order still points to it.
  if(!run.backtestMode){
@@ -288,7 +300,7 @@ async function navigateCurrent(run){
 }
 async function advancePeriod(run,after){
  if(!run?.running)return;
- const next=PERIODS.find(p=>p.n>after&&!MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(),p.n));
+ const next=PERIODS.find(p=>p.n>after&&!periodDisabled(MirsadMonitorModel.day(),p.n));
  if(!next){
    const nxt=nextPeriod(new Date(Date.now()+1000));
    await setStatus("انتهت حصص اليوم. ينتظر مرصاد الحصة "+nxt.period.n+" في "+nxt.period.start+" في يوم دراسي قادم.",{waiting:true,period:nxt.period.n});
@@ -491,7 +503,7 @@ async function pauseMonitoring(){
 }
 async function resumeMonitoring(){
  if(CloudMonitoring.linksBusy?.())throw new Error('انتظر اكتمال حفظ رابط الحصة');
- await CloudMonitoring.assertSelected(await getRun());await refreshScheduleSettings();const run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};
+ await CloudMonitoring.assertSelected(await getRun());await refreshScheduleSettings();let run=await getRun();if(!run?.paused)return {ok:false,error:"لا يوجد رصد متوقف مؤقتًا"};await CloudMonitoring.pullRemoteLinks();await refreshScheduleSettings();run=await getRun();if(!run?.paused)return {ok:false,error:"تغيرت حالة الرصد أثناء المزامنة"};
  run.paused=false;run.running=true;run.autoResume=run.pauseAutoResume!==false;run.current=null;await saveRun(run);
  await setStatus("تم استئناف الرصد من موضع التوقف، مع مراعاة وقت الحصة الحالية.");
  if(run.periodStartedAt){const active=periodNow(),bounds=active?periodBounds(active,new Date(),"active"):null;if(!bounds||active.n!==run.period||run.periodStartedAt!==bounds.start.getTime()){await recoverPersistedRunAfterBrowserStart();return {ok:true}}}

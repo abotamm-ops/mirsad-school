@@ -12,7 +12,7 @@
   const end=Number(match[1])*60+Number(match[2])+(period-1)*(duration+gap)+duration;
   return now.getTime()>=new Date(date+'T00:00:00+03:00').getTime()+end*60000;
  }
- function isExcludedPeriod(date,period){return Number(period)===7&&/^\d{4}-\d{2}-\d{2}$/.test(String(date))&&new Date(date+'T12:00:00Z').getUTCDay()===4}
+ function isExcludedPeriod(date,period,snapshot){if(Number(period)!==7)return false;if(typeof snapshot?.seventhPeriodEnabled==='boolean')return !snapshot.seventhPeriodEnabled;return Number(period)===7&&/^\d{4}-\d{2}-\d{2}$/.test(String(date))&&new Date(date+'T12:00:00Z').getUTCDay()===4}
  function lessonStarted(data,period,now=new Date()){
   const date=data.snapshot.date,today=day(now);if(date<today)return true;if(date>today)return false;
   const settings={...defaultSchedule,...data.snapshot.scheduleSettings,...data.reportSchedule},match=/^(\d{2}):(\d{2})$/.exec(settings.manualStart||'');
@@ -23,7 +23,7 @@
  function cells(data,options={}){
   if(!data?.snapshot)return [];
   const audit=data.adjustments||[];
-  return data.snapshot.lessons.filter(l=>!isExcludedPeriod(data.snapshot.date,l.period)).map(lesson=>{
+  return data.snapshot.lessons.filter(l=>!isExcludedPeriod(data.snapshot.date,l.period,data.snapshot)).map(lesson=>{
    const reset=[...audit].reverse().find(a=>a.type==='reset'||(a.type==='range-reset'&&a.teacherId===lesson.teacherId&&a.period===lesson.period)),cutoff=reset?.at||0;
    const allScans=(data.records||[]).filter(r=>r.teacherId===lesson.teacherId&&Number(r.period)===lesson.period);
    const scans=allScans.filter(r=>!reset||r.scannedAt>cutoff);
@@ -57,7 +57,7 @@
    if(!Number.isInteger(r.period)||r.period<1||r.period>7||!Number.isFinite(r.scannedAt)||day(new Date(r.scannedAt))!==date)return false;
    const start=base+(r.period-1)*(duration+gap)*60000;return r.scannedAt<start-120000||r.scannedAt>start+duration*60000+120000;
   }))return {...empty,timingMismatch:true};
-  let period=null,startedAt,endAt;for(let p=1;p<=7;p++){if(isExcludedPeriod(data.snapshot.date,p))continue;const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
+  let period=null,startedAt,endAt;for(let p=1;p<=7;p++){if(isExcludedPeriod(data.snapshot.date,p,data.snapshot))continue;const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
   if(!period)return empty;
   const reset=[...(data.adjustments||[])].reverse().find(a=>a.type==='reset'),cutoff=reset?.at||0;
   const scans=(data.records||[]).filter(r=>Number(r.period)===period&&r.scannedAt>=startedAt&&r.scannedAt<=now.getTime()&&r.scannedAt>cutoff);

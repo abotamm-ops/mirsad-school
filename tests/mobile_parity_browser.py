@@ -23,6 +23,8 @@ with sync_playwright() as p:
   elif action=='dates':value={'ok':True,'dates':['2026-11-05'],'authMode':'site-password'}
   elif action=='manualLessonLink':
    requests.append(q);assert q['key']=='phone-admin' and q['period']==5 and q['teacherId']==row['teacherId'];assert q['expectedRevision']==fixture['snapshot']['scheduleRevision'];assert q['expectedUrl']==row['url'];row['url']=q['url'];value={'ok':True,'saved':True,'snapshot':fixture['snapshot']}
+  elif action=='setSeventhPeriod':
+   assert q['key']=='phone-admin';assert q['expectedEnabled']==fixture['snapshot'].get('seventhPeriodEnabled',False);fixture['snapshot']['seventhPeriodEnabled']=q['enabled'];value={'ok':True,'saved':True}
   elif action=='override':
    requests.append(q);fixture.setdefault('adjustments',[]).append({'id':q['requestId'],'sequence':len(requests),'type':'override','teacherId':q['teacherId'],'period':q['period'],'status':q['status'],'at':fixture['serverTime']});value={'ok':True,'saved':True}
   else:value=fixture
@@ -31,7 +33,11 @@ with sync_playwright() as p:
  page=ctx.new_page();page.clock.install(time=datetime(2026,11,5,6,34,tzinfo=timezone.utc));page.on('pageerror',lambda e:errors.append(str(e)));page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable tbody tr')
  cell=page.locator('#todayTable tr[data-teacher-id="'+row['teacherId']+'"] td[data-period="5"]')
  assert 'غائب' in cell.inner_text()
- seventh=page.locator('#todayTable tr[data-teacher-id="'+row['teacherId']+'"] td[data-period="7"]');assert 'حصة الخميس الاختيارية' in seventh.inner_text();assert seventh.locator('a.teams-lesson-link').count()==1;assert seventh.locator('button').count()==0;assert all(word not in seventh.inner_text() for word in ['غائب','بلا رابط','لم يصل رصد','لا توجد حصة']);assert not seventh.evaluate("el=>el.classList.contains('missing-link-cell')")
+ seventh=page.locator('#todayTable tr[data-teacher-id="'+row['teacherId']+'"] td[data-period="7"]');assert seventh.inner_text()=='';assert seventh.locator('button').count()==0;assert not seventh.evaluate("el=>el.classList.contains('missing-link-cell')")
+ page.get_by_role('button',name='تفعيل الحصة السابعة',exact=True).click();page.wait_for_function("document.querySelector('#todayTable .seventh-period-toggle')?.getAttribute('aria-pressed')==='true'")
+ assert 'حصة الخميس الاختيارية' in seventh.inner_text();assert seventh.locator('a.teams-lesson-link').count()==1;assert seventh.locator('button.edit-lesson').count()==1
+ page.reload();page.wait_for_selector('#todayTable tbody tr');assert page.get_by_role('button',name='تعطيل الحصة السابعة',exact=True).count()==1
+ page.get_by_role('button',name='تعطيل الحصة السابعة',exact=True).click();page.wait_for_function("document.querySelector('#todayTable .seventh-period-toggle')?.getAttribute('aria-pressed')==='false'");assert seventh.inner_text()==''
  assert cell.evaluate("el=>el.classList.contains('missing-link-cell')")
  assert cell.evaluate("el=>getComputedStyle(el).backgroundColor")=='rgb(219, 234, 254)'
  page.wait_for_selector('#todayTable .scanning-cell')
@@ -61,4 +67,4 @@ with sync_playwright() as p:
  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
  page.screenshot(path='/tmp/mirsad-phone-stats.png')
  assert not errors,errors
- b.close();print('PASS phone: fifth-period link save/reopen/reload, administrative absence, manual partial, blue missing slots, remote blinking, actual 4-to-3 minute cycle countdown and statistics without extension')
+ b.close();print('PASS phone: fifth-period link save/reopen/reload, administrative absence, manual partial, blue missing slots, remote blinking, actual 4-to-3 minute cycle countdown, persisted seventh-period activation/deactivation and statistics without extension')

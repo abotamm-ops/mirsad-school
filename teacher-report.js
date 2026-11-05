@@ -40,6 +40,6 @@ function documentBytes(report,school='متوسطة عمرو بن مهاجر',fon
  files['word/document.xml']=original.replace(/<w:body>[\s\S]*<\/w:body>/,'<w:body>'+lines.join('')+section+'</w:body>');return zip(files)
 }
 async function download(report,school){const bytes=documentBytes(report,school,await fontBytes()),url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})),a=document.createElement('a');a.href=url;a.download='طلب إفادة - '+typeLabel[report.type||(report.fullDay?'day':'lessons')]+' - '+report.name.replace(/[\\/:*?"<>|]/g,'')+' - '+report.date+'.docx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
-function ready(data,model,now=new Date()){const lessons=(data?.snapshot?.lessons||[]).filter(l=>!model.isExcludedPeriod(data.snapshot.date,l.period));return lessons.length>0&&model.lessonEnded(data,Math.max(...lessons.map(l=>Number(l.period))),now)}
+function ready(data,model,now=new Date()){const lessons=(data?.snapshot?.lessons||[]).filter(l=>!model.isExcludedPeriod(data.snapshot.date,l.period,data.snapshot));return lessons.length>0&&model.lessonEnded(data,Math.max(...lessons.map(l=>Number(l.period))),now)}
 const api={ready,zip,daily,teacherDaily,documentBytes,download,paragraphs,layout,fontBytes,typeLabel};if(typeof module!=='undefined')module.exports=api;else root.MirsadTeacherReport=api;
 })(globalThis);
