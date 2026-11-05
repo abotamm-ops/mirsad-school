@@ -8,8 +8,8 @@ source="""const b=require('./tests/backend-fixture.cjs')(),date='2026-11-05';b.s
 fixture=json.loads(subprocess.run(['node','-e',source],cwd=R,capture_output=True,text=True,check=True).stdout)
 stamp=int(datetime(2026,11,5,6,34,tzinfo=timezone.utc).timestamp()*1000)
 row=next(l for l in fixture['snapshot']['lessons'] if l['period']==5)
-# Historical seventh-period rows must remain entirely blank on Thursday.
-fixture['snapshot']['lessons'].append({**row,'period':7,'url':''})
+# Thursday seventh keeps source lesson information without attendance or missing-link warnings.
+fixture['snapshot']['lessons'].append({**row,'period':7,'subject':'حصة الخميس الاختيارية','url':'https://teams.microsoft.com/meet/123456789?p=fixture'})
 fixture['records'].append({'scanId':'legacy-thursday7','teacherId':row['teacherId'],'teacherName':row['teacherName'],'period':7,'cycle':1,'status':'absent','scannedAt':stamp})
 fixture['serverTime']=stamp;fixture['heartbeat']={'at':stamp,'running':True,'phase':'scanning','period':5,'cycle':1,'totalCycles':3,'activity':{'active':True,'teacher':row['teacherName'],'teacherId':row['teacherId'],'scanId':'phone-active','date':'2026-11-05','period':5,'cycle':1}}
 requests=[]
@@ -31,7 +31,7 @@ with sync_playwright() as p:
  page=ctx.new_page();page.clock.install(time=datetime(2026,11,5,6,34,tzinfo=timezone.utc));page.on('pageerror',lambda e:errors.append(str(e)));page.goto('https://mirsad-school.onrender.com/automatic-monitoring.html');page.wait_for_selector('#todayTable tbody tr')
  cell=page.locator('#todayTable tr[data-teacher-id="'+row['teacherId']+'"] td[data-period="5"]')
  assert 'غائب' in cell.inner_text()
- seventh=page.locator('#todayTable tr[data-teacher-id="'+row['teacherId']+'"] td[data-period="7"]');assert seventh.inner_text()=='';assert seventh.locator('button').count()==0;assert not seventh.evaluate("el=>el.classList.contains('missing-link-cell')")
+ seventh=page.locator('#todayTable tr[data-teacher-id="'+row['teacherId']+'"] td[data-period="7"]');assert 'حصة الخميس الاختيارية' in seventh.inner_text();assert seventh.locator('a.teams-lesson-link').count()==1;assert seventh.locator('button').count()==0;assert all(word not in seventh.inner_text() for word in ['غائب','بلا رابط','لم يصل رصد','لا توجد حصة']);assert not seventh.evaluate("el=>el.classList.contains('missing-link-cell')")
  assert cell.evaluate("el=>el.classList.contains('missing-link-cell')")
  assert cell.evaluate("el=>getComputedStyle(el).backgroundColor")=='rgb(219, 234, 254)'
  page.wait_for_selector('#todayTable .scanning-cell')

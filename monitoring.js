@@ -56,7 +56,7 @@ function renderTable(target,data){
  const root=$(target);root.dataset.date=data?.snapshot?.date||'';root.replaceChildren();
  if(!data?.snapshot){root.append(text('p','لم يبدأ توثيق هذا اليوم بعد. تظهر النتائج بعد تشغيل الرصد.'));if(target==='todayTable')$('todaySummary').replaceChildren();return}
  renderedDays.set(data.snapshot.date,data);
- const table=document.createElement('table'),head=document.createElement('thead'),hr=document.createElement('tr'),timing={...model.defaultSchedule,...data.snapshot.scheduleSettings,...data.reportSchedule},periods=MirsadScheduleCore.makeManualPeriods(timing.manualStart,timing.periodDuration,timing.manualGapMinutes,7,1);hr.append(text('th','المعلم'));for(let i=0;i<7;i++){const th=text('th',''),label=text('div','الحصة '+(i+1)),time=text('small',periods[i]&&!model.isExcludedPeriod(data.snapshot.date,i+1)?periods[i].start+'–'+periods[i].end:'');time.className='period-time';time.dir='ltr';th.append(label,time);hr.append(th)}head.append(hr);table.append(head);
+ const table=document.createElement('table'),head=document.createElement('thead'),hr=document.createElement('tr'),timing={...model.defaultSchedule,...data.snapshot.scheduleSettings,...data.reportSchedule},periods=MirsadScheduleCore.makeManualPeriods(timing.manualStart,timing.periodDuration,timing.manualGapMinutes,7,1);hr.append(text('th','المعلم'));for(let i=0;i<7;i++){const th=text('th',''),label=text('div','الحصة '+(i+1)),time=text('small',periods[i]?periods[i].start+'–'+periods[i].end:'');time.className='period-time';time.dir='ltr';th.append(label,time);hr.append(th)}head.append(hr);table.append(head);
  const body=document.createElement('tbody'),cells=model.cells(data);
  for(const teacher of data.snapshot.teachers.slice().sort((a,b)=>a.name.localeCompare(b.name,'ar',{sensitivity:'base',numeric:true}))){const row=document.createElement('tr');row.dataset.teacherId=teacher.id;row.dataset.teacherName=teacher.name;row.append(text('th',teacher.name));
   for(let period=1;period<=7;period++){
@@ -69,7 +69,10 @@ function renderTable(target,data){
     if(/^https:\/\/(?:teams\.microsoft\.com|teams\.live\.com)\//.test(cell.url||'')){const meeting=text('a','↗ فتح تيمز');meeting.href=cell.url;meeting.target='_blank';meeting.rel='noopener noreferrer';meeting.className='teams-lesson-link';meeting.setAttribute('aria-label','فتح تيمز — '+cell.teacherName+' — الحصة '+cell.period);tools.append(meeting)}
     {const edit=text('button','تعديل الحالة');edit.className='edit-lesson';edit.onclick=()=>detail(cell,data.snapshot.date);tools.append(edit)}td.append(tools);
     if(cell.override)td.append(text('small','معتمد يدويًا'));else if(cell.inferred)td.append(text('small',cell.noLinkAbsence?'غائب · لا يوجد رابط':'لم يصل رصد · انتهت الحصة'));else if(cell.reset)td.append(text('small','تم تصفير التقرير · التوثيق محفوظ'));else if(cell.url==='')td.append(text('small','بلا رابط تيمز · الغياب عند دخول وقت الحصة'));else if(cell.pendingRounds||cell.failedRounds){const notes=[];if(cell.pendingRounds)notes.push('بانتظار '+cell.pendingRounds+' دورة');if(cell.failedRounds)notes.push('تعذّر فحص '+cell.failedRounds+' دورة');td.append(text('small',notes.join(' — ')))}
-   }else{if(!model.isExcludedPeriod(data.snapshot.date,period))td.append(text('span','لا توجد حصة'));td.className='no-lesson'}row.append(td)
+   }else if(model.isExcludedPeriod(data.snapshot.date,period)){
+    const lesson=data.snapshot.lessons.find(l=>l.teacherId===teacher.id&&Number(l.period)===period);
+    if(lesson){const info=text('span',[lesson.subject,lesson.className].filter(Boolean).join(' — '));info.title=info.textContent;td.append(info);const url=MirsadScheduleCore.normalizeTeamsUrl(lesson.url||'');if(url){const link=text('a','↗ فتح تيمز');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.className='teams-lesson-link';td.append(link)}}else td.className='no-lesson';
+   }else{td.append(text('span','لا توجد حصة'));td.className='no-lesson'}row.append(td)
   }body.append(row)
  }
  table.append(body);root.append(table);
