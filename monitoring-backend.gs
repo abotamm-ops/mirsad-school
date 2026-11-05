@@ -83,7 +83,7 @@ function monitorTeacherAccess_(p,props){
  var token=monitorTeacherToken_(props);if(token){if(token.length<32||!monitorEqual_(p.viewToken,token))throw new Error('رابط المشاهدة غير مصرح أو انتهت صلاحيته')}else if(props.getProperty('MONITOR_PUBLIC_READ')!=='true')throw new Error('مشاهدة المعلمين غير مفعّلة');
  var domain=String(props.getProperty('MONITOR_TEACHERS_DOMAIN')||'').trim().toLowerCase();if(domain){var email=String(Session.getActiveUser().getEmail()||'').toLowerCase();if(!email||email.split('@')[1]!==domain)throw new Error('يلزم الدخول بحساب المدرسة للمشاهدة')}
 }
-function monitorHeartbeat_(props,experimentId){var raw=props.getProperty('MONITOR_HEARTBEAT_'+(experimentId||'OFFICIAL'));if(!raw)return null;try{var h=JSON.parse(raw);return {at:Number(h.at)||0,running:h.running===true,phase:String(h.phase||'stopped'),period:Number(h.period)||null,cycle:Number(h.cycle)||null}}catch(ignore){return null}}
+function monitorHeartbeat_(props,experimentId,includeActivity){var raw=props.getProperty('MONITOR_HEARTBEAT_'+(experimentId||'OFFICIAL'));if(!raw)return null;try{var h=JSON.parse(raw),result={at:Number(h.at)||0,running:h.running===true,phase:String(h.phase||'stopped'),period:Number(h.period)||null,cycle:Number(h.cycle)||null,nextCycleAt:Number(h.nextCycleAt)||null,nextCycle:Number(h.nextCycle)||null,totalCycles:Number(h.totalCycles)||null};if(MONITOR_TEACHER_MODEL_.isExcludedPeriod(monitorToday_(),result.period)){result.period=null;result.cycle=null;result.nextCycleAt=null;result.nextCycle=null;if(result.running)result.phase='waiting'}if(includeActivity&&h.activity&&result.period)result.activity=h.activity;return result}catch(ignore){return null}}
 function monitorTeachersLive_(p){
  var props=PropertiesService.getScriptProperties(),experimentId=monitorExperimentId_(p);if(experimentId){var trialToken=props.getProperty('MONITOR_EXPERIMENT_VIEW_'+experimentId);if(!monitorExperimentReader_(p,props)&&!(trialToken&&monitorEqual_(p.viewToken,trialToken)))throw new Error('رابط التجربة غير مصرح')}else monitorTeacherAccess_(p,props);var cache=typeof CacheService!=='undefined'?CacheService.getScriptCache():null,cacheKey='teachers-live-'+experimentId+'-'+monitorToday_();if(cache)try{var cached=cache.get(cacheKey);if(cached){var stored=JSON.parse(cached);stored.serverTime=Date.now();stored.heartbeat=monitorHeartbeat_(props,experimentId);return stored}}catch(ignore){}var date=monitorToday_(),now=new Date(),root=monitorExperimentRoot_(monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT)),experimentId,false),folders=root.getFoldersByName('توثيق غياب '+date),folder=folders.hasNext()?folders.next():null,data=folder?monitorRead_(monitorFile_(folder,'attendance.json'),null):null;
  var result={heartbeat:monitorHeartbeat_(props,experimentId),feed:'teachers-live-v1',source:experimentId?'experiment':'official',experimentId:experimentId||undefined,date:date,serverTime:now.getTime(),updatedAt:null,schedule:{manualStart:'06:30',periodDuration:45,manualGapMinutes:1},currentPeriod:null,rows:[],summary:{present:0,partial:0,partialAbsence:0,absent:0,unresolved:0}};
@@ -153,7 +153,7 @@ function monitorPrepareCurrent_(root,p){
 }
 
 function monitorSaveRecord_(p,data,folder,props,fileName){
- var record=p.record||{},lesson=data.snapshot.lessons.find(function(l){return monitorName_(l.teacherName)===monitorName_(record.scheduledTeacher)&&l.period===Number(record.period)});
+ var record=p.record||{};if(MONITOR_TEACHER_MODEL_.isExcludedPeriod(data.snapshot.date,record.period))return {saved:false,discarded:true};var lesson=data.snapshot.lessons.find(function(l){return monitorName_(l.teacherName)===monitorName_(record.scheduledTeacher)&&l.period===Number(record.period)});
  if(!lesson||typeof record.scanId!=='string'||record.scanId.length>200||!record.scanId)throw new Error('النتيجة لا تطابق جدول اليوم المحفوظ');
  if(!['present','absent','unresolved','no-link'].includes(record.status)||!Number.isInteger(record.cycle)||record.cycle<1||record.cycle>data.snapshot.roundCount)throw new Error('حالة أو دورة غير صالحة');
  if(p.action==='image'){
@@ -187,12 +187,12 @@ function monitorRequest_(p){
  var siteReader=!!sitePassword&&monitorEqual_(p.key,sitePassword);
  var publicRead=props.getProperty('MONITOR_PUBLIC_READ')==='true';
  if(!writer&&!reader&&!siteReader)throw new Error('غير مصرح بالدخول');
- var administrative=['override','resetReport','purgeDay','purgeRange','reportSchedule'].indexOf(p.action)>=0;
+ var administrative=['override','resetReport','purgeDay','purgeRange','reportSchedule'].indexOf(p.action)>=0||(p.action==='manualLessonLink'&&siteReader);
  if(p.action==='adminLogin'){if(!siteReader)throw new Error('أدخل كلمة مرور الموقع الإدارية');return {role:'admin',authMode:'site-password'}}
  if(administrative&&sitePassword&&!siteReader)throw new Error('هذه العملية تتطلب دخول إدارة الموقع');
  if(administrative&&!siteReader){var supplied=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(p.adminPin||''),Utilities.Charset.UTF_8).map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2)}).join('');var expected=props.getProperty('MONITOR_ADMIN_PIN_HASH')||'0e3dc69daef679ae76ca56039591a2002c71041a945a57db4460ee22db2259e5';if(!monitorEqual_(supplied,expected))throw new Error('الرقم السري للإدارة غير صحيح')}
  var reading=['dates','day','teacherLink','experimentInfo','getTimetableSource','scheduleVersions'].indexOf(p.action)>=0;if(!reading&&!writer&&!administrative)throw new Error('صلاحية القراءة لا تسمح بالرفع');
- if(p.action==='heartbeat'){if(!writer)throw new Error('نبض الأداة يتطلب رمز الرفع');if(typeof p.running!=='boolean'||['scanning','waiting','paused','stopped'].indexOf(p.phase)<0||p.running!==(['scanning','waiting'].indexOf(p.phase)>=0))throw new Error('حالة نبض غير صالحة');var heartbeat={at:Date.now(),running:p.running,phase:p.phase,period:Number.isInteger(p.period)&&p.period>=1&&p.period<=7?p.period:null,cycle:Number.isInteger(p.cycle)&&p.cycle>=1&&p.cycle<=3?p.cycle:null};props.setProperty('MONITOR_HEARTBEAT_'+(experimentId||'OFFICIAL'),JSON.stringify(heartbeat));return {heartbeatSaved:true,heartbeat:heartbeat}}
+ if(p.action==='heartbeat'){if(!writer)throw new Error('نبض الأداة يتطلب رمز الرفع');if(typeof p.running!=='boolean'||['scanning','waiting','paused','stopped'].indexOf(p.phase)<0||p.running!==(['scanning','waiting'].indexOf(p.phase)>=0))throw new Error('حالة نبض غير صالحة');var heartbeat={at:Date.now(),running:p.running,phase:p.phase,period:Number.isInteger(p.period)&&p.period>=1&&p.period<=7?p.period:null,cycle:Number.isInteger(p.cycle)&&p.cycle>=1&&p.cycle<=3?p.cycle:null};var nextWait=Number.isFinite(p.nextCycleInMs)&&p.nextCycleInMs>=0&&p.nextCycleInMs<=7200000?p.nextCycleInMs:null;heartbeat.nextCycleAt=heartbeat.running&&heartbeat.phase==='waiting'?(nextWait!==null?Date.now()+nextWait:Number.isFinite(p.nextCycleAt)&&p.nextCycleAt>=Date.now()-60000&&p.nextCycleAt<=Date.now()+7200000?p.nextCycleAt:null):null;heartbeat.nextCycle=heartbeat.nextCycleAt&&Number.isInteger(p.nextCycle)&&p.nextCycle>=1&&p.nextCycle<=3?p.nextCycle:null;heartbeat.totalCycles=Number.isInteger(p.totalCycles)&&p.totalCycles>=1&&p.totalCycles<=3?p.totalCycles:null;if(heartbeat.running&&heartbeat.phase==='scanning'&&p.activity&&typeof p.activity.teacher==='string'&&typeof p.activity.scanId==='string')heartbeat.activity={teacher:p.activity.teacher.slice(0,180),teacherId:typeof p.activity.teacherId==='string'?p.activity.teacherId.slice(0,120):null,scanId:p.activity.scanId.slice(0,200),date:monitorToday_(),period:heartbeat.period,cycle:heartbeat.cycle};props.setProperty('MONITOR_HEARTBEAT_'+(experimentId||'OFFICIAL'),JSON.stringify(heartbeat));return {heartbeatSaved:true,heartbeat:monitorHeartbeat_(props,experimentId,true),linksVersion:Number(props.getProperty('MONITOR_LINKS_VERSION_'+monitorToday_()))||0}}
  var root=monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT));
  if(p.action==='setMonitoringTiming'){if(experimentId||!writer)throw new Error('التوقيت خاص بإضافة المدرسة');var timing=monitorSchedule_(p.scheduleSettings);if(!timing)throw new Error('التوقيت غير صالح');var timingDate=monitorToday_(),timingFolder=monitorDay_(root,timingDate,false),timingFile=monitorFile_(timingFolder,'attendance.json'),timingData=monitorRead_(timingFile,null);if(!timingData)throw new Error('حمّل جدول الرصد من الخطوة 1 أولًا');var newCount=p.scheduleSettings.roundCount===undefined?timingData.snapshot.roundCount:Number(p.scheduleSettings.roundCount);if(!Number.isInteger(newCount)||newCount<1||newCount>3)throw new Error('عدد الدورات غير صالح');if(newCount!==timingData.snapshot.roundCount&&((timingData.records||[]).length||Object.keys(timingData.evidence||{}).length||(timingData.adjustments||[]).length))throw new Error('لا يمكن تغيير عدد دورات يوم فيه تحضير محفوظ؛ العدد الحالي '+timingData.snapshot.roundCount);timingData.snapshot.roundCount=newCount;timingData.timingChanges=(timingData.timingChanges||[]).concat([{at:Date.now(),previous:timingData.snapshot.scheduleSettings||null,previousReport:timingData.reportSchedule||null}]);timingData.snapshot.scheduleSettings=timing;if(timingData.reportSchedule)timingData.reportSchedule=timing;monitorWrite_(timingFolder,'attendance.json',timingData);return {saved:true,snapshot:timingData.snapshot,folderUrl:timingFolder.getUrl()}}
  if(p.action==='publishMonitoringTimetable'){if(experimentId||!writer)throw new Error('التحميل المباشر خاص بإضافة المدرسة المرتبطة');return monitorLoadDirect_(root,p)}
@@ -237,13 +237,13 @@ function monitorRequest_(p){
  if(p.action==='day'&&p.versionId)return {...monitorDayDTO_(monitorArchivedData_(folder,p.versionId)),readOnly:true};
  var file=monitorFile_(folder,'attendance.json'),data=monitorRead_(file,null);
  if(p.action==='fillMissingLinks'||p.action==='manualLessonLink'){
-  if(!writer||experimentId)throw new Error('تعديل الرابط خاص بإضافة المدرسة المرتبطة برمز الرفع');
+  if((!writer&&!siteReader)||experimentId)throw new Error('تعديل الرابط يتطلب دخول إدارة الموقع أو إضافة المدرسة المرتبطة');
   if(date!==monitorToday_()||!data||data.snapshot.sourceType!=='madrasati')throw new Error('تعديل الروابط خاص بجدول الرصد الحالي');
   var edits=[],snap=data.snapshot,sourceFile=monitorFile_(root,'mirsad-timetable-source.json'),source=monitorRead_(sourceFile,{mode:'madrasati'});
   if(p.action==='manualLessonLink'){
    if(p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير الجدول؛ حدّث الصفحة وأعد المحاولة');
    if(typeof p.url!=='string')throw new Error('رابط تيمز غير صالح');var manualUrl=p.url.trim()?monitorNormalizeTeamsLink_(p.url):'';if(p.url.trim()&&!manualUrl)throw new Error('رابط تيمز غير صالح');var row=snap.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
-   if(!row)throw new Error('الحصة غير موجودة؛ حدّث الصفحة');if(row.url===manualUrl)return {merged:true,saved:true,filled:0,snapshot:snap,folderUrl:folder.getUrl()};if(row.url&&(typeof p.expectedUrl!=='string'||p.expectedUrl!==row.url)||!row.url&&p.expectedUrl)throw new Error('تغير رابط الحصة منذ فتح النافذة؛ حدّث الصفحة وأعد المحاولة');
+   if(!row||MONITOR_TEACHER_MODEL_.isExcludedPeriod(snap.date,row.period))throw new Error('الحصة غير موجودة؛ حدّث الصفحة');if(row.url===manualUrl)return {merged:true,saved:true,filled:0,snapshot:snap,folderUrl:folder.getUrl()};if(row.url&&(typeof p.expectedUrl!=='string'||p.expectedUrl!==row.url)||!row.url&&p.expectedUrl)throw new Error('تغير رابط الحصة منذ فتح النافذة؛ حدّث الصفحة وأعد المحاولة');
    edits.push({row:row,url:manualUrl,oldUrl:row.url||''});
   }else{
    if(p.expectedRevision&&p.expectedRevision!==(snap.scheduleRevision||'legacy'))throw new Error('تغير جدول اليوم منذ المعاينة؛ أعد فحص الروابط');
@@ -253,7 +253,7 @@ function monitorRequest_(p){
    // A teacher/date/period/class identifies the scheduled slot; a topic-title
    // change or an unrelated timetable difference must not block its URL.
    // Existing URLs and all lesson metadata remain untouched.
-   for(var row of snap.lessons){if(row.url)continue;var matches=payload.lessons.filter(function(l){return monitorName_(l.teacher)===monitorName_(row.teacherName)&&Number(l.cellIndex)-1===row.period});if(matches.length!==1)continue;var incoming=matches[0];if(!monitorLinkClass_(incoming.lesson)||monitorLinkClass_(incoming.lesson)!==monitorLinkClass_(row.className))continue;if(incoming.teams)edits.push({row:row,url:incoming.teams})}
+   for(var row of snap.lessons){if(row.url||MONITOR_TEACHER_MODEL_.isExcludedPeriod(snap.date,row.period))continue;var matches=payload.lessons.filter(function(l){return monitorName_(l.teacher)===monitorName_(row.teacherName)&&Number(l.cellIndex)-1===row.period});if(matches.length!==1)continue;var incoming=matches[0];if(!monitorLinkClass_(incoming.lesson)||monitorLinkClass_(incoming.lesson)!==monitorLinkClass_(row.className))continue;if(incoming.teams)edits.push({row:row,url:incoming.teams})}
 
   }
   if(edits.length){
@@ -261,7 +261,7 @@ function monitorRequest_(p){
    edits.forEach(function(edit){var previousUrl=edit.row.url||'';if(p.action==='manualLessonLink'&&!edit.url&&edit.row.attendanceUrl===undefined)edit.row.attendanceUrl=previousUrl;edit.row.url=edit.url;data.adjustments.push({type:!edit.url?'link-clear':previousUrl?'link-edit':'link-fill',previousUrl:previousUrl,teacherId:edit.row.teacherId,period:edit.row.period,url:edit.url,manual:p.action==='manualLessonLink',at:Date.now(),sequence:Math.max(0,...data.adjustments.map(function(a){return a.sequence||0}))+1});
     if(source.payload?.importedForDate===date&&source.payload?.scheduleDate===snap.sourceScheduleDate){var lesson=source.payload.lessons.find(function(l){return monitorName_(l.teacher)===monitorName_(edit.row.teacherName)&&Number(l.cellIndex)-1===edit.row.period&&monitorLinkClass_(l.lesson)===monitorLinkClass_(edit.row.className)});if(lesson&&(!lesson.teams||p.action==='manualLessonLink'&&lesson.teams===previousUrl)){lesson.teams=edit.url;lesson.linkState=edit.url?'linked':'unprepared'}}
    });
-   monitorWrite_(folder,'attendance.json',data);source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);
+   data.snapshot.linksUpdatedAt=Math.max(Date.now(),(Number(props.getProperty('MONITOR_LINKS_VERSION_'+date))||0)+1);monitorWrite_(folder,'attendance.json',data);props.setProperty('MONITOR_LINKS_VERSION_'+date,String(data.snapshot.linksUpdatedAt));source.updatedAt=Date.now();monitorWrite_(root,'mirsad-timetable-source.json',source);
   }
   return {merged:true,saved:true,filled:edits.length,completed:edits.map(function(e){return {teacherId:e.row.teacherId,teacher:e.row.teacherName,period:e.row.period,url:e.url}}),snapshot:snap,folderUrl:folder.getUrl()};
  }
@@ -300,7 +300,7 @@ function monitorRequest_(p){
   var entry={id:p.requestId,sequence:data.adjustments.length+1,at:Date.now(),type:p.action==='resetReport'?'reset':p.action};
   if(p.action==='override'){
    var selected=data.snapshot.lessons.find(function(l){return l.teacherId===p.teacherId&&l.period===Number(p.period)});
-   if(!selected||!['present','absent','unresolved'].includes(p.status))throw new Error('اختر حصة وحالة صحيحتين');
+   if(!selected||MONITOR_TEACHER_MODEL_.isExcludedPeriod(data.snapshot.date,selected.period)||!['present','absent','partial','partial-absence','unresolved'].includes(p.status))throw new Error('اختر حصة وحالة صحيحتين');
    entry.teacherId=selected.teacherId;entry.period=selected.period;entry.status=p.status;entry.note=String(p.note||'').slice(0,1000);
   }
   if(p.action==='reportSchedule'){
@@ -312,7 +312,7 @@ function monitorRequest_(p){
  }
  if(['record','image'].includes(p.action)&&purged&&Number(p.record?.scannedAt)<Math.max(JSON.parse(purged).at,Number(data.snapshot.createdAt)||0))return {discarded:true,reason:'هذا الفحص يخص التجربة المحذوفة'};
  if(['record','image'].includes(p.action)&&p.scheduleSettings){data.snapshot.scheduleSettings=monitorSchedule_(p.scheduleSettings)}
- if(p.action==='day'){var result=JSON.parse(JSON.stringify(data));result.heartbeat=monitorHeartbeat_(props,experimentId);if(result.heartbeat)result.serverTime=Date.now();Object.keys(result.evidence||{}).forEach(function(id){var image=result.evidence[id];if(image.record&&!result.records.some(function(r){return r.scanId===id}))result.records.push(image.record)});result.records.forEach(function(r){r.evidenceUrl=result.evidence[r.scanId]?.url||null});delete result.evidence;return result}
+ if(p.action==='day'){var result=JSON.parse(JSON.stringify(data));result.heartbeat=monitorHeartbeat_(props,experimentId,true);if(result.heartbeat)result.serverTime=Date.now();Object.keys(result.evidence||{}).forEach(function(id){var image=result.evidence[id];if(image.record&&!result.records.some(function(r){return r.scanId===id}))result.records.push(image.record)});result.records.forEach(function(r){r.evidenceUrl=result.evidence[r.scanId]?.url||null});delete result.evidence;return result}
  return monitorSaveRecord_(p,data,folder,props,'attendance.json');
 }
 
@@ -370,21 +370,31 @@ var MONITOR_TEACHER_MODEL_=(function(){var module={exports:{}};
   const end=Number(match[1])*60+Number(match[2])+(period-1)*(duration+gap)+duration;
   return now.getTime()>=new Date(date+'T00:00:00+03:00').getTime()+end*60000;
  }
+ function isExcludedPeriod(date,period){return Number(period)===7&&/^\d{4}-\d{2}-\d{2}$/.test(String(date))&&new Date(date+'T12:00:00Z').getUTCDay()===4}
+ function lessonStarted(data,period,now=new Date()){
+  const date=data.snapshot.date,today=day(now);if(date<today)return true;if(date>today)return false;
+  const settings={...defaultSchedule,...data.snapshot.scheduleSettings,...data.reportSchedule},match=/^(\d{2}):(\d{2})$/.exec(settings.manualStart||'');
+  const duration=Number(settings.periodDuration),gap=Number(settings.manualGapMinutes);if(!match||!Number.isFinite(duration)||duration<1||!Number.isFinite(gap)||gap<0)return false;
+  const start=Number(match[1])*60+Number(match[2])+(period-1)*(duration+gap);
+  return now.getTime()>=new Date(date+'T00:00:00+03:00').getTime()+start*60000;
+ }
  function cells(data,options={}){
   if(!data?.snapshot)return [];
   const audit=data.adjustments||[];
-  return data.snapshot.lessons.map(lesson=>{
+  return data.snapshot.lessons.filter(l=>!isExcludedPeriod(data.snapshot.date,l.period)).map(lesson=>{
    const reset=[...audit].reverse().find(a=>a.type==='reset'||(a.type==='range-reset'&&a.teacherId===lesson.teacherId&&a.period===lesson.period)),cutoff=reset?.at||0;
    const allScans=(data.records||[]).filter(r=>r.teacherId===lesson.teacherId&&Number(r.period)===lesson.period);
    const scans=allScans.filter(r=>!reset||r.scannedAt>cutoff);
-   const rounds=Array.from({length:data.snapshot.roundCount},(_,i)=>scans.filter(r=>r.cycle===i+1).sort((a,b)=>b.scannedAt-a.scannedAt)[0]||{status:'unresolved',pending:true});
+   const started=lessonStarted(data,lesson.period,options.now||new Date());
+   const rounds=Array.from({length:data.snapshot.roundCount},(_,i)=>scans.filter(r=>r.cycle===i+1).sort((a,b)=>b.scannedAt-a.scannedAt)[0]||{status:'unresolved',pending:true}).map(r=>r.status==='no-link'&&started?{...r,status:'absent',absenceReason:'no-link'}:r);
    const conclusive=rounds.filter(r=>['present','absent'].includes(r.status));
    const override=[...audit].reverse().find(a=>a.type==='override'&&a.teacherId===lesson.teacherId&&a.period===lesson.period&&(!reset||a.sequence>reset.sequence));
    const ended=lessonEnded(data,lesson.period,options.now||new Date());
-   const inferred=!reset&&!conclusive.length&&ended&&((lesson.attendanceUrl??lesson.url)===''||!scans.length||scans.every(r=>r.status==='no-link'));
+   const noLinkAbsence=!reset&&!conclusive.some(r=>r.status==='present')&&started&&(lesson.url||'')==='';
+   const inferred=noLinkAbsence||(!reset&&!conclusive.length&&ended&&(!scans.length||scans.every(r=>r.status==='no-link')));
    const complete=rounds.every(r=>['present','absent'].includes(r.status));
    const finalState=override?override.status:inferred?'absent':data.snapshot.roundCount===3?(complete?state(rounds,3):rounds.some(r=>!r.pending&&!['present','absent'].includes(r.status))?'unresolved':'pending'):conclusive.length?state(conclusive,conclusive.length):scans.some(r=>r.status==='unresolved')?'unresolved':'pending';
-   return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred,ended,reset:!!reset&&!scans.length&&!override,
+   return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred:!override&&inferred,noLinkAbsence:!override&&noLinkAbsence,ended,started,reset:!!reset&&!scans.length&&!override,
     pendingRounds:override||inferred?0:rounds.filter(r=>r.pending).length,failedRounds:override?0:rounds.filter(r=>!r.pending&&!['present','absent'].includes(r.status)).length,
     evidence:allScans.filter(r=>r.evidenceUrl&&r.status!=='present'),history:allScans,adjustments:audit.filter(a=>a.type==='reset'||(a.teacherId===lesson.teacherId&&a.period===lesson.period)),
     late:!override&&finalState==='partial'&&rounds[0]?.status==='absent'&&rounds.slice(1).some(r=>r.status==='present')};
@@ -405,20 +415,20 @@ var MONITOR_TEACHER_MODEL_=(function(){var module={exports:{}};
    if(!Number.isInteger(r.period)||r.period<1||r.period>7||!Number.isFinite(r.scannedAt)||day(new Date(r.scannedAt))!==date)return false;
    const start=base+(r.period-1)*(duration+gap)*60000;return r.scannedAt<start-120000||r.scannedAt>start+duration*60000+120000;
   }))return {...empty,timingMismatch:true};
-  let period=null,startedAt,endAt;for(let p=1;p<=7;p++){const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
+  let period=null,startedAt,endAt;for(let p=1;p<=7;p++){if(isExcludedPeriod(data.snapshot.date,p))continue;const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
   if(!period)return empty;
   const reset=[...(data.adjustments||[])].reverse().find(a=>a.type==='reset'),cutoff=reset?.at||0;
   const scans=(data.records||[]).filter(r=>Number(r.period)===period&&r.scannedAt>=startedAt&&r.scannedAt<=now.getTime()&&r.scannedAt>cutoff);
   const cycles=Array.from({length:data.snapshot.roundCount},(_,i)=>{const rows=scans.filter(r=>r.cycle===i+1);return {cycle:i+1,count:rows.length,firstResultAt:rows.length?Math.min(...rows.map(r=>r.scannedAt)):null,lastResultAt:rows.length?Math.max(...rows.map(r=>r.scannedAt)):null}});
   const alerts=[];for(const cell of cells(data,{now}).filter(c=>c.period===period)){
-   const history=scans.filter(r=>r.teacherId===cell.teacherId).sort((a,b)=>a.scannedAt-b.scannedAt||a.cycle-b.cycle),conclusive=history.filter(r=>['present','absent'].includes(r.status)),latest=conclusive[conclusive.length-1];
+   const history=scans.filter(r=>r.teacherId===cell.teacherId).map(r=>r.status==='no-link'?{...r,status:'absent',absenceReason:'no-link'}:r).sort((a,b)=>a.scannedAt-b.scannedAt||a.cycle-b.cycle),conclusive=history.filter(r=>['present','absent'].includes(r.status)),latest=conclusive[conclusive.length-1];
    if(cell.override?cell.override.status!=='absent':latest?.status!=='absent')continue;
-   alerts.push({teacherId:cell.teacherId,teacher:cell.teacherName,period,cycle:cell.override?null:latest.cycle,scannedAt:cell.override?cell.override.at:latest.scannedAt,manual:!!cell.override,evidenceUrl:latest?.status==='absent'?(latest.evidenceUrl||null):null,evidenceCycle:latest?.status==='absent'?latest.cycle:null,evidenceAt:latest?.status==='absent'?latest.scannedAt:null,cycles:cycles.map(c=>{const rows=history.filter(r=>r.cycle===c.cycle),last=rows[rows.length-1];return {cycle:c.cycle,status:last?.status||'pending',scannedAt:last?.scannedAt||null}})});
+   alerts.push({teacherId:cell.teacherId,teacher:cell.teacherName,period,cycle:cell.override?null:latest.cycle,scannedAt:cell.override?cell.override.at:latest.scannedAt,manual:!!cell.override,...(latest?.absenceReason?{absenceReason:latest.absenceReason}:{}),evidenceUrl:latest?.status==='absent'?(latest.evidenceUrl||null):null,evidenceCycle:latest?.status==='absent'?latest.cycle:null,evidenceAt:latest?.status==='absent'?latest.scannedAt:null,cycles:cycles.map(c=>{const rows=history.filter(r=>r.cycle===c.cycle),last=rows[rows.length-1];return {cycle:c.cycle,status:last?.status||'pending',scannedAt:last?.scannedAt||null}})});
   }
   alerts.sort((a,b)=>a.scannedAt-b.scannedAt);
   return {date,period,startedAt,endAt,minutesIntoPeriod:Math.floor((now.getTime()-startedAt)/60000),alerts,cycles,latestScanAt:scans.length?Math.max(...scans.map(r=>r.scannedAt)):null};
  }
- const api={normalize,day,state,cells,presentation,stats,lessonEnded,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
+ const api={normalize,day,state,cells,presentation,stats,lessonEnded,lessonStarted,isExcludedPeriod,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
 })(globalThis);
 
 return module.exports})();

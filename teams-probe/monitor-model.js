@@ -12,21 +12,31 @@
   const end=Number(match[1])*60+Number(match[2])+(period-1)*(duration+gap)+duration;
   return now.getTime()>=new Date(date+'T00:00:00+03:00').getTime()+end*60000;
  }
+ function isExcludedPeriod(date,period){return Number(period)===7&&/^\d{4}-\d{2}-\d{2}$/.test(String(date))&&new Date(date+'T12:00:00Z').getUTCDay()===4}
+ function lessonStarted(data,period,now=new Date()){
+  const date=data.snapshot.date,today=day(now);if(date<today)return true;if(date>today)return false;
+  const settings={...defaultSchedule,...data.snapshot.scheduleSettings,...data.reportSchedule},match=/^(\d{2}):(\d{2})$/.exec(settings.manualStart||'');
+  const duration=Number(settings.periodDuration),gap=Number(settings.manualGapMinutes);if(!match||!Number.isFinite(duration)||duration<1||!Number.isFinite(gap)||gap<0)return false;
+  const start=Number(match[1])*60+Number(match[2])+(period-1)*(duration+gap);
+  return now.getTime()>=new Date(date+'T00:00:00+03:00').getTime()+start*60000;
+ }
  function cells(data,options={}){
   if(!data?.snapshot)return [];
   const audit=data.adjustments||[];
-  return data.snapshot.lessons.map(lesson=>{
+  return data.snapshot.lessons.filter(l=>!isExcludedPeriod(data.snapshot.date,l.period)).map(lesson=>{
    const reset=[...audit].reverse().find(a=>a.type==='reset'||(a.type==='range-reset'&&a.teacherId===lesson.teacherId&&a.period===lesson.period)),cutoff=reset?.at||0;
    const allScans=(data.records||[]).filter(r=>r.teacherId===lesson.teacherId&&Number(r.period)===lesson.period);
    const scans=allScans.filter(r=>!reset||r.scannedAt>cutoff);
-   const rounds=Array.from({length:data.snapshot.roundCount},(_,i)=>scans.filter(r=>r.cycle===i+1).sort((a,b)=>b.scannedAt-a.scannedAt)[0]||{status:'unresolved',pending:true});
+   const started=lessonStarted(data,lesson.period,options.now||new Date());
+   const rounds=Array.from({length:data.snapshot.roundCount},(_,i)=>scans.filter(r=>r.cycle===i+1).sort((a,b)=>b.scannedAt-a.scannedAt)[0]||{status:'unresolved',pending:true}).map(r=>r.status==='no-link'&&started?{...r,status:'absent',absenceReason:'no-link'}:r);
    const conclusive=rounds.filter(r=>['present','absent'].includes(r.status));
    const override=[...audit].reverse().find(a=>a.type==='override'&&a.teacherId===lesson.teacherId&&a.period===lesson.period&&(!reset||a.sequence>reset.sequence));
    const ended=lessonEnded(data,lesson.period,options.now||new Date());
-   const inferred=!reset&&!conclusive.length&&ended&&((lesson.attendanceUrl??lesson.url)===''||!scans.length||scans.every(r=>r.status==='no-link'));
+   const noLinkAbsence=!reset&&!conclusive.some(r=>r.status==='present')&&started&&(lesson.url||'')==='';
+   const inferred=noLinkAbsence||(!reset&&!conclusive.length&&ended&&(!scans.length||scans.every(r=>r.status==='no-link')));
    const complete=rounds.every(r=>['present','absent'].includes(r.status));
    const finalState=override?override.status:inferred?'absent':data.snapshot.roundCount===3?(complete?state(rounds,3):rounds.some(r=>!r.pending&&!['present','absent'].includes(r.status))?'unresolved':'pending'):conclusive.length?state(conclusive,conclusive.length):scans.some(r=>r.status==='unresolved')?'unresolved':'pending';
-   return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred,ended,reset:!!reset&&!scans.length&&!override,
+   return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred:!override&&inferred,noLinkAbsence:!override&&noLinkAbsence,ended,started,reset:!!reset&&!scans.length&&!override,
     pendingRounds:override||inferred?0:rounds.filter(r=>r.pending).length,failedRounds:override?0:rounds.filter(r=>!r.pending&&!['present','absent'].includes(r.status)).length,
     evidence:allScans.filter(r=>r.evidenceUrl&&r.status!=='present'),history:allScans,adjustments:audit.filter(a=>a.type==='reset'||(a.teacherId===lesson.teacherId&&a.period===lesson.period)),
     late:!override&&finalState==='partial'&&rounds[0]?.status==='absent'&&rounds.slice(1).some(r=>r.status==='present')};
@@ -47,18 +57,18 @@
    if(!Number.isInteger(r.period)||r.period<1||r.period>7||!Number.isFinite(r.scannedAt)||day(new Date(r.scannedAt))!==date)return false;
    const start=base+(r.period-1)*(duration+gap)*60000;return r.scannedAt<start-120000||r.scannedAt>start+duration*60000+120000;
   }))return {...empty,timingMismatch:true};
-  let period=null,startedAt,endAt;for(let p=1;p<=7;p++){const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
+  let period=null,startedAt,endAt;for(let p=1;p<=7;p++){if(isExcludedPeriod(data.snapshot.date,p))continue;const start=base+(p-1)*(duration+gap)*60000,end=start+duration*60000;if(now.getTime()>=start&&now.getTime()<end){period=p;startedAt=start;endAt=end;break}}
   if(!period)return empty;
   const reset=[...(data.adjustments||[])].reverse().find(a=>a.type==='reset'),cutoff=reset?.at||0;
   const scans=(data.records||[]).filter(r=>Number(r.period)===period&&r.scannedAt>=startedAt&&r.scannedAt<=now.getTime()&&r.scannedAt>cutoff);
   const cycles=Array.from({length:data.snapshot.roundCount},(_,i)=>{const rows=scans.filter(r=>r.cycle===i+1);return {cycle:i+1,count:rows.length,firstResultAt:rows.length?Math.min(...rows.map(r=>r.scannedAt)):null,lastResultAt:rows.length?Math.max(...rows.map(r=>r.scannedAt)):null}});
   const alerts=[];for(const cell of cells(data,{now}).filter(c=>c.period===period)){
-   const history=scans.filter(r=>r.teacherId===cell.teacherId).sort((a,b)=>a.scannedAt-b.scannedAt||a.cycle-b.cycle),conclusive=history.filter(r=>['present','absent'].includes(r.status)),latest=conclusive[conclusive.length-1];
+   const history=scans.filter(r=>r.teacherId===cell.teacherId).map(r=>r.status==='no-link'?{...r,status:'absent',absenceReason:'no-link'}:r).sort((a,b)=>a.scannedAt-b.scannedAt||a.cycle-b.cycle),conclusive=history.filter(r=>['present','absent'].includes(r.status)),latest=conclusive[conclusive.length-1];
    if(cell.override?cell.override.status!=='absent':latest?.status!=='absent')continue;
-   alerts.push({teacherId:cell.teacherId,teacher:cell.teacherName,period,cycle:cell.override?null:latest.cycle,scannedAt:cell.override?cell.override.at:latest.scannedAt,manual:!!cell.override,evidenceUrl:latest?.status==='absent'?(latest.evidenceUrl||null):null,evidenceCycle:latest?.status==='absent'?latest.cycle:null,evidenceAt:latest?.status==='absent'?latest.scannedAt:null,cycles:cycles.map(c=>{const rows=history.filter(r=>r.cycle===c.cycle),last=rows[rows.length-1];return {cycle:c.cycle,status:last?.status||'pending',scannedAt:last?.scannedAt||null}})});
+   alerts.push({teacherId:cell.teacherId,teacher:cell.teacherName,period,cycle:cell.override?null:latest.cycle,scannedAt:cell.override?cell.override.at:latest.scannedAt,manual:!!cell.override,...(latest?.absenceReason?{absenceReason:latest.absenceReason}:{}),evidenceUrl:latest?.status==='absent'?(latest.evidenceUrl||null):null,evidenceCycle:latest?.status==='absent'?latest.cycle:null,evidenceAt:latest?.status==='absent'?latest.scannedAt:null,cycles:cycles.map(c=>{const rows=history.filter(r=>r.cycle===c.cycle),last=rows[rows.length-1];return {cycle:c.cycle,status:last?.status||'pending',scannedAt:last?.scannedAt||null}})});
   }
   alerts.sort((a,b)=>a.scannedAt-b.scannedAt);
   return {date,period,startedAt,endAt,minutesIntoPeriod:Math.floor((now.getTime()-startedAt)/60000),alerts,cycles,latestScanAt:scans.length?Math.max(...scans.map(r=>r.scannedAt)):null};
  }
- const api={normalize,day,state,cells,presentation,stats,lessonEnded,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
+ const api={normalize,day,state,cells,presentation,stats,lessonEnded,lessonStarted,isExcludedPeriod,defaultSchedule,live};if(typeof module!=='undefined')module.exports=api;else root.MirsadMonitorModel=api;
 })(globalThis);

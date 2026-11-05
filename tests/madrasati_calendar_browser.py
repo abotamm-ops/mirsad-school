@@ -24,6 +24,11 @@ with sync_playwright() as p:
  launcher_result=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
  assert launcher_result['lessons'][6]['teams']=='https://teams.microsoft.com/l/meetup-join/period7?anon=true'
  assert launcher_result['lessons'][1]['teams']=='https://teams.microsoft.com/l/meetup-join/period2'
+ # Fifth-period links are collected before its start using the same verified
+ # teacher/date/slot/class contract, including copied Teams launcher links.
+ page.evaluate("api.TimeTable[4].SubjectName='علوم';api.TimeTable[4].PresenterUrl='https://teams.microsoft.com/dl/launcher/launcher.html?url='+encodeURIComponent('/_#/l/meetup-join/naif-fifth?anon=true')")
+ fifth=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')
+ assert fifth['lessons'][4]['period']==5 and fifth['lessons'][4]['teams']=='https://teams.microsoft.com/l/meetup-join/naif-fifth?anon=true'
  # JSON order must not swap first and seventh: slot number is authoritative.
  page.evaluate('api=structuredClone(base);api.TimeTable.reverse()')
  unordered=page.evaluate('MirsadMadrasatiReader.calendarTimetable(MirsadMadrasatiReader.timetable())')

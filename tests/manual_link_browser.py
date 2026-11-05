@@ -13,60 +13,28 @@ with sync_playwright() as p:
  def api(r):
   action=r.request.post_data_json['action'];actions.append(action)
   if action=='adminLogin':value={'ok':True,'role':'admin'}
+  elif action=='manualLessonLink':
+   q=r.request.post_data_json;row=next(l for l in fixture['snapshot']['lessons'] if l['teacherId']==q['teacherId'] and l['period']==q['period']);assert q['expectedRevision']==fixture['snapshot']['scheduleRevision'];assert q['expectedUrl']==row['url'];row['url']=q['url'];value={'ok':True,'saved':True,'snapshot':fixture['snapshot']}
   elif action=='dates':value={'ok':True,'dates':['2026-11-01'],'authMode':'site-password'}
   else:value=fixture
   r.fulfill(json=value)
  context.route('https://script.google.com/**',api)
  page=context.new_page();page.clock.install(time=datetime(2026,11,1,5,0,tzinfo=timezone.utc));page.on('pageerror',lambda e:errors.append(str(e)));page.goto('https://mirsad-school.onrender.com/index.html');page.wait_for_selector('#todayTable tbody tr');assert page.url.endswith('/automatic-monitoring.html');assert page.locator('#todayTable tbody tr').count()==2
  assert page.locator('.add-lesson-link').count()==0
- page.evaluate("window.addEventListener('message',e=>{if(e.data?.source==='mirsad-monitor-control'&&e.data.type==='manualLink')window.manualRequest=e.data.payload})")
+ # Link editing works without a desktop extension. The API is authoritative.
  page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .round-info').click()
  field=page.get_by_role('textbox',name='رابط تيمز للحصة');field.fill('https://evil.example/meet/x');assert 'غير صالح' in page.locator('#detailBody').inner_text()
- page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
- page.wait_for_function("document.querySelector('#detailBody').textContent.includes('ألصق رابط حضور')")
- assert not page.evaluate('!!window.manualRequest')
+ page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click();page.wait_for_function("document.querySelector('#detailBody').textContent.includes('ألصق رابط حضور')")
+ assert 'manualLessonLink' not in actions
  url='https://teams.microsoft.com/l/meetup-join/manual-fixture'
  from urllib.parse import quote
- field.fill('https://teams.microsoft.com/dl/launcher/launcher.html?url='+quote('/_#/l/meetup-join/manual-fixture',safe=''));assert 'صيغة الرابط صحيحة' in page.locator('#detailBody').inner_text();page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
- page.wait_for_function('!!window.manualRequest')
- request=page.evaluate('window.manualRequest');row=fixture['snapshot']['lessons'][1]
- assert request['date']=='2026-11-01' and request['teacherId']==row['teacherId'] and request['period']==2
- assert request['expectedUrl']==''
- assert request['expectedRevision']==fixture['snapshot']['scheduleRevision']
- # Correlation prevents an unrelated/stale response from closing the editor.
- page.evaluate("window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:'wrong'}},location.origin)")
- assert page.locator('#details').is_visible()
- fixture['snapshot']['lessons'][1]['url']=url
- page.evaluate("r=>window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:r.requestId}},location.origin)",request)
- page.wait_for_function("!document.querySelector('#details').open")
- assert page.locator('#todayTable a.teams-lesson-link').count()==2
- assert page.locator('#todayTable a.teams-lesson-link').nth(1).get_attribute('href')==url
- page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .lesson-state').click()
- assert page.get_by_role('textbox',name='رابط تيمز للحصة').input_value()==url
- assert page.get_by_role('textbox',name='رابط تيمز للحصة').get_attribute('readonly') is None
- assert page.get_by_role('button',name='حفظ رابط تيمز',exact=True).count()==1
- page.evaluate('window.manualRequest=null')
- corrected='https://teams.microsoft.com/meet/corrected-fixture'
- page.get_by_role('textbox',name='رابط تيمز للحصة').fill(corrected)
- page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
- page.wait_for_function('!!window.manualRequest');edit=page.evaluate('window.manualRequest')
- assert edit['expectedUrl']==url and edit['url']==corrected
- fixture['snapshot']['lessons'][1]['url']=corrected
- page.evaluate("r=>window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:r.requestId}},location.origin)",edit)
- page.wait_for_function("!document.querySelector('#details').open")
- assert page.locator('#todayTable a.teams-lesson-link').nth(1).get_attribute('href')==corrected
- page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .lesson-state').click()
- page.evaluate('window.manualRequest=null')
- page.get_by_role('textbox',name='رابط تيمز للحصة').fill('')
- page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click()
- page.wait_for_function('!!window.manualRequest');clear=page.evaluate('window.manualRequest')
- assert clear['url']=='' and clear['expectedUrl']==corrected
- fixture['snapshot']['lessons'][1]['url']=''
- fixture['snapshot']['lessons'][1]['attendanceUrl']=corrected
- page.evaluate("r=>window.postMessage({source:'mirsad-monitor-extension',type:'manualLink',payload:{ok:true,saved:true,requestId:r.requestId}},location.origin)",clear)
- page.wait_for_function("!document.querySelector('#details').open")
- assert page.locator('#todayTable a.teams-lesson-link').count()==1
- page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .round-info').click()
- assert page.get_by_role('textbox',name='رابط تيمز للحصة').input_value()==''
+ field.fill('https://teams.microsoft.com/dl/launcher/launcher.html?url='+quote('/_#/l/meetup-join/manual-fixture',safe=''));page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click();page.wait_for_selector('#details',state='hidden')
+ assert fixture['snapshot']['lessons'][1]['url']==url
+ assert page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] a.teams-lesson-link').get_attribute('href')==url
+ page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .round-info').click();field=page.get_by_role('textbox',name='رابط تيمز للحصة');assert field.input_value()==url
+ field.fill('');page.get_by_role('button',name='حفظ رابط تيمز',exact=True).click();page.wait_for_selector('#details',state='hidden')
+ assert fixture['snapshot']['lessons'][1]['url']==''
+ assert page.locator('#todayTable tbody tr').nth(1).locator('td[data-period="2"] .teams-lesson-link').count()==0
+ assert page.locator('#todayTable tbody tr').first.locator('a[href*="drive.google.com"]').count()==1
  assert not errors,errors
- b.close();print('PASS manual link editor validation, exact date/teacher/period/revision request, correlated confirmation and persisted table refresh without browser errors')
+ b.close();print('PASS manual link editor validation, direct authenticated date/teacher/period/revision request, server confirmation and persisted table refresh without browser errors')

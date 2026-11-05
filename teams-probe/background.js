@@ -121,6 +121,7 @@ function periodNow(now=new Date()){
  // Select the active window with the latest start time; ties are ambiguous.
  const active=[];
  for(const p of PERIODS){
+  if(MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(now),p.n))continue;
   const b=periodBounds(p,now,"active");
   if(b&&now>=b.start&&now<b.end)active.push({period:p,bounds:b});
  }
@@ -135,7 +136,7 @@ function nextPeriod(now=new Date()){
   if(!schoolDay(anchor))continue;
   for(const p of PERIODS){
    const start=dateAtOffset(anchor,p.startOffset);
-   if(start>now)candidates.push({period:p,when:start.getTime()});
+   if(start>now&&!MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(start),p.n))candidates.push({period:p,when:start.getTime()});
   }
  }
  candidates.sort((a,b)=>a.when-b.when);
@@ -187,6 +188,7 @@ async function startMonitoring(immediate=false){
 async function restoreSuspendedRun(run){if(!run?.immediateMode)return false;await closeProbeTab(run);const previous=run.suspendedRun;if(previous?.running){await saveRun(previous);if(Number.isFinite(run.suspendedNextAt))await chrome.alarms.create(NEXT_ALARM,{when:Math.max(Date.now()+1000,run.suspendedNextAt)});else if(previous.period)await navigateCurrent(previous);else{const active=periodNow(),next=active?null:nextPeriod();if(active)await beginPeriod(previous,active.n);else await chrome.alarms.create(NEXT_ALARM,{when:next.when})}}else{run.running=false;run.current=null;run.immediateMode=false;await saveRun(run)}return true}
 async function beginPeriod(run,periodNo){
  if(!run?.running)return;
+ if(MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(),periodNo)){await advancePeriod(run,periodNo);return}
  const p=PERIODS.find(x=>x.n===periodNo);if(!p)return;
  const now=new Date(), bounds=periodBounds(p,now,"activeOrNext"), start=bounds.start, end=bounds.end;
  if(!run.backtestMode&&now<start){await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:start.getTime()});await setStatus("ينتظر بداية الحصة "+p.n+" عند "+p.start,{waiting:true,period:p.n});return}
@@ -209,7 +211,8 @@ async function beginPeriod(run,periodNo){
  await navigateCurrent(run);
 }
 async function navigateCurrent(run){
- if(!run?.running)return;try{await CloudMonitoring.assertSelected(run)}catch(e){await pauseMonitoring();await setStatus(e.message);return}
+ if(!run?.running)return;
+ if(MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(),run.period)){run.current=null;run.waitingForCycle2=false;run.nextCycleAt=null;await saveRun(run);await advancePeriod(run,run.period);return}try{await CloudMonitoring.assertSelected(run)}catch(e){await pauseMonitoring();await setStatus(e.message);return}
  // Hard gate: choose the period that is active NOW, never the next/previous
  // period merely because the run state or link order still points to it.
  if(!run.backtestMode){
@@ -275,7 +278,7 @@ async function navigateCurrent(run){
    return;
  }
  const item=run.periodItems[run.index];
- if(!item.url){const record={teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:"",status:"no-link",detail:"لا يوجد رابط Teams لهذه الحصة؛ لم يُسجّل غياب.",scannedAt:Date.now(),cycle:run.cycle||0};run.results.push(record);if(!run.testMode&&!run.backtestMode)await appendDailyReport(record);run.index++;run.current=null;await saveRun(run);await setStatus("الحصة "+p.n+" — "+item.teacher+": لا يوجد رابط Teams؛ يتابع مرصاد المعلم التالي.",{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle,last:record});await navigateCurrent(run);return}
+ if(!item.url){const record={scanId:"no-link-"+run.period+"-"+run.cycle+"-"+run.index+"-"+Date.now(),teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",url:"",status:"no-link",detail:"غائب إداريًا لعدم توفر رابط Teams عند رصد الحصة؛ قابل للتعديل، دون إثبات مصوّر.",scannedAt:Date.now(),cycle:run.cycle||0};run.results.push(record);if(!run.testMode&&!run.backtestMode){await appendDailyReport(record);await CloudMonitoring.record(run,record).catch(()=>{})}run.index++;run.current=null;await saveRun(run);await setStatus("الحصة "+p.n+" — "+item.teacher+": غائب لعدم توفر رابط Teams؛ يمكن تعديل الحالة وإضافة الرابط، ويتابع مرصاد المعلم التالي.",{period:p.n,teacher:item.teacher,done:run.index,total:run.periodItems.length,cycle:run.cycle,last:record});await navigateCurrent(run);return}
  if(!isTeamsMeetingUrl(item.url)){run.results.push({teacher:item.teacher,scheduledTeacher:item.teacher,period:run.period,subject:item.subject||"",className:item.className||"",status:"unresolved",detail:"تجاوز مرصاد رابطًا لا يطابق نطاقات Teams المسموحة؛ لم يفتحه.",scannedAt:Date.now(),cycle:run.cycle});run.index++;run.current=null;await saveRun(run);await navigateCurrent(run);return}
  run.current={...item,retryCount:scanRetryState(run)?.attempts.length||0,scanDeadlineAt:Date.now()+SCAN_TIMEOUT_MS,scanId:String(run.period)+"-"+String(run.cycle)+"-"+String(run.index)+"-"+String(Date.now())+"-retry"+String(scanRetryState(run)?.attempts.length||0)};await saveRun(run);
  await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);await chrome.alarms.create(SCAN_TIMEOUT_ALARM,{when:Date.now()+SCAN_TIMEOUT_MS});
@@ -285,7 +288,7 @@ async function navigateCurrent(run){
 }
 async function advancePeriod(run,after){
  if(!run?.running)return;
- const next=PERIODS.find(p=>p.n>after);
+ const next=PERIODS.find(p=>p.n>after&&!MirsadMonitorModel.isExcludedPeriod(MirsadMonitorModel.day(),p.n));
  if(!next){
    const nxt=nextPeriod(new Date(Date.now()+1000));
    await setStatus("انتهت حصص اليوم. ينتظر مرصاد الحصة "+nxt.period.n+" في "+nxt.period.start+" في يوم دراسي قادم.",{waiting:true,period:nxt.period.n});
@@ -373,6 +376,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
    if(run.waitingForCycle2){
     const now=new Date(),bounds=periodBounds(p,now,"past"),active=periodNow(now);
     if(!bounds||now.getTime()<bounds.start.getTime()||now.getTime()>=bounds.end.getTime()||!active||active.n!==p.n){run.waitingForCycle2=false;await saveRun(run);await setStatus("أُلغيت الدورة التالية للحصة "+p.n+" لأن الوقت الحالي لم يعد داخل نافذة الحصة نفسها.",{period:p.n,cycle:1,cycle2Skipped:true});await advancePeriod(run,p.n);return}
+    if(CloudMonitoring.pullRemoteLinks){try{await CloudMonitoring.pullRemoteLinks()}catch(error){await setStatus('تعذر تحديث روابط الجوال؛ يستمر الرصد بالروابط المحفوظة. '+String(error.message))}const latest=await getRun();if(!latest?.running||latest.paused||latest.period!==run.period||latest.cycle!==run.cycle||!latest.waitingForCycle2)return;Object.assign(run,latest)}
     run.waitingForCycle2=false;run.nextCycleAt=null;run.cycle=Math.min(run.cycle+1,scheduleSettings.roundCount);run.index=0;run.periodItems=scheduleCore.selectPeriodItems(run.schedule,run.period);await saveRun(run);await setStatus("بدأت الدورة "+run.cycle+" للحصة "+p.n+" بعد التحقق من رقم الحصة ووقتها.",{period:p.n,cycle:run.cycle,done:0,total:run.periodItems.length});await navigateCurrent(run);return}
    if(!run.current&&run.index===0&&(run.cycle||1)===1){await beginPeriod(run,run.period)}else{await navigateCurrent(run)}return
   }await advancePeriod(run,run.period);return}
@@ -513,6 +517,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  if(message?.type==='MIRSAD_DASHBOARD_ROUNDS'){
   (async()=>{const count=Number(message.count),gap=Number(message.gap),thirdGap=Number(message.thirdGap??5);if(!Number.isInteger(thirdGap)||thirdGap<1||thirdGap>10||!Number.isInteger(count)||(count<1||count>3)||!Number.isInteger(gap)||gap<1||gap>10)throw new Error('اختر من دورة إلى ثلاث، وكل فاصل من 1 إلى 10 دقائق');const run=await getRun();if(run?.running)throw new Error('أوقف الرصد قبل تغيير الإعدادات');const frozen=(await chrome.storage.local.get('mirsadDriveDay')).mirsadDriveDay;await refreshScheduleSettings();scheduleSettings={...scheduleSettings,roundCount:count,configuredRoundCount:count,roundGapMinutes:gap,thirdRoundGapMinutes:thirdGap};await chrome.storage.local.set({[SCHEDULE_SETTINGS_KEY]:scheduleSettings});sendResponse({ok:true})})().catch(e=>sendResponse({ok:false,error:e.message}));return true
  }
+ if(message?.type==='MIRSAD_REFRESH_REMOTE_LINKS'){CloudMonitoring.pullRemoteLinks().then(()=>sendResponse({ok:true})).catch(e=>sendResponse({ok:false,error:e.message}));return true}
  if(message?.type==='MIRSAD_SCAN_ACTIVITY'){MirsadScanActivity.info().then(sendResponse).catch(()=>sendResponse({ok:false}));return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_INFO'){LocalBackup.info().then(sendResponse).catch(e=>sendResponse({ok:false,error:String(e.message)}));return true}
  if(message?.type==='MIRSAD_LOCAL_BACKUP_CHECK'){LocalBackup.check().then(sendResponse);return true}
