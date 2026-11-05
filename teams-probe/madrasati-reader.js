@@ -74,7 +74,7 @@
  // Without a JSON class identity, retain the independent row/details fallback.
  const subjectDiff=item.SubjectName&&norm(item.SubjectName)!==norm(lesson.title);
  if(subjectDiff&&!item.ClassRoomName){
-  if(lesson.teams||lesson.detailUrl)return {...lesson,linkResolution:'row-fallback'};
+  if(lesson.teams||lesson.detailUrl)return {...lesson,linkResolution:'row-fallback',calendarLinkUnverified:!!item.PresenterUrl};
   throw new Error('مادة الحصة '+lesson.period+' تختلف عن عنوان الدرس وبيانات الفصل غير متاحة للتحقق');
  }
  const raw=item.PresenterUrl;if(raw===null||raw===undefined||raw==='')return lesson;
