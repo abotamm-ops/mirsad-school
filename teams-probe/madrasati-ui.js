@@ -5,16 +5,16 @@
   const r=await chrome.runtime.sendMessage({type:'MIRSAD_SOURCE_INFO'});if(!r?.ok)return;
   if(!editing)$('scheduleSource').value=r.mode;$('collectMadrasati').hidden=false;
   for(const id of ['madrasatiDateLabel','madrasatiDateHint'])$(id).hidden=r.mode!=='madrasati';
-  $('madrasatiSourceDate').disabled=!!r.state?.running||!!r.pending;
+  $('madrasatiSourceDate').disabled=!!r.state?.running||!!r.pending||!!r.recording;if(r.recordingSourceDate)$('madrasatiSourceDate').value=r.recordingSourceDate;
   if(!dateEditing&&!$('madrasatiSourceDate').value)$('madrasatiSourceDate').value=r.selectedDate;
-  $('collectMadrasati').disabled=!!r.state?.running||!!r.pending;$('scheduleSource').disabled=!!r.state?.running;
+  $('collectMadrasati').disabled=!!r.state?.running||!!r.pending;$('scheduleSource').disabled=!!r.state?.running||!!r.recording;
   if(!errorText)void globalThis.MirsadPopupWorkflow?.source(r);const dialog=$('importDecision');if(r.pending){$('importDecisionSummary').textContent='الجديد: '+r.pending.sourceDate+' · '+r.pending.nextLessons+' حصة. السابق: '+r.pending.previousLessons+' حصة · '+r.pending.previousRecords+' نتيجة · '+r.pending.previousImages+' صورة.';if(!dialog.open)dialog.showModal()}else if(dialog.open&&!decisionBusy)dialog.close();const selected=$('madrasatiSourceDate').value,last=r.lastSuccess;
   const result=r.state?.error?r.state.text:last?.date&&last.date!==selected?'التاريخ المختار: '+selected+' — آخر نقل ناجح: '+last.date+' ('+last.lessons+' حصة)':r.state?.text;
   $('scheduleSourceStatus').textContent=errorText||(r.state?.running?r.state.text:selectionNotice||result)||'المصدر مدرستي — جاهز للتحميل إلى الرصد الآلي';
  }catch{}}
  async function saveDate(showNotice=true){dateEditing=true;const value=$('madrasatiSourceDate').value;if(!validDate(value))return false;
   errorText='';if(showNotice)selectionNotice='جارٍ حفظ التاريخ المختار…';
-  try{await chrome.storage.local.set({[DATE_KEY]:value});if(showNotice&&$('madrasatiSourceDate').value===value){selectionNotice='تم حفظ تاريخ الجدول '+value+'؛ اضغط «نقل من مدرستي إلى مرصاد» لبدء الجمع.';$('scheduleSourceStatus').textContent=selectionNotice}return true}
+  try{const active=await chrome.storage.local.get(['mirsadAutoRun','mirsadDriveDay']);if(active.mirsadAutoRun?.running&&active.mirsadDriveDay?.snapshot?.sourceScheduleDate!==value){errorText='أثناء الرصد حدّث روابط تاريخ الجدول الجاري فقط';$('scheduleSourceStatus').textContent=errorText;return false}await chrome.storage.local.set({[DATE_KEY]:value});if(showNotice&&$('madrasatiSourceDate').value===value){selectionNotice='تم حفظ تاريخ الجدول '+value+'؛ اضغط «نقل من مدرستي إلى مرصاد» لبدء الجمع.';$('scheduleSourceStatus').textContent=selectionNotice}return true}
   catch{errorText='تعذر حفظ التاريخ؛ أعد اختيار التاريخ قبل النقل';$('scheduleSourceStatus').textContent=errorText;return false}
  }
  $('scheduleSource').onchange=async()=>{editing=true;errorText='';selectionNotice='';const r=await chrome.runtime.sendMessage({type:'MIRSAD_SOURCE_SELECT',mode:$('scheduleSource').value});if(!r?.ok){errorText=r?.error||'تعذر حفظ المصدر؛ حدّث السكربت';$('scheduleSourceStatus').textContent=errorText;return}editing=false;await refresh()};

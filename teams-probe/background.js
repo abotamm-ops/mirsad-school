@@ -201,6 +201,11 @@ async function startMonitoring(immediate=false){
  else{const now=new Date();const next=nextPeriod(now);await setStatus("لا توجد حصة نشطة الآن. الوقت الحالي "+now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". أقرب موعد: الحصة "+next.period.n+" عند "+next.period.start+".",{waiting:true,period:next.period.n,now:now.toISOString(),nextAt:next.when,periods:PERIODS});await chrome.alarms.clear(NEXT_ALARM);await chrome.alarms.create(NEXT_ALARM,{when:next.when})}
 }
 async function restoreSuspendedRun(run){if(!run?.immediateMode)return false;await closeProbeTab(run);const previous=run.suspendedRun;if(previous?.running){await saveRun(previous);if(Number.isFinite(run.suspendedNextAt))await chrome.alarms.create(NEXT_ALARM,{when:Math.max(Date.now()+1000,run.suspendedNextAt)});else if(previous.period)await navigateCurrent(previous);else{const active=periodNow(),next=active?null:nextPeriod();if(active)await beginPeriod(previous,active.n);else await chrome.alarms.create(NEXT_ALARM,{when:next.when})}}else{run.running=false;run.current=null;run.immediateMode=false;await saveRun(run)}return true}
+async function wakeUpdatedLinks(){
+ const run=await getRun();if(!run?.running||run.paused||run.current||run.waitingForCycle2||run.periodItems?.length)return;
+ const active=periodNow();if(!active||active.n!==run.period||!scheduleCore.selectPeriodItems(run.schedule,active.n).length)return;
+ await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+1000});
+}
 async function beginPeriod(run,periodNo){
  if(!run?.running)return;
  if(periodDisabled(MirsadMonitorModel.day(),periodNo)){await advancePeriod(run,periodNo);return}
