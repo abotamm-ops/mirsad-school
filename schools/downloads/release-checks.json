@@ -1,9 +1,9 @@
 {
-  "version": "2.1.0",
-  "sha256": "76daf146f226ee2c0bb22fa718d9416e1b309d0759ac840dea0c121de327968b",
-  "googleDeployment": "updated-reported-by-owner",
+  "version": "2.1.1",
+  "sha256": "11aa43f82a53631e177c4b1866deb46f7d4e2febb2adc33041963a763e4910b7",
+  "requiredBackendVersion": "2.1.0",
+  "backendUpdateRequired": false,
   "windowsFieldTest": "required",
   "unpackedExtensionTest": "blocked-by-managed-browser-policy",
-  "localServicePortalAndPackedReaderTests": "passed",
-  "liveGoogleEmail": "not-tested-from-workspace"
+  "localServicePortalAndPackedReaderTests": "passed"
 }
