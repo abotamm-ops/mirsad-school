@@ -1,6 +1,6 @@
 {
   "version": "2.0.3",
-  "sha256": "59b416650df153d227f12ed3d94ae6f78bf737c4690aa9c6e8d8ce4f4b5d12e2",
+  "sha256": "a8c7dbddc6414fe6ceff1f65771993c0b12f0aa60713950df9e20e048a7d0d81",
   "googleDeployment": "owner-action-required",
   "windowsFieldTest": "required",
   "unpackedExtensionTest": "blocked-by-managed-browser-policy",
