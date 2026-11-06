@@ -1,0 +1,12 @@
+{
+  "version": "2.1.0",
+  "sha256": "76daf146f226ee2c0bb22fa718d9416e1b309d0759ac840dea0c121de327968b",
+  "googleDeployment": "owner-action-required",
+  "windowsFieldTest": "required",
+  "unpackedExtensionTest": "blocked-by-managed-browser-policy",
+  "localServicePortalAndPackedReaderTests": "passed",
+  "websiteRollout": "pending-owner-google-update",
+  "emailTests": "mocked-no-live-email-sent",
+  "accountAndTransferTests": "passed",
+  "browserUIAndLiveTests": "passed"
+}
