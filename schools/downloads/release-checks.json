@@ -1,6 +1,6 @@
 {
-  "version": "2.1.10",
-  "sha256": "7dbee29eb98aaf676e021853a35655414cf05a92f4e2a178e411594f8b53b4f2",
+  "version": "2.1.11",
+  "sha256": "32ecb07335316841a91ae9b0e32b9fc52b14640679e55957c75561c09d1a5b66",
   "requiredBackendVersion": "2.1.0",
   "backendUpdateRequired": false,
   "windowsFieldTest": "required",
