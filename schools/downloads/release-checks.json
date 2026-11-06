@@ -1,6 +1,6 @@
 {
-  "version": "2.0.0",
-  "sha256": "e31bff53797eb8781c28bc9bee75c16d5b9a6c5dedb7e7c9c213e043455c10d7",
+  "version": "2.0.1",
+  "sha256": "af48050da282e20fe052d3bf20f67bdc3c14d1f07991c5e8fc1a41a84f981d75",
   "googleDeployment": "owner-action-required",
   "windowsFieldTest": "required",
   "unpackedExtensionTest": "blocked-by-managed-browser-policy",
