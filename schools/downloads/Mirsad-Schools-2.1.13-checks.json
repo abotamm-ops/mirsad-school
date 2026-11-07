@@ -1,0 +1,13 @@
+{
+  "version": "2.1.13",
+  "customerExtension": "2.1.13",
+  "helperUnchangedFrom": "2.1.12",
+  "ownerServiceRequired": "2.1.13",
+  "tests": {
+    "schoolAuthorizationAndTransport": 11,
+    "browser": "mocked Google APIs; Chromium with Edge user agent; no extension; 13-second delay; disconnect/recovery; mobile; full encrypted owner preview"
+  },
+  "scope": "schools/ only; personal edition unchanged",
+  "fieldTestRequired": "One Windows school recorder and a separate viewer before wider rollout",
+  "sha256": "319fd34cbaa6db7883ee7a326adeee6c03aa6cdddacc5a72b105c48ee92dd590"
+}
