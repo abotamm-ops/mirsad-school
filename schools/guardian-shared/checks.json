@@ -1,0 +1,16 @@
+{
+  "version": "3.0.0",
+  "helperSha256": "f94ae66ad5ab376eef127dc3ba190d5a8842676e2d4a17bd35c489e6a1ab6cde",
+  "tests": [
+    "Go embedded files extraction/cleanup",
+    "validated CLI arguments",
+    "actual PowerShell selection against synthetic Chrome profiles",
+    "PowerShell full-script parser",
+    "compiled C# title recognition for both editions",
+    "minimization policy and conflict checks",
+    "Windows x64 GUI cross-build"
+  ],
+  "windowsDesktopFieldTest": false,
+  "extensionsUnchanged": true,
+  "googleScriptsUnchanged": true
+}
