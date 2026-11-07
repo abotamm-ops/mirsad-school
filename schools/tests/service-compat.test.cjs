@@ -1,0 +1,4 @@
+const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
+const ctx=vm.createContext({});vm.runInContext(fs.readFileSync(path.join(__dirname,'../service-compat.js'),'utf8'),ctx);const supports=ctx.MirsadSchoolsServiceCompat.supports;
+test('owner accepts supported schools service patches and minors',()=>{for(const version of ['2.1.0','2.1.13','2.1.14','2.2.0'])assert.equal(supports({version,accounts:true,singleExtensionSession:true}),true,version)});
+test('owner rejects old, unknown and incomplete account protocols',()=>{for(const version of ['2.0.99','1.9.9','3.0.0','','invalid','2.1.13-beta'])assert.equal(supports({version,accounts:true,singleExtensionSession:true}),false,version);for(const v of [null,{}, {version:'2.1.13'}, {version:'2.1.13',accounts:true,singleExtensionSession:false}])assert.equal(supports(v),false)});
