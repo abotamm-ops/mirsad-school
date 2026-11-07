@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Guardian-Selection.ps1')
 function Assert($value,$message){if(-not $value){throw $message}}
 $root=Join-Path ([System.IO.Path]::GetTempPath()) ('mirsad-selection-test-'+[guid]::NewGuid())
@@ -28,7 +28,9 @@ try {
     [void][System.Management.Automation.Language.Parser]::ParseInput($main,[ref]$tokens,[ref]$errors)
     Assert ($errors.Count -eq 0) ('PowerShell parse errors: '+($errors|Out-String))
     $timer=$main.Substring($main.IndexOf('$timer.add_Tick'),$main.IndexOf('$startButton.add_Click')-$main.IndexOf('$timer.add_Tick'))
-    Assert (-not $timer.Contains('ShowWindowAsync')) 'Timer must respect minimization'
+    Assert ($timer.Contains('GuardForeground')) 'Guard must retain Chrome while allowing the panel'
+    Assert ($main.Contains('$form.ShowInTaskbar = $true') -and $main.Contains('$form.MinimizeBox = $true')) 'Panel needs ordinary taskbar and minimize controls'
+    Assert ($main.Contains('$pauseButton.add_Click') -and $main.Contains('SetWindowLong(hwnd,-16,state.Style)')) 'Stop must restore Chrome controls'
     Assert ($timer.Contains('$launch.Url')) 'Launch must use the selected edition URL'
     Assert (-not $timer.Contains('$inventory[0]')) 'Must not focus an arbitrary other Chrome window'
     Assert ($main.Contains('Local\MirsadUnifiedGuardian') -and $main.Contains('Local\MirsadSchoolsGuardian')) 'Missing old-helper conflict protection'

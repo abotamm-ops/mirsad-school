@@ -1,0 +1,4 @@
+c0bfba5dace9e8d1386bf372184a4346fefdd3d7c981cfa1a4d67ffc03bbb732  Mirsad-Teams-0.6.76.zip
+208c9718f16429cacf8d54c1add6e28ce6d8152f627b981c5ed989116e5c7690  Mirsad-Schools-2.2.1.zip
+e5801ac4defa193987ba88f5db4e7e9a2ae33acd7607a91c865fbd8098627f5f  Mirsad-Shared-Guardian-3.2.0.zip
+97d88fa4eefea3b2d756cf622fbf036f18b42ac6bc60f12a7e3a996e931257d2  Mirsad-Update-2026-11-07-SOURCE.zip

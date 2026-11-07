@@ -1,0 +1,116 @@
+{
+  "manifest_version": 3,
+  "name": "مرصاد — المدارس",
+  "version": "2.2.1",
+  "description": "رصد حصص المعلمين من مدرستي وتيمز بحساب مستقل للمدرسة وجهاز رصد واحد",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "alarms",
+    "downloads",
+    "unlimitedStorage",
+    "webRequest",
+    "idle",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://teams.microsoft.com/*",
+    "https://teams.live.com/*",
+    "https://schools.madrasati.sa/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*",
+    "https://mirsad-school.onrender.com/schools/*"
+  ],
+  "action": {
+    "default_title": "مرصاد المدارس — للعملاء",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/off-16.png",
+      "32": "icons/off-32.png",
+      "48": "icons/off-48.png",
+      "128": "icons/off-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*"
+      ],
+      "js": [
+        "schedule-core.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mirsad-school.onrender.com/schools/*"
+      ],
+      "js": [
+        "schedule-core.js",
+        "schedule.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mirsad-school.onrender.com/schools/automatic-monitoring.html"
+      ],
+      "js": [
+        "monitor-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://schools.madrasati.sa/*"
+      ],
+      "js": [
+        "schedule-core.js",
+        "madrasati-reader.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mirsad-school.onrender.com/schools/school-settings.html"
+      ],
+      "js": [
+        "commercial-enroll-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mirsad-school.onrender.com/schools/automatic-monitoring.html"
+      ],
+      "js": [
+        "local-day-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mirsad-school.onrender.com/schools/automatic-monitoring.html*"
+      ],
+      "js": [
+        "auto-links-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/off-16.png",
+    "32": "icons/off-32.png",
+    "48": "icons/off-48.png",
+    "128": "icons/off-128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoXI/fz3293yQp3Lf1KqVjNvk9sC9IgTIy8E8yDpdO6yv/WgkdF2+fvMe4fZKz85rAfDXc8gllfQegaiFluwiZ2PrvNtgTOIVbHupSGXsmCBFAitI7hpYj3kdhJtOWdhrCTE5OA3mmKEve90YQBKBQ3jcs59RjuiamBHZ1+YgW+Tvh0eLU0Ua0xRs31+iBd6whW/NUfuYcz2sAZEeVVAkP+tqMq+X/BFAEuAXY1HcxBcxlAa2TqQ4kJYyGwcHDd0Fix0GdYPOH+W7i8iLx/OlDJuD0jK2tloqRx61P5twFeMloKYRPkJPrpRmyj5OINJ9GpnNW3+diV1KDgxhrSkPZQIDAQAB",
+  "minimum_chrome_version": "120"
+}

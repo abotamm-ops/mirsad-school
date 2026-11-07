@@ -1,4 +1,4 @@
-importScripts("restore-official.js","schedule-core.js","monitor-model.js","visible-schedule.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js","madrasati-source.js","classic-restore.js","device-state.js","live-heartbeat.js");
+importScripts("restore-official.js","schedule-core.js","monitor-model.js","visible-schedule.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js","madrasati-source.js","classic-restore.js","device-state.js","live-heartbeat.js");importScripts('guardian-workspace.js','auto-links.js');
 const scheduleCore = globalThis.MirsadScheduleCore;
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
 const SCHEDULE_SETTINGS_KEY="mirsadScheduleSettings";
@@ -96,14 +96,7 @@ function isTeamsMeetingUrl(value){
   return u.protocol==="https:" && (u.hostname==="teams.microsoft.com" || u.hostname==="teams.live.com") && u.pathname.length>1;
  }catch(_){return false}
 }
-async function ensureProbeTab(run){
- if(run?.tabId!=null){try{await chrome.tabs.get(run.tabId);return run.tabId}catch(_){run.tabId=null}}
- // Keep probe tabs in the guardian's pinned window so another Chrome window cannot obscure evidence.
- const guardianTabs=await chrome.tabs.query({url:'https://mirsad-school.onrender.com/automatic-monitoring.html*'});
- const guardian=guardianTabs.filter(t=>{try{return new URL(t.url).searchParams.get('guardian')==='1'}catch{return false}}).sort((a,b)=>b.id-a.id)[0];
- const tab=await chrome.tabs.create({url:"about:blank",active:false,...(Number.isInteger(guardian?.windowId)?{windowId:guardian.windowId}:{})});
- run.tabId=tab.id;await saveRun(run);return tab.id;
-}
+async function ensureProbeTab(run){return MirsadWorkspace.ensureProbeTab(run)}
 function dateAtOffset(anchor,minuteOffset){
  const d=new Date(anchor);d.setHours(0,0,0,0);d.setMinutes(minuteOffset);return d;
 }
@@ -207,6 +200,8 @@ async function wakeUpdatedLinks(){
  await chrome.alarms.create(NEXT_ALARM,{when:Date.now()+1000});
 }
 async function beginPeriod(run,periodNo){
+ await MirsadAutoLinks.beforeCycle(run);const freshAutoRun=await getRun();if(!freshAutoRun?.running||freshAutoRun.paused||freshAutoRun.startedAt!==run.startedAt||(freshAutoRun.controlEpoch??0)!==(run.controlEpoch??0))return;Object.assign(run,freshAutoRun);
+
  if(!run?.running)return;
  if(periodDisabled(MirsadMonitorModel.day(),periodNo)){await advancePeriod(run,periodNo);return}
  const p=PERIODS.find(x=>x.n===periodNo);if(!p)return;
@@ -396,7 +391,7 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
    if(run.waitingForCycle2){
     const now=new Date(),bounds=periodBounds(p,now,"past"),active=periodNow(now);
     if(!bounds||now.getTime()<bounds.start.getTime()||now.getTime()>=bounds.end.getTime()||!active||active.n!==p.n){run.waitingForCycle2=false;await saveRun(run);await setStatus("أُلغيت الدورة التالية للحصة "+p.n+" لأن الوقت الحالي لم يعد داخل نافذة الحصة نفسها.",{period:p.n,cycle:1,cycle2Skipped:true});await advancePeriod(run,p.n);return}
-    if(CloudMonitoring.pullRemoteLinks){try{await CloudMonitoring.pullRemoteLinks()}catch(error){await setStatus('تعذر تحديث روابط الجوال؛ يستمر الرصد بالروابط المحفوظة. '+String(error.message))}const latest=await getRun();if(!latest?.running||latest.paused||latest.period!==run.period||latest.cycle!==run.cycle||!latest.waitingForCycle2)return;Object.assign(run,latest)}
+    await MirsadAutoLinks.beforeCycle(run);if(CloudMonitoring.pullRemoteLinks){try{await CloudMonitoring.pullRemoteLinks()}catch(error){await setStatus('تعذر تحديث روابط الجوال؛ يستمر الرصد بالروابط المحفوظة. '+String(error.message))}const latest=await getRun();if(!latest?.running||latest.paused||latest.period!==run.period||latest.cycle!==run.cycle||!latest.waitingForCycle2)return;Object.assign(run,latest)}
     run.waitingForCycle2=false;run.nextCycleAt=null;run.cycle=Math.min(run.cycle+1,scheduleSettings.roundCount);run.index=0;run.periodItems=scheduleCore.selectPeriodItems(run.schedule,run.period);await saveRun(run);await setStatus("بدأت الدورة "+run.cycle+" للحصة "+p.n+" بعد التحقق من رقم الحصة ووقتها.",{period:p.n,cycle:run.cycle,done:0,total:run.periodItems.length});await navigateCurrent(run);return}
    if(!run.current&&run.index===0&&(run.cycle||1)===1){await beginPeriod(run,run.period)}else{await navigateCurrent(run)}return
   }await advancePeriod(run,run.period);return}
@@ -477,12 +472,12 @@ async function performEvidenceCapture(message,sender){
     const run=await getRun();
     if(!run?.running||run.current?.scanId!==message.scanId||![run.tabId,...(run.probeTabIds||[])].includes(sender.tab.id)){return {ok:false,error:"Stale or unrelated scan"}}
     if(isDiagnostic){const saved=await chrome.storage.local.get('mirsadEvidenceRecords');const proof=(saved.mirsadEvidenceRecords||[]).find(e=>e.scanId===message.scanId&&e.status==='absent'&&e.evidenceVerified===true&&Number(e.period)===Number(message.period));if(proof)return {ok:true,filename:proof.filename,proofAlreadySaved:true}}
-    const [activeTab,sourceTab]=await Promise.all([
+    sender.tab=await MirsadWorkspace.prepareCapture(sender.tab.id);const [activeTab,sourceTab]=await Promise.all([
      chrome.tabs.query({active:true,windowId:sender.tab.windowId}).then(tabs=>tabs[0]),
      chrome.tabs.get(sender.tab.id)
     ]);
     if(activeTab?.id!==sender.tab.id||!/^https:\/\/(?:teams\.microsoft\.com|teams\.live\.com)\//i.test(sourceTab.url||"")){return {ok:false,error:"Teams tab is not active"}}
-    const screenshot=await chrome.tabs.captureVisibleTab(sender.tab.windowId,{format:"png"});
+    const screenshot=await MirsadWorkspace.captureTeams(sender.tab.id,message.scanId);
     const dataUrl=await labelEvidenceCapture(screenshot,message.teacher,message.status,message.period,run.cycle);
     const now=Date.now();
     const safeName=String(message.teacher||"معلم").replace(/[\\/:*?"<>|]/g,"_").slice(0,70);

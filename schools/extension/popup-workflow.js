@@ -1,0 +1,18 @@
+/* Presentation state only. Never writes monitoring data or changes execution order. */
+var MirsadPopupWorkflow=(()=>{
+ const $=id=>document.getElementById(id),key='mirsadPopupWorkflow',day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),fields=['startPeriod','endPeriod','manualStart','periodDuration','manualGapMinutes','scanDelay','roundCount','roundGapMinutes','thirdRoundGapMinutes'];let saved={},timingDirty=false,sourceTicket=null;
+ const fingerprint=()=>JSON.stringify(fields.map(id=>$(id).value));
+ function mark(id,state){const b=$(id);if(!b)return;b.dataset.stepState=state;b.dataset.stepLabel={pending:'بانتظار الإجراء',busy:'جارٍ التنفيذ',done:'تم التحقق',error:'تعذر التنفيذ',paused:'متوقف مؤقتًا'}[state];b.setAttribute('aria-label',b.textContent.trim()+' — '+b.dataset.stepLabel)}
+ async function remember(name,value){saved={...saved,date:day(),[name]:value};await chrome.storage.local.set({[key]:saved})}
+ async function init(){try{const s=(await chrome.storage.local.get(key))[key];saved=s?.date===day()?s:{date:day()}}catch{}}
+ const ready=init();
+ function timingLoaded(){void ready.then(()=>{if(!timingDirty)mark('save-time',saved.timing===fingerprint()?'done':'pending')})}
+ async function timingSaved(){timingDirty=false;await ready;await remember('timing',fingerprint());mark('save-time','done')}
+ fields.forEach(id=>$(id).addEventListener('input',()=>{timingDirty=true;mark('save-time','pending')}));
+ async function source(info){await ready;const mode=$('scheduleSource').value,date=$('madrasatiSourceDate').value;let state='pending';if(info.pending){mark('collectMadrasati',info.state?.error?'error':'busy');return}if(mode==='madrasati'&&sourceTicket&&info.lastSuccess?.updatedAt===sourceTicket)state='busy';if(mode==='madrasati'&&info.state?.running)state='busy';else if(mode==='madrasati'&&info.state?.error)state='error';else if(mode==='madrasati'&&(!sourceTicket||info.lastSuccess?.updatedAt!==sourceTicket)&&info.lastSuccess?.importedForDate===day()&&info.lastSuccess.date===date&&info.lastSuccess.lessons>0&&info.lastSuccess.monitoringPrepared===true&&info.lastSuccess.activeVerified===true)state='done';;if(state==='done')sourceTicket=null;mark('collectMadrasati',state)}
+ async function prepared(dayInfo){await ready;const s=dayInfo?.snapshot;if(!s?.scheduleRevision||!s.lessons?.length||dayInfo.date!==day())throw new Error('لم تتأكد جاهزية جدول اليوم');if(dayInfo?.date===day()&&s?.scheduleRevision&&s.lessons?.length){await remember('prepared',s.scheduleRevision);mark('begin-day','done')}}
+ async function drive(info){await ready;const d=info.day,s=d?.snapshot;const verified=info.ready===true&&d?.date===day()&&s?.sourceScheduleDate===$('madrasatiSourceDate').value&&s?.sourceType==='madrasati'&&s?.lessons?.length&&s?.scheduleRevision;if(verified){if(saved.prepared!==s.scheduleRevision)await remember('prepared',s.scheduleRevision);mark('begin-day','done')}else if(!['error','busy'].includes($('begin-day').dataset.stepState))mark('begin-day','pending')}
+ function run(run){if(saved.date&&saved.date!==day()){saved={date:day()};mark('save-time','pending')}if(run?.waitingForReconnect){mark('start','busy');return}if(run?.running&&!run.immediateMode&&!run.backtestMode&&!run.testMode)mark('start','done');else if(run?.paused)mark('start','paused');else if($('start').dataset.stepState!=='error')mark('start','pending')}
+ function sourceStarted(info){sourceTicket=info?.lastSuccess?.updatedAt||'no-previous-import';mark('collectMadrasati','busy')}
+ return {sourceStarted,mark,timingLoaded,timingSaved,source,prepared,drive,run};
+})();

@@ -26,10 +26,62 @@ public static class MirsadChromeWindow {
     [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hwnd, int mode);
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll", EntryPoint="GetWindowLongW")] static extern int GetWindowLong(IntPtr hwnd, int index);
-    public static void Pin(IntPtr hwnd) { if ((GetWindowLong(hwnd,-20) & 8)==0) SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13); }
-    public static void Unpin(IntPtr hwnd) { if (IsWindow(hwnd)) SetWindowPos(hwnd,new IntPtr(-2),0,0,0,0,0x13); }
+    [DllImport("user32.dll", EntryPoint="SetWindowLongW")] static extern int SetWindowLong(IntPtr hwnd,int index,int value);
+    [DllImport("user32.dll")] static extern IntPtr GetSystemMenu(IntPtr hwnd,bool revert);
+    [DllImport("user32.dll")] static extern bool EnableMenuItem(IntPtr menu,uint item,uint flags);
+    [DllImport("user32.dll")] static extern bool DrawMenuBar(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
-    public static void FocusForOpen(IntPtr hwnd) { if(!IsWindow(hwnd)||IsIconic(hwnd))return; SetForegroundWindow(hwnd); }
+    struct Saved { public int Style; public bool Topmost; }
+    static readonly Dictionary<IntPtr,Saved> saved=new Dictionary<IntPtr,Saved>();
+    delegate IntPtr KeyboardProc(int code,IntPtr wparam,IntPtr lparam);
+    static readonly KeyboardProc keyboardProc=Keyboard;
+    static IntPtr keyboardHook=IntPtr.Zero,protectedWindow=IntPtr.Zero;
+    [DllImport("user32.dll")] static extern IntPtr SetWindowsHookEx(int type,KeyboardProc callback,IntPtr module,uint thread);
+    [DllImport("user32.dll")] static extern bool UnhookWindowsHookEx(IntPtr hook);
+    [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr hook,int code,IntPtr wp,IntPtr lp);
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+    [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] static extern IntPtr GetModuleHandle(string name);
+    static IntPtr Keyboard(int code,IntPtr wp,IntPtr lp) {
+        if(code>=0 && protectedWindow!=IntPtr.Zero && GetForegroundWindow()==protectedWindow && (wp.ToInt32()==0x100||wp.ToInt32()==0x104)) {
+            int key=Marshal.ReadInt32(lp),flags=Marshal.ReadInt32(lp,8);
+            bool control=(GetAsyncKeyState(0x11)&0x8000)!=0;
+            // Limit interception to the guarded Chrome window. Ctrl+Shift+Q always remains available.
+            if((key==0x73&&(flags&0x20)!=0)||(key==0x57&&control))return new IntPtr(1);
+        }
+        return CallNextHookEx(keyboardHook,code,wp,lp);
+    }
+    public static void Pin(IntPtr hwnd) {
+        if(!IsWindow(hwnd))return;
+        if(keyboardHook==IntPtr.Zero) {
+            keyboardHook=SetWindowsHookEx(13,keyboardProc,GetModuleHandle(null),0);
+            if(keyboardHook==IntPtr.Zero)throw new InvalidOperationException("تعذر تفعيل حماية اختصارات نافذة الرصد");
+        }
+        protectedWindow=hwnd;
+        if(!saved.ContainsKey(hwnd)) {
+            var state=new Saved { Style=GetWindowLong(hwnd,-16),Topmost=(GetWindowLong(hwnd,-20)&8)!=0 };
+            saved[hwnd]=state;
+            SetWindowLong(hwnd,-16,state.Style & ~0x30000); // restore on Stop/Exit
+            EnableMenuItem(GetSystemMenu(hwnd,false),0xF060,1); DrawMenuBar(hwnd);
+        }
+        if(IsIconic(hwnd)||!IsZoomed(hwnd))ShowWindowAsync(hwnd,3);
+        SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x33);
+    }
+    public static void Unpin(IntPtr hwnd) {
+        if(protectedWindow==hwnd) { protectedWindow=IntPtr.Zero;if(keyboardHook!=IntPtr.Zero){UnhookWindowsHookEx(keyboardHook);keyboardHook=IntPtr.Zero;} }
+        Saved state;if(!saved.TryGetValue(hwnd,out state))return;
+        saved.Remove(hwnd);if(!IsWindow(hwnd))return;
+        SetWindowLong(hwnd,-16,state.Style);
+        GetSystemMenu(hwnd,true);DrawMenuBar(hwnd);
+        SetWindowPos(hwnd,new IntPtr(state.Topmost?-1:-2),0,0,0,0,0x33);
+    }
+    public static void GuardForeground(IntPtr hwnd,IntPtr panel) {
+        var active=GetForegroundWindow();
+        // Never change Chrome's selected tab: Teams must retain control while scanning/capturing.
+        if(active!=hwnd && active!=panel)SetForegroundWindow(hwnd);
+        if(!IsIconic(panel))SetWindowPos(panel,new IntPtr(-1),0,0,0,0,0x13);
+    }
+    public static void FocusForOpen(IntPtr hwnd) { if(!IsWindow(hwnd))return; if(IsIconic(hwnd))ShowWindowAsync(hwnd,3);SetForegroundWindow(hwnd); }
     [DllImport("user32.dll")] static extern bool ReleaseCapture();
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr SendMessage(IntPtr hwnd, int message, IntPtr wparam, IntPtr lparam);
     public static void Drag(IntPtr hwnd) { ReleaseCapture(); SendMessage(hwnd,0xA1,new IntPtr(2),IntPtr.Zero); }
@@ -190,6 +242,19 @@ try {
         return $script:launch
     }
     $selectedLaunch=Get-GuardianLaunch
+    # Stable shortcut points to the EXE, never to the temporary extracted PowerShell script.
+    if($env:MIRSAD_GUARDIAN_LAUNCHER -and (Test-Path -LiteralPath $env:MIRSAD_GUARDIAN_LAUNCHER)) {
+        try {
+            $shell=New-Object -ComObject WScript.Shell
+            $shortcut=$shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Programs')) 'مرصاد - مساعد الرصد.lnk'))
+            $shortcut.TargetPath=$env:MIRSAD_GUARDIAN_LAUNCHER
+            $shortcut.WorkingDirectory=Split-Path -Parent $env:MIRSAD_GUARDIAN_LAUNCHER
+            $shortcut.IconLocation=$env:MIRSAD_GUARDIAN_LAUNCHER+',0'
+            $shortcut.Description='مساعد مرصاد المشترك — تشغيل / إيقاف / إغلاق'
+            $shortcut.Save()
+        } catch {} # A restricted Start menu must not prevent recording.
+    }
+
     function Set-GuardianRound($control, [int]$radius) {
         $path = New-Object System.Drawing.Drawing2D.GraphicsPath
         $d = $radius * 2; $w = $control.Width - 1; $h = $control.Height - 1
@@ -219,15 +284,14 @@ try {
         return $button
     }
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'مرصاد | مساعد الرصد'
-    $form.ClientSize = New-Object System.Drawing.Size(560,602)
-    $form.StartPosition = 'CenterScreen'; $form.FormBorderStyle = 'None'
-    $form.MaximizeBox = $false; $form.TopMost = $true
-    $form.RightToLeft = 'Yes'; $form.RightToLeftLayout = $false
+    $form.Text = 'مرصاد | مساعد الرصد 3.2.0'
+    # Approximately 50 mm overall at 96 logical DPI; ordinary taskbar/minimize/close controls.
+    $form.Size = New-Object System.Drawing.Size(189,189)
+    $form.StartPosition = 'Manual'; $form.FormBorderStyle = 'FixedSingle'
+    $form.MaximizeBox = $false; $form.MinimizeBox = $true; $form.TopMost = $true
+    $form.ShowInTaskbar = $true; $form.RightToLeft = 'Yes'
     $form.AutoScaleMode = 'Dpi'; $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96,96)
-    $form.Font = New-Object System.Drawing.Font('Segoe UI',11)
-    $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#F2F6FA')
-    Set-GuardianRound $form 22
+    $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#102A43')
     # A small radar mark, drawn locally; no external images or network calls.
     $bitmap = New-Object System.Drawing.Bitmap(64,64)
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -242,55 +306,33 @@ try {
     $guardianIcon = $sourceIcon.Clone(); [MirsadChromeWindow]::DestroyIcon($handle) | Out-Null
     $sourceIcon.Dispose(); $graphics.Dispose(); $bitmap.Dispose(); $navyBrush.Dispose(); $tealBrush.Dispose(); $radarPen.Dispose()
     $form.Icon = $guardianIcon
-    $header = New-Object System.Windows.Forms.Panel
-    $header.SetBounds(0,0,560,164); $header.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#102A43')
-    $form.Controls.Add($header)
-    $header.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
-    $brand = New-GuardianLabel $header 'مرصاد' 190 40 330 58 27 '#FFFFFF' $true
-    $brand.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
-    $subtitle = New-GuardianLabel $header ($selectedLaunch.Label+' — مساعد الرصد') 160 98 360 32 12 '#9DB6C9'
-    $version = New-GuardianLabel $header 'SHARED  /  3.0.0' 26 110 170 28 9 '#65DCC5'
-    $version.TextAlign = 'MiddleLeft'; $version.RightToLeft = 'No'
-    $closeButton = New-GuardianButton $header '×' 18 14 38 30 '#203E55' '#FFFFFF'
-    $closeButton.AccessibleName = 'إيقاف المساعد وإغلاقه'; $closeButton.add_Click({ $form.Close() })
-    $hideButton = New-GuardianButton $header '−' 64 14 38 30 '#203E55' '#FFFFFF'
-    $hideButton.AccessibleName = 'إخفاء المساعد بجانب الساعة'; $hideButton.add_Click({ $form.Hide() })
-    $statusCard = New-Object System.Windows.Forms.Panel
-    $statusCard.SetBounds(24,186,512,108); $statusCard.BackColor = [System.Drawing.Color]::White
-    $form.Controls.Add($statusCard); Set-GuardianRound $statusCard 16
-    $statusHeading = New-GuardianLabel $statusCard 'حالة المساعد' 20 10 470 28 10 '#668096'
-    $stateLabel = New-GuardianLabel $statusCard 'الحماية متوقفة — اضغط تشغيل' 20 40 470 47 13 '#173B56' $true
-    $sectionHeading = New-GuardianLabel $form 'حماية نافذة الرصد' 24 312 512 30 12 '#173B56' $true
-    $featureCard = New-Object System.Windows.Forms.Panel
-    $featureCard.SetBounds(24,352,512,106); $featureCard.BackColor = [System.Drawing.Color]::White
-    $form.Controls.Add($featureCard); Set-GuardianRound $featureCard 16
-    $featureTitles = @('في المقدمة','إعادة الفتح','منع السكون')
-    $featureHints = @('بدون تصغير برامجك','إذا أُغلقت نافذة مرصاد','أثناء تشغيل المساعد')
-    for ($i=0; $i -lt 3; $i++) {
-        $x = 352 - $i * 168
-        $title = New-GuardianLabel $featureCard $featureTitles[$i] $x 16 144 32 11 '#117D70' $true
-        $hint = New-GuardianLabel $featureCard $featureHints[$i] $x 50 144 30 9 '#668096'
-        $title.TextAlign = 'MiddleCenter'; $hint.TextAlign = 'MiddleCenter'
+    $stateLabel = New-GuardianLabel $form 'مرصاد — متوقف' 6 2 160 24 9 '#FFFFFF' $true
+    $stateLabel.TextAlign = 'MiddleCenter'
+    $startButton = New-GuardianButton $form 'تشغيل' 9 30 155 32 '#087F73' '#FFFFFF'
+    $pauseButton = New-GuardianButton $form 'إيقاف' 9 69 155 32 '#D9A441' '#102A43'
+    $exitButton = New-GuardianButton $form 'إغلاق' 9 108 155 32 '#953D47' '#FFFFFF'
+    foreach($button in @($startButton,$pauseButton,$exitButton)) { $button.Font = New-Object System.Drawing.Font('Segoe UI',9,[System.Drawing.FontStyle]::Bold) }
+    $startButton.AccessibleName = 'تشغيل تثبيت نافذة مرصاد'
+    $pauseButton.AccessibleName = 'إيقاف التثبيت مع بقاء التطبيق'
+    $exitButton.AccessibleName = 'إيقاف وإغلاق المساعد بالكامل'
+    $tip=New-Object System.Windows.Forms.ToolTip
+    $tip.SetToolTip($stateLabel,($selectedLaunch.Label+' — 3.2.0'))
+    $tip.SetToolTip($pauseButton,'يفك تثبيت نافذة Chrome فقط؛ لا يوقف الرصد في الإضافة')
+    function Set-GuardianCorner {
+        $area=[System.Windows.Forms.Screen]::FromControl($form).WorkingArea
+        $form.Location=New-Object System.Drawing.Point(($area.Right-$form.Width),($area.Bottom-$form.Height))
     }
-    $startButton = New-GuardianButton $form 'تشغيل الحماية' 292 482 244 50 '#087F73' '#FFFFFF'
-    $exitButton = New-GuardianButton $form 'إيقاف وإغلاق' 24 482 244 50 '#E2EAF1' '#23445D'
-    $startButton.AccessibleName = 'تشغيل حماية نافذة مرصاد'; $exitButton.add_Click({ $form.Close() })
-    $footer = New-GuardianLabel $form 'الخروج: Ctrl + Shift + Q  |  التشغيل: Ctrl + Shift + M' 24 546 512 30 9 '#668096'
-    $footer.TextAlign = 'MiddleCenter'
     $tray = New-Object System.Windows.Forms.NotifyIcon
-    $tray.Icon = $guardianIcon
-    $tray.Text = 'مساعد مرصاد'
-    $menu = New-Object System.Windows.Forms.ContextMenuStrip
-    $show = $menu.Items.Add('فتح لوحة المساعد')
-    $show.add_Click({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })
-    $stop = $menu.Items.Add('إيقاف وإغلاق المساعد — إبقاء Chrome مفتوحًا')
-    $stop.add_Click({ $form.Close() })
-    $tray.ContextMenuStrip = $menu
-    $tray.add_DoubleClick({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })
-    $tray.Visible = $true
-    $form.add_Resize({ if ($form.WindowState -eq 'Minimized') { $form.Hide() } })
+    $tray.Icon=$guardianIcon; $tray.Text='مساعد مرصاد'; $tray.Visible=$true
+    $menu=New-Object System.Windows.Forms.ContextMenuStrip
+    $resume=$menu.Items.Add('تشغيل');$resume.add_Click({$startButton.PerformClick()})
+    $pause=$menu.Items.Add('إيقاف');$pause.add_Click({$pauseButton.PerformClick()})
+    $exit=$menu.Items.Add('إغلاق');$exit.add_Click({$form.Close()})
+    $tray.ContextMenuStrip=$menu
+    $tray.add_DoubleClick({$form.Show();Set-GuardianCorner})
+    $exitButton.add_Click({$form.Close()})
     $timer = New-Object System.Windows.Forms.Timer
-    $timer.Interval = 2000
+    $timer.Interval = 350
     $timer.add_Tick({
         try {
             if (-not [MirsadChromeWindow]::KeepAwake($true)) { throw 'تعذر طلب منع السكون من ويندوز.' }
@@ -313,9 +355,9 @@ try {
                 $script:watched = $handle
                 $script:pending = $false
                 [MirsadChromeWindow]::Pin($script:watched)
-                $stateLabel.Text = 'الحماية تعمل — '+$script:launch.Label
+                $stateLabel.Text = 'مرصاد — يعمل'
                 $tray.Text = $script:launch.Label+': الحماية تعمل'
-                if ($script:autoHide) { $form.Hide(); $script:autoHide = $false }
+                [MirsadChromeWindow]::GuardForeground($script:watched,$form.Handle)
                 return
             }
             if ($script:pending) {
@@ -325,14 +367,14 @@ try {
             # If Chrome cannot expose its tab strip, never interpret uncertainty as absence and create duplicates.
             $unknown = @($inventory | Where-Object { -not $_.Reliable })
             if ($windows.Count -gt 0 -and (-not $fresh -or $inventory.Count -ne $windows.Count -or $unknown.Count -gt 0)) {
-                $stateLabel.Text = 'جارٍ التحقق من تبويبات Chrome؛ لا تُفتح نسخة مكررة'
+                $stateLabel.Text = 'فحص التبويبات…'
                 return
             }
             $launch = Get-GuardianLaunch
             if ($windows -contains $script:watched) { [MirsadChromeWindow]::FocusForOpen($script:watched) }
             $script:pending = $true
             $script:deadline = [DateTime]::UtcNow.AddSeconds(45)
-            $stateLabel.Text = 'تبويب مرصاد غير موجود؛ جارٍ فتحه في نفس نافذة Chrome'
+            $stateLabel.Text = 'إعادة فتح مرصاد…'
             $tray.Text = 'مرصاد: يعيد فتح تبويب الرصد'
             Start-Process -FilePath $launch.Chrome -ArgumentList @(('--profile-directory="' + $launch.Profile + '"'), '--new-tab', $launch.Url) | Out-Null
 
@@ -341,7 +383,7 @@ try {
             $timer.Stop()
             if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
             if ($script:scanWindow -ne [IntPtr]::Zero) { [MirsadChromeWindow]::Unpin($script:scanWindow) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null
-            $stateLabel.Text = 'توقفت الحماية — أعد المحاولة'
+            $stateLabel.Text = 'مرصاد — متوقف'
             $stateLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#B45309')
             $startButton.Enabled = $true
             $tray.Text = 'مرصاد: المراقبة متوقفة'
@@ -353,14 +395,21 @@ try {
         $script:watched = [IntPtr]::Zero
         $script:pending = $false
         $script:failed = $false
-        $script:autoHide = $true
-        $stateLabel.Text = 'جارٍ البحث عن نافذة مرصاد المفتوحة'
-        $stateLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#087F73')
+        $stateLabel.Text = 'جارٍ التشغيل…'
+        $stateLabel.ForeColor = [System.Drawing.Color]::White
         $startButton.Enabled = $false
         $tray.Text = 'مرصاد: مراقبة Chrome تعمل'
         $timer.Start()
     })
-    $form.add_Shown({ Set-GuardianRound $form 22; Set-GuardianRound $statusCard 16; Set-GuardianRound $featureCard 16; foreach ($button in @($startButton,$exitButton,$hideButton,$closeButton)) { Set-GuardianRound $button 12 }; $startButton.PerformClick() })
+    $pauseButton.add_Click({
+        $timer.Stop()
+        if($script:watched -ne [IntPtr]::Zero){[MirsadChromeWindow]::Unpin($script:watched)}
+        $script:watched=[IntPtr]::Zero; $script:pending=$false
+        [MirsadChromeWindow]::KeepAwake($false) | Out-Null
+        $startButton.Enabled=$true; $stateLabel.Text='مرصاد — متوقف'
+        $stateLabel.ForeColor=[System.Drawing.Color]::White; $tray.Text='مرصاد: التثبيت متوقف'
+    })
+    $form.add_Shown({Set-GuardianCorner;$startButton.PerformClick()})
     $form.add_FormClosing({ $timer.Stop(); if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }; if ($script:scanWindow -ne [IntPtr]::Zero) { [MirsadChromeWindow]::Unpin($script:scanWindow) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null })
     $hotkeys = New-Object MirsadHotkeys
     $hotkeys.add_StartRequested({ $startButton.PerformClick() })
@@ -383,6 +432,7 @@ try {
     if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
     if ($script:scanWindow -ne [IntPtr]::Zero) { [MirsadChromeWindow]::Unpin($script:scanWindow) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null
     if ($tray) { $tray.Visible = $false; $tray.Dispose() }
+    if ($tip) { $tip.Dispose() }
     if ($form) { $form.Dispose() }
     if ($guardianIcon) { $guardianIcon.Dispose() }
     $mutex.ReleaseMutex()

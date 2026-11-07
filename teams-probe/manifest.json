@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
-  "version": "0.6.75",
+  "version": "0.6.76",
   "description": "الرصد باسم المنظّم من Teams بدورة أو دورتين أو ثلاث وفاصل مستقل بين الأولى والثانية وبين الثانية والثالثة.",
   "permissions": [
     "activeTab",
@@ -81,6 +81,15 @@
       "js": [
         "schedule-core.js",
         "madrasati-reader.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mirsad-school.onrender.com/automatic-monitoring.html*"
+      ],
+      "js": [
+        "auto-links-bridge.js"
       ],
       "run_at": "document_idle"
     }

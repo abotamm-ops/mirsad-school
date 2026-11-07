@@ -1,0 +1,2 @@
+/* Mirror authorized day updates already displayed by this page; no extra network poll. */
+(()=>{let last='';window.addEventListener('mirsad-remote-day',e=>{const d=e.detail;if(!d?.schoolId||!d.snapshot?.date)return;const signature=JSON.stringify([d.schoolId,d.snapshot,d.records,d.adjustments,d.reportSchedule,d.letterhead]);if(signature===last)return;last=signature;chrome.runtime.sendMessage({type:'MIRSAD_LOCAL_SNAPSHOT',data:d}).catch(()=>{last=''})})})();
