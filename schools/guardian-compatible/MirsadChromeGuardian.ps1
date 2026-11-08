@@ -278,12 +278,12 @@ $header.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Lef
 $brand = New-GuardianLabel $header 'مرصاد' 190 40 330 58 27 '#FFFFFF' $true
 $brand.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
 $subtitle = New-GuardianLabel $header 'مساعد استمرارية الرصد' 160 98 360 32 12 '#9DB6C9'
-$version = New-GuardianLabel $header 'SHARED  /  3.3.0' 26 110 170 28 9 '#65DCC5'
+$version = New-GuardianLabel $header 'SHARED  /  3.3.1' 26 110 170 28 9 '#65DCC5'
 $version.TextAlign = 'MiddleLeft'; $version.RightToLeft = 'No'
 $closeButton = New-GuardianButton $header '×' 18 14 38 30 '#203E55' '#FFFFFF'
 $closeButton.AccessibleName = 'إيقاف المساعد وإغلاقه'; $closeButton.add_Click({ $form.Close() })
 $hideButton = New-GuardianButton $header '−' 64 14 38 30 '#203E55' '#FFFFFF'
-$hideButton.AccessibleName = 'إخفاء المساعد بجانب الساعة'; $hideButton.add_Click({ $form.Hide() })
+$hideButton.AccessibleName = 'إخفاء المساعد بجانب الساعة'; $hideButton.add_Click({ $form.WindowState = 'Minimized' })
 $statusCard = New-Object System.Windows.Forms.Panel
 $statusCard.SetBounds(24,186,512,108); $statusCard.BackColor = [System.Drawing.Color]::White
 $form.Controls.Add($statusCard); Set-GuardianRound $statusCard 16
@@ -317,7 +317,6 @@ $stop.add_Click({ $form.Close() })
 $tray.ContextMenuStrip = $menu
 $tray.add_DoubleClick({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })
 $tray.Visible = $true
-$form.add_Resize({ if ($form.WindowState -eq 'Minimized') { $form.Hide() } })
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 2000
 $timer.add_Tick({
@@ -343,7 +342,6 @@ $script:pending = $false
 [MirsadChromeWindow]::Pin($script:watched);[MirsadChromeWindow]::KeepWorkspace($script:watched,$form.Handle)
 $stateLabel.Text = 'الحماية تعمل على نافذة كروم التي تحتوي مرصاد'
 $tray.Text = 'مرصاد: نفس نافذة مدرستي وتيمز'
-if ($script:autoHide) { $form.Hide(); $script:autoHide = $false }
 return
 }
 if ($script:pending) {
@@ -385,7 +383,7 @@ if ($timer.Enabled) { return }
 $script:watched = [IntPtr]::Zero
 $script:pending = $false
 $script:failed = $false
-$script:autoHide = $true
+$script:autoHide = $false
 $stateLabel.Text = 'جارٍ البحث عن نافذة مرصاد المفتوحة'
 $stateLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#087F73')
 $startButton.Enabled = $false
