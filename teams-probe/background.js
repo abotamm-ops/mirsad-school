@@ -48,7 +48,7 @@ async function appendDailyReport(record){
  // running attendance state for this lesson from all conclusive scans.
  record.scanStatus=record.scanStatus||record.status||"unresolved";
  if(record.scanId){const existing=reports[day].findIndex(r=>r.scanId===record.scanId);if(existing>=0)reports[day][existing]=record;else reports[day].push(record)}else reports[day].push(record);
- const keyOf=x=>String(x.scheduledTeacher||x.teacher||"")+"|"+String(x.period||"")+"|"+String(x.url||"");
+ const keyOf=x=>String(x.scheduledTeacher||x.teacher||"")+"|"+String(x.period||"")+"|"+String(x.className||x.url||"");
  const groups=new Map();
  for(const item of reports[day]){
   const key=keyOf(item);

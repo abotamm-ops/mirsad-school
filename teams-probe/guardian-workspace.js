@@ -13,6 +13,7 @@ var MirsadWorkspace = (() => {
   return chrome.tabs.create({url,active:false,...Number.isInteger(windowId)?{windowId}:{}});
  }
  async function ensureProbeTab(run){
+  await MadrasatiSource.cancelAutomatic?.();
   const valid=async()=>{if(typeof isRunCurrent==='function')return isRunCurrent(run);const latest=await getRun();return !!latest?.running&&!latest.paused&&latest.startedAt===run.startedAt};
   if(!await valid())return null;
   const home=await find(run);if(!await valid())return null;
