@@ -32,6 +32,8 @@ SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13);
 if(GetForegroundWindow()!=panel)SetForegroundWindow(hwnd);
 if(IsWindowVisible(panel))SetWindowPos(panel,new IntPtr(-1),0,0,0,0,0x13);
 }
+[DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern IntPtr FindWindow(string c,string t);
+public static bool Reveal(){var h=FindWindow(null,"مرصاد | مساعد الرصد");if(h==IntPtr.Zero)return false;ShowWindowAsync(h,9);SetForegroundWindow(h);SetWindowPos(h,new IntPtr(-1),0,0,0,0,0x13);return true;}
 public static void FocusForOpen(IntPtr hwnd) { if(!IsWindow(hwnd))return; if(IsIconic(hwnd))ShowWindowAsync(hwnd,9); SetForegroundWindow(hwnd); }
 [DllImport("user32.dll")] static extern bool ReleaseCapture();
 [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr SendMessage(IntPtr hwnd, int message, IntPtr wparam, IntPtr lparam);
@@ -177,7 +179,7 @@ function Select-MirsadChoice([object[]]$Choices){
 if(!$Choices.Count){throw 'فعّل إضافة مرصاد في Chrome'}
 if($Choices.Count -eq 1){return $Choices[0]}
 $d=New-Object System.Windows.Forms.Form
-$d.Text='اختر مرصاد وحساب Chrome';$d.ClientSize=New-Object System.Drawing.Size(520,130);$d.StartPosition='CenterScreen';$d.TopMost=$true;$d.RightToLeft='Yes'
+$d.Text='اختر مرصاد';$d.ClientSize=New-Object System.Drawing.Size(520,130);$d.StartPosition='CenterScreen';$d.TopMost=$true;$d.RightToLeft='Yes'
 $c=New-Object System.Windows.Forms.ComboBox
 $c.SetBounds(12,15,496,35);$c.DropDownStyle='DropDownList';$c.DisplayMember='Display'
 foreach($choice in $Choices){[void]$c.Items.Add($choice)};$c.SelectedIndex=0
@@ -188,7 +190,7 @@ throw [System.OperationCanceledException]::new('إلغاء')
 }
 $mutex = New-Object System.Threading.Mutex($false, 'Local\MirsadUnifiedGuardian')
 if (-not $mutex.WaitOne(0, $false)) {
-[System.Windows.Forms.MessageBox]::Show('مساعد إبقاء مرصاد مفتوحًا يعمل بالفعل. تجده بجانب الساعة.', 'مرصاد') | Out-Null
+if(-not [MirsadChromeWindow]::Reveal()){[System.Windows.Forms.MessageBox]::Show('أغلق المساعد السابق.','مرصاد') | Out-Null}
 $mutex.Dispose()
 exit 0
 }
@@ -198,7 +200,6 @@ $form = $null
 $hotkeys = $null
 try {
 $script:watched = [IntPtr]::Zero
-$script:failed = $false
 $script:pending = $false
 $script:deadline = [DateTime]::MinValue
 $script:launch = $null
@@ -219,7 +220,6 @@ $choice=Select-MirsadChoice -Choices $choices
 $script:launch=@{Chrome=$chrome;Profile=$choice.Profile;Url=$choice.Url;Label=$choice.Label}
 return $script:launch
 }
-$selectedLaunch=Get-GuardianLaunch
 function Set-GuardianRound($control, [int]$radius) {
 $path = New-Object System.Drawing.Drawing2D.GraphicsPath
 $d = $radius * 2; $w = $control.Width - 1; $h = $control.Height - 1
@@ -278,7 +278,7 @@ $header.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Lef
 $brand = New-GuardianLabel $header 'مرصاد' 190 40 330 58 27 '#FFFFFF' $true
 $brand.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
 $subtitle = New-GuardianLabel $header 'مساعد استمرارية الرصد' 160 98 360 32 12 '#9DB6C9'
-$version = New-GuardianLabel $header 'SHARED  /  3.3.1' 26 110 170 28 9 '#65DCC5'
+$version = New-GuardianLabel $header 'SHARED  /  3.3.2' 26 110 170 28 9 '#65DCC5'
 $version.TextAlign = 'MiddleLeft'; $version.RightToLeft = 'No'
 $closeButton = New-GuardianButton $header '×' 18 14 38 30 '#203E55' '#FFFFFF'
 $closeButton.AccessibleName = 'إيقاف المساعد وإغلاقه'; $closeButton.add_Click({ $form.Close() })
@@ -367,7 +367,6 @@ $stateLabel.Text = 'تبويب مرصاد غير موجود؛ جارٍ فتحه 
 $tray.Text = 'مرصاد: يعيد فتح تبويب الرصد'
 Start-Process -FilePath $launch.Chrome -ArgumentList @(('--profile-directory="' + $launch.Profile + '"'), '--new-tab', $launch.Url) | Out-Null
 } catch {
-$script:failed = $true
 $timer.Stop()
 if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
 [MirsadChromeWindow]::KeepAwake($false) | Out-Null
@@ -379,10 +378,10 @@ $tray.Text = 'مرصاد: المراقبة متوقفة'
 }
 })
 $startButton.add_Click({
+try{$null=Get-GuardianLaunch}catch{$stateLabel.Text=$_.Exception.Message;return}
 if ($timer.Enabled) { return }
 $script:watched = [IntPtr]::Zero
 $script:pending = $false
-$script:failed = $false
 $script:autoHide = $false
 $stateLabel.Text = 'جارٍ البحث عن نافذة مرصاد المفتوحة'
 $stateLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#087F73')

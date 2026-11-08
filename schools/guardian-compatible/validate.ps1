@@ -16,5 +16,5 @@ try{
  if($choices[0].Url -eq $choices[1].Url -or $choices[0].Prefix -eq $choices[1].Prefix){throw 'Editions mixed'}
 }finally{if(Test-Path $dir){Remove-Item -LiteralPath $dir -Recurse -Force}}
 $start=$s.IndexOf("Add-Type @'")+12;$end=$s.IndexOf("'@",$start);Add-Type -TypeDefinition $s.Substring($start,$end-$start)
-if(!$s.Contains('$selectedLaunch=Get-GuardianLaunch') -or !$s.Contains('$launch.Url)')){throw 'Routing failed'}
+if(!$s.Contains('$null=Get-GuardianLaunch') -or !$s.Contains('$launch.Url)')){throw 'Routing failed'}
 'PASS working-launcher script parses, both editions isolated, native class compiles; UI shape retained'
