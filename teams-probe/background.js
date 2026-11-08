@@ -1,3 +1,4 @@
+importScripts('tab-ownership.js');
 importScripts("restore-official.js","schedule-core.js","monitor-model.js","visible-schedule.js","drive-sync.js","local-backup.js","action-status.js","scan-activity.js","madrasati-source.js","classic-restore.js","device-state.js","live-heartbeat.js");importScripts('guardian-workspace.js','auto-links.js');
 const scheduleCore = globalThis.MirsadScheduleCore;
 const KEY="mirsadAutoRun", STATUS_KEY="mirsadAutoStatus", NEXT_ALARM="mirsadNextAction", SCAN_TIMEOUT_ALARM="mirsadScanTimeout";
@@ -78,13 +79,13 @@ async function appendDailyReport(record){
 async function closeProbeTab(run){
  if(!run)return;
  const ids=new Set([...(run.probeTabIds||[]),run.tabId].filter(id=>Number.isInteger(id)));
- for(const id of ids){try{await chrome.tabs.remove(id)}catch(_){}}
+ for(const id of ids){try{await MirsadTabOwnership.closeProbe(id)}catch(_){}}
  run.tabId=null;run.probeTabIds=[];await saveRun(run);
 }
 async function trackProbeTab(tab){
  if(!Number.isInteger(tab?.id)||!Number.isInteger(tab?.openerTabId))return;
  const run=await getRun();
- if(!run?.running||!Number.isInteger(run.tabId)||tab.openerTabId!==run.tabId)return;
+ if(!run?.running||!Number.isInteger(run.tabId)||!await MirsadTabOwnership.popup(tab,run.tabId))return;
  run.probeTabIds=Array.isArray(run.probeTabIds)?run.probeTabIds:[];
  if(!run.probeTabIds.includes(tab.id))run.probeTabIds.push(tab.id);
  await saveRun(run);
@@ -321,7 +322,7 @@ async function retryUnresolved(run,item,detail){
  run.scanRetry={period:run.period,cycle:run.cycle,index:run.index,day:localDayKey(new Date()),attempts:[...attempts,{scanId:item.scanId,at:Date.now(),detail:String(detail).slice(0,350)}]};
  const ids=new Set([...(run.probeTabIds||[]),run.tabId].filter(id=>Number.isInteger(id)));
  run.current=null;run.tabId=null;run.probeTabIds=[];await saveRun(run);await chrome.alarms.clear(SCAN_TIMEOUT_ALARM);
- for(const id of ids){try{await chrome.tabs.remove(id)}catch{}}
+ for(const id of ids){try{await MirsadTabOwnership.closeProbe(id)}catch{}}
  // Re-read persisted state so a manual pause/stop during cleanup wins.
  const latest=await getRun();if(!latest?.running||latest.period!==run.period||latest.cycle!==run.cycle||latest.index!==run.index)return true;
  await setStatus('غير محسوم — إعادة الدخول لنفس المعلم '+item.teacher+'؛ المحاولة الإضافية '+run.scanRetry.attempts.length+' من '+MAX_UNRESOLVED_RETRIES+' ضمن الدورة '+run.cycle,{period:run.period,teacher:item.teacher,cycle:run.cycle,retry:run.scanRetry.attempts.length});

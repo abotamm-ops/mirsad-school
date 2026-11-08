@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "مرصاد — المدارس",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "رصد حصص المعلمين من مدرستي وتيمز بحساب مستقل للمدرسة وجهاز رصد واحد",
   "permissions": [
     "activeTab",

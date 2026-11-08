@@ -19,10 +19,10 @@ var MirsadWorkspace = (() => {
   const home=await find(run);if(!await valid())return null;
   run.workspaceWindowId=home.windowId;
   let tab;
-  if(Number.isInteger(run.tabId))try{tab=await chrome.tabs.get(run.tabId)}catch{run.tabId=null}
+  if(Number.isInteger(run.tabId))try{const candidate=await chrome.tabs.get(run.tabId);if(await MirsadTabOwnership.reusable(candidate))tab=candidate;else run.tabId=null}catch{run.tabId=null}
   if(tab){await chrome.tabs.update(tab.id,{pinned:false});tab=await chrome.tabs.move(tab.id,{windowId:home.windowId,index:-1})}
-  else tab=await chrome.tabs.create({url:'about:blank',active:false,windowId:home.windowId,index:Math.max(0,(await chrome.tabs.query({windowId:home.windowId})).length)});
-  if(!await valid()){if(run.tabId!==tab.id)await chrome.tabs.remove(tab.id).catch(()=>{});return null}
+  else tab=await MirsadTabOwnership.claimProbe(await chrome.tabs.create({url:'about:blank',active:false,windowId:home.windowId,index:Math.max(0,(await chrome.tabs.query({windowId:home.windowId})).length)}));
+  if(!await valid()){if(run.tabId!==tab.id)await MirsadTabOwnership.closeProbe(tab.id).catch(()=>{});return null}
   run.tabId=tab.id;if(await saveRun(run)===false)return null;return tab.id;
  }
  async function prepareCapture(id){

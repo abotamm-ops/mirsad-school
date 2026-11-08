@@ -8,7 +8,7 @@ var MirsadOfficialReady=(async()=>{
  if(trial){
   const tabIds=[...new Set([trial.tabId,...(trial.probeTabIds||[])].filter(Number.isInteger))];
   await chrome.storage.local.set({[key]:{...trial,running:false,paused:true,autoResume:false,current:null,tabId:null,probeTabIds:[]}});
-  for(const tabId of tabIds)try{await chrome.tabs.remove(tabId)}catch{}
+  for(const tabId of tabIds)try{await MirsadTabOwnership.closeProbe(tabId)}catch{}
  }
  await chrome.storage.local.set({mirsadEnvironment:{},mirsadOfficialRestoredAt:Date.now()});
 })();
