@@ -17,8 +17,17 @@ try{
 }finally{if(Test-Path $dir){Remove-Item -LiteralPath $dir -Recurse -Force}}
 $start=$s.IndexOf("Add-Type @'")+12;$end=$s.IndexOf("'@",$start);Add-Type -TypeDefinition $s.Substring($start,$end-$start)
 if(!$s.Contains('$null=Get-GuardianLaunch') -or !$s.Contains('$launch.Url)')){throw 'Routing failed'}
-'PASS working-launcher script parses, both editions isolated, native class compiles; UI shape retained'
+'PASS working-launcher script parses, both editions isolated, native class compiles'
 
-if($s.Contains("if (-not `$hotkeys.Register()) { throw")){throw 'Shortcut registration still blocks UI'}
-if(!$s.Contains('$null=$hotkeys.Register()')){throw 'Optional hotkeys missing'}
-'PASS shortcut reservation cannot abort startup'
+
+if(!$s.Contains('$timer.Interval = 500')){throw 'Slow guard'}
+if(!$s.Contains('if(IsIconic(hwnd)||!IsZoomed(hwnd))ShowWindowAsync(hwnd,3);')){throw 'Restore and maximize missing'}
+if(!$s.Contains('foreground!=panel && foreground!=hwnd')){throw 'Panel not exempt'}
+if(!$s.Contains('$pauseButton.PerformClick()')){throw 'Pause shortcut missing'}
+if($s.Contains("$form.Hide()")){throw 'Unexpected hidden UI'}
+if($s.Contains("if (-not $hotkeys.Register()) { throw")){throw 'Shortcut conflict blocks startup'}
+$hot=$s.Substring($s.IndexOf('using System;', $s.IndexOf('Add-Type -ReferencedAssemblies System.Windows.Forms')))
+$hot=$hot.Substring(0,$hot.IndexOf("'@"))
+$fake='namespace System.Windows.Forms { public struct Message { public int Msg; public System.IntPtr WParam; } public interface IMessageFilter { bool PreFilterMessage(ref Message m); } public static class Application { public static void AddMessageFilter(IMessageFilter f){} public static void RemoveMessageFilter(IMessageFilter f){} } }'
+Add-Type -TypeDefinition ($hot+$fake)
+'PASS maximize, foreground exception, 500ms guard, visible UI, pause registration and native classes compile'

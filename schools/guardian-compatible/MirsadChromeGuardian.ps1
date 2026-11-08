@@ -26,11 +26,21 @@ public static void Pin(IntPtr hwnd) { if ((GetWindowLong(hwnd,-20) & 8)==0) SetW
 public static void Unpin(IntPtr hwnd) { if (IsWindow(hwnd)) SetWindowPos(hwnd,new IntPtr(-2),0,0,0,0,0x13); }
 [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
 [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+[DllImport("user32.dll")] static extern bool AttachThreadInput(uint a,uint b,bool attach);
+[DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+[DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr h);
 public static void KeepWorkspace(IntPtr hwnd,IntPtr panel){
-if(!IsWindow(hwnd))return;
-SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13);
-if(GetForegroundWindow()!=panel)SetForegroundWindow(hwnd);
-if(IsWindowVisible(panel))SetWindowPos(panel,new IntPtr(-1),0,0,0,0,0x13);
+ if(!IsWindow(hwnd))return;
+ if(IsIconic(hwnd)||!IsZoomed(hwnd))ShowWindowAsync(hwnd,3);
+ SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13);
+ var foreground=GetForegroundWindow();
+ if(foreground!=panel && foreground!=hwnd){
+  uint pid;var tid=GetWindowThreadProcessId(foreground,out pid);var own=GetCurrentThreadId();
+  bool attached=tid!=0&&tid!=own&&AttachThreadInput(own,tid,true);
+  try{BringWindowToTop(hwnd);SetForegroundWindow(hwnd);}finally{if(attached)AttachThreadInput(own,tid,false);}
+ }
+ if(IsWindowVisible(panel))SetWindowPos(panel,new IntPtr(-1),0,0,0,0,0x13);
 }
 [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern IntPtr FindWindow(string c,string t);
 public static bool Reveal(){var h=FindWindow(null,"مرصاد | مساعد الرصد");if(h==IntPtr.Zero)return false;ShowWindowAsync(h,9);SetForegroundWindow(h);SetWindowPos(h,new IntPtr(-1),0,0,0,0,0x13);return true;}
@@ -128,19 +138,22 @@ public sealed class MirsadHotkeys : IMessageFilter, IDisposable {
 [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr window,int id);
 public event EventHandler StartRequested;
 public event EventHandler ExitRequested;
+public event EventHandler PauseRequested;
 bool registered;
 public bool Register() {
 if (!RegisterHotKey(IntPtr.Zero,902,0x4006,0x51)) return false;
-if (!RegisterHotKey(IntPtr.Zero,901,0x4006,0x4D)) { UnregisterHotKey(IntPtr.Zero,902); return false; }
+RegisterHotKey(IntPtr.Zero,901,0x4006,0x4D);
+RegisterHotKey(IntPtr.Zero,903,0x4006,0x50);
 registered=true; Application.AddMessageFilter(this); return true;
 }
 public bool PreFilterMessage(ref Message message) {
 if(message.Msg!=0x0312) return false;
+if(message.WParam.ToInt32()==903) { if(PauseRequested!=null) PauseRequested(this,EventArgs.Empty); return true; }
 if(message.WParam.ToInt32()==902) { if(ExitRequested!=null) ExitRequested(this,EventArgs.Empty); return true; }
 if(message.WParam.ToInt32()==901) { if(StartRequested!=null) StartRequested(this,EventArgs.Empty); return true; }
 return false;
 }
-public void Dispose() { if(!registered)return; registered=false; UnregisterHotKey(IntPtr.Zero,901); UnregisterHotKey(IntPtr.Zero,902); Application.RemoveMessageFilter(this); }
+public void Dispose() { if(!registered)return; registered=false; UnregisterHotKey(IntPtr.Zero,901); UnregisterHotKey(IntPtr.Zero,902); UnregisterHotKey(IntPtr.Zero,903); Application.RemoveMessageFilter(this); }
 }
 '@
 function Get-MirsadProducts {
@@ -250,14 +263,14 @@ return $button
 }
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'مرصاد | مساعد الرصد'
-$form.ClientSize = New-Object System.Drawing.Size(560,602)
-$form.StartPosition = 'CenterScreen'; $form.FormBorderStyle = 'None'
+$form.ClientSize = New-Object System.Drawing.Size(210,210)
+$form.StartPosition = 'Manual'; $form.FormBorderStyle = 'FixedSingle'; $form.MinimizeBox=$true
 $form.MaximizeBox = $false; $form.TopMost = $true
 $form.RightToLeft = 'Yes'; $form.RightToLeftLayout = $false
 $form.AutoScaleMode = 'Dpi'; $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96,96)
 $form.Font = New-Object System.Drawing.Font('Segoe UI',11)
 $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#F2F6FA')
-Set-GuardianRound $form 22
+
 $bitmap = New-Object System.Drawing.Bitmap(64,64)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $graphics.SmoothingMode = 'AntiAlias'
@@ -271,41 +284,18 @@ $handle = $bitmap.GetHicon(); $sourceIcon = [System.Drawing.Icon]::FromHandle($h
 $guardianIcon = $sourceIcon.Clone(); [MirsadChromeWindow]::DestroyIcon($handle) | Out-Null
 $sourceIcon.Dispose(); $graphics.Dispose(); $bitmap.Dispose(); $navyBrush.Dispose(); $tealBrush.Dispose(); $radarPen.Dispose()
 $form.Icon = $guardianIcon
-$header = New-Object System.Windows.Forms.Panel
-$header.SetBounds(0,0,560,164); $header.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#102A43')
-$form.Controls.Add($header)
-$header.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
-$brand = New-GuardianLabel $header 'مرصاد' 190 40 330 58 27 '#FFFFFF' $true
-$brand.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
-$subtitle = New-GuardianLabel $header 'مساعد استمرارية الرصد' 160 98 360 32 12 '#9DB6C9'
-$version = New-GuardianLabel $header 'SHARED  /  3.3.3' 26 110 170 28 9 '#65DCC5'
-$version.TextAlign = 'MiddleLeft'; $version.RightToLeft = 'No'
-$closeButton = New-GuardianButton $header '×' 18 14 38 30 '#203E55' '#FFFFFF'
-$closeButton.AccessibleName = 'إيقاف المساعد وإغلاقه'; $closeButton.add_Click({ $form.Close() })
-$hideButton = New-GuardianButton $header '−' 64 14 38 30 '#203E55' '#FFFFFF'
-$hideButton.AccessibleName = 'إخفاء المساعد بجانب الساعة'; $hideButton.add_Click({ $form.WindowState = 'Minimized' })
-$statusCard = New-Object System.Windows.Forms.Panel
-$statusCard.SetBounds(24,186,512,108); $statusCard.BackColor = [System.Drawing.Color]::White
-$form.Controls.Add($statusCard); Set-GuardianRound $statusCard 16
-$statusHeading = New-GuardianLabel $statusCard 'حالة المساعد' 20 10 470 28 10 '#668096'
-$stateLabel = New-GuardianLabel $statusCard 'الحماية متوقفة — اضغط تشغيل' 20 40 470 47 13 '#173B56' $true
-$sectionHeading = New-GuardianLabel $form 'حماية نافذة الرصد' 24 312 512 30 12 '#173B56' $true
-$featureCard = New-Object System.Windows.Forms.Panel
-$featureCard.SetBounds(24,352,512,106); $featureCard.BackColor = [System.Drawing.Color]::White
-$form.Controls.Add($featureCard); Set-GuardianRound $featureCard 16
-$featureTitles = @('في المقدمة','إعادة الفتح','منع السكون')
-$featureHints = @('بدون تصغير برامجك','إذا أُغلقت نافذة مرصاد','أثناء تشغيل المساعد')
-for ($i=0; $i -lt 3; $i++) {
-$x = 352 - $i * 168
-$title = New-GuardianLabel $featureCard $featureTitles[$i] $x 16 144 32 11 '#117D70' $true
-$hint = New-GuardianLabel $featureCard $featureHints[$i] $x 50 144 30 9 '#668096'
-$title.TextAlign = 'MiddleCenter'; $hint.TextAlign = 'MiddleCenter'
-}
-$startButton = New-GuardianButton $form 'تشغيل الحماية' 292 482 244 50 '#087F73' '#FFFFFF'
-$exitButton = New-GuardianButton $form 'إيقاف وإغلاق' 24 482 244 50 '#E2EAF1' '#23445D'
-$startButton.AccessibleName = 'تشغيل حماية نافذة مرصاد'; $exitButton.add_Click({ $form.Close() })
-$footer = New-GuardianLabel $form 'الخروج: Ctrl + Shift + Q  |  التشغيل: Ctrl + Shift + M' 24 546 512 30 9 '#668096'
-$footer.TextAlign = 'MiddleCenter'
+$heading=New-GuardianLabel $form 'حماية مرصاد وتيمز' 8 5 194 30 12 '#173B56' $true
+$stateLabel=New-GuardianLabel $form 'جارٍ التشغيل' 8 36 194 48 9 '#173B56'
+$startButton=New-GuardianButton $form 'تشغيل' 8 91 62 37 '#087F73' '#FFFFFF'
+$pauseButton=New-GuardianButton $form 'إيقاف' 74 91 62 37 '#E2EAF1' '#23445D'
+$exitButton=New-GuardianButton $form 'إغلاق' 140 91 62 37 '#A63838' '#FFFFFF'
+$footer=New-GuardianLabel $form "Ctrl+Shift+Q إغلاق`nCtrl+Shift+P إيقاف`nCtrl+Shift+M تشغيل" 8 138 194 65 9 '#173B56'
+$exitButton.add_Click({$form.Close()})
+$pauseButton.add_Click({
+ $timer.Stop();if($script:watched){[MirsadChromeWindow]::Unpin($script:watched)}
+ [MirsadChromeWindow]::KeepAwake($false)|Out-Null
+ $startButton.Enabled=$true;$stateLabel.Text='الحماية متوقفة';$tray.Text='مرصاد: متوقف'
+})
 $tray = New-Object System.Windows.Forms.NotifyIcon
 $tray.Icon = $guardianIcon
 $tray.Text = 'مساعد مرصاد'
@@ -318,11 +308,12 @@ $tray.ContextMenuStrip = $menu
 $tray.add_DoubleClick({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })
 $tray.Visible = $true
 $timer = New-Object System.Windows.Forms.Timer
-$timer.Interval = 2000
+$timer.Interval = 500
 $timer.add_Tick({
 try {
 if (-not [MirsadChromeWindow]::KeepAwake($true)) { throw 'تعذر طلب منع السكون من ويندوز.' }
 $windows = @([MirsadChromeWindow]::Windows())
+if($script:watched -ne [IntPtr]::Zero -and [MirsadChromeWindow]::IsWindow($script:watched)){[MirsadChromeWindow]::KeepWorkspace($script:watched,$form.Handle)}
 if($windows -contains $script:watched){if ([MirsadChromeWindow]::IsIconic($script:watched)) { [MirsadChromeWindow]::ShowWindowAsync($script:watched,3) | Out-Null }}
 [MirsadChromeTabs]::Request($windows)
 $inventory = @([MirsadChromeTabs]::Snapshot() | Where-Object { $windows -contains [IntPtr]$_.Handle })
@@ -389,17 +380,22 @@ $startButton.Enabled = $false
 $tray.Text = 'مرصاد: مراقبة Chrome تعمل'
 $timer.Start()
 })
-$form.add_Shown({ Set-GuardianRound $form 22; Set-GuardianRound $statusCard 16; Set-GuardianRound $featureCard 16; foreach ($button in @($startButton,$exitButton,$hideButton,$closeButton)) { Set-GuardianRound $button 12 }; $startButton.PerformClick() })
+$form.add_Shown({
+ $area=[System.Windows.Forms.Screen]::FromControl($form).WorkingArea
+ $form.Location=New-Object System.Drawing.Point(($area.Right-$form.Width-8),($area.Bottom-$form.Height-8))
+ $startButton.PerformClick()
+})
 $form.add_FormClosing({ $timer.Stop(); if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null })
 $hotkeys = New-Object MirsadHotkeys
 $hotkeys.add_StartRequested({ $startButton.PerformClick() })
+$hotkeys.add_PauseRequested({$pauseButton.PerformClick()})
 $hotkeys.add_ExitRequested({
 $timer.Stop()
 if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
 [MirsadChromeWindow]::KeepAwake($false) | Out-Null
 $form.Close()
 })
-$null=$hotkeys.Register()
+if(-not $hotkeys.Register()){$footer.Text='الاختصارات محجوزة؛ استخدم الأزرار'}
 [System.Windows.Forms.Application]::Run($form)
 } catch {
 [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'مساعد مرصاد', 'OK', 'Error') | Out-Null
