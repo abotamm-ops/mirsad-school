@@ -278,7 +278,7 @@ $header.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Lef
 $brand = New-GuardianLabel $header 'مرصاد' 190 40 330 58 27 '#FFFFFF' $true
 $brand.add_MouseDown({ param($sender,$eventArgs) if ($eventArgs.Button -eq 'Left') { [MirsadChromeWindow]::Drag($form.Handle) } })
 $subtitle = New-GuardianLabel $header 'مساعد استمرارية الرصد' 160 98 360 32 12 '#9DB6C9'
-$version = New-GuardianLabel $header 'SHARED  /  3.3.2' 26 110 170 28 9 '#65DCC5'
+$version = New-GuardianLabel $header 'SHARED  /  3.3.3' 26 110 170 28 9 '#65DCC5'
 $version.TextAlign = 'MiddleLeft'; $version.RightToLeft = 'No'
 $closeButton = New-GuardianButton $header '×' 18 14 38 30 '#203E55' '#FFFFFF'
 $closeButton.AccessibleName = 'إيقاف المساعد وإغلاقه'; $closeButton.add_Click({ $form.Close() })
@@ -399,7 +399,7 @@ if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
 [MirsadChromeWindow]::KeepAwake($false) | Out-Null
 $form.Close()
 })
-if (-not $hotkeys.Register()) { throw 'اختصار الخروج مستخدم؛ أغلق المساعد السابق وأعد التشغيل.' }
+$null=$hotkeys.Register()
 [System.Windows.Forms.Application]::Run($form)
 } catch {
 [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'مساعد مرصاد', 'OK', 'Error') | Out-Null

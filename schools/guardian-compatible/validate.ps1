@@ -18,3 +18,7 @@ try{
 $start=$s.IndexOf("Add-Type @'")+12;$end=$s.IndexOf("'@",$start);Add-Type -TypeDefinition $s.Substring($start,$end-$start)
 if(!$s.Contains('$null=Get-GuardianLaunch') -or !$s.Contains('$launch.Url)')){throw 'Routing failed'}
 'PASS working-launcher script parses, both editions isolated, native class compiles; UI shape retained'
+
+if($s.Contains("if (-not `$hotkeys.Register()) { throw")){throw 'Shortcut registration still blocks UI'}
+if(!$s.Contains('$null=$hotkeys.Register()')){throw 'Optional hotkeys missing'}
+'PASS shortcut reservation cannot abort startup'
