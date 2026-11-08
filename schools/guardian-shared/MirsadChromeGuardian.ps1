@@ -1,6 +1,11 @@
 ﻿# User-started Chrome guardian. No startup registration or Windows policy changes.
 param([ValidatePattern('^(Default|Profile [0-9]+)$')][string]$Profile = '', [ValidateSet('Auto','Private','Schools')][string]$Edition = 'Auto')
 $ErrorActionPreference = 'Stop'
+function Write-GuardianLog([string]$message) {
+ if($env:MIRSAD_GUARDIAN_LOG){try{Add-Content -LiteralPath $env:MIRSAD_GUARDIAN_LOG -Value ((Get-Date -Format o)+' '+$message) -Encoding UTF8}catch{}}
+}
+Write-GuardianLog 'PowerShell started'
+
 . (Join-Path $PSScriptRoot 'Guardian-Selection.ps1')
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -11,12 +16,20 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 public static class MirsadChromeWindow {
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int MessageBox(IntPtr owner,string message,string title,uint flags);
+    public static void Alert(string message){MessageBox(IntPtr.Zero,message,"مساعد مرصاد",0x50010);}
     public delegate bool EnumProc(IntPtr hwnd, IntPtr param);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc callback, IntPtr param);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder text, int size);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int size);
     public static string TitlePrefix = "";
+    public static bool ShowExistingPanel() {
+        bool found=false;
+        EnumWindows((hwnd,p)=>{var title=new StringBuilder(256);GetWindowText(hwnd,title,256);if(title.ToString().StartsWith("مرصاد | مساعد الرصد",StringComparison.Ordinal)){ShowWindowAsync(hwnd,9);SetForegroundWindow(hwnd);SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13);found=true;return false;}return true;},IntPtr.Zero);
+        return found;
+    }
+
     public static bool IsMirsad(IntPtr hwnd) { var title = new StringBuilder(1024); GetWindowText(hwnd, title, title.Capacity); return TitlePrefix.Length>0 && title.ToString().Trim().StartsWith(TitlePrefix,StringComparison.Ordinal); }
     public static bool IsTeams(IntPtr hwnd) { var title=new StringBuilder(1024); GetWindowText(hwnd,title,title.Capacity); return title.ToString().IndexOf("Teams",StringComparison.OrdinalIgnoreCase)>=0 || title.ToString().Contains("تيمز"); }
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
@@ -196,7 +209,8 @@ public sealed class MirsadHotkeys : IMessageFilter, IDisposable {
 '@
 $mutex = New-Object System.Threading.Mutex($false, 'Local\MirsadUnifiedGuardian')
 if (-not $mutex.WaitOne(0, $false)) {
-    [System.Windows.Forms.MessageBox]::Show('مساعد إبقاء مرصاد مفتوحًا يعمل بالفعل. تجده بجانب الساعة.', 'مرصاد') | Out-Null
+    Write-GuardianLog 'Existing instance found'
+    if(-not [MirsadChromeWindow]::ShowExistingPanel()){[MirsadChromeWindow]::Alert('المساعد يعمل بالفعل. افتحه من شريط المهام أو أيقونته بجانب الساعة.') | Out-Null}
     $mutex.Dispose()
     exit 0
 }
@@ -207,7 +221,7 @@ foreach ($legacyName in @('Local\MirsadChromeGuardian','Local\MirsadSchoolsGuard
     try {
         try { $owned=$legacy.WaitOne(0,$false) } catch [System.Threading.AbandonedMutexException] { $owned=$true }
         if (-not $owned) {
-            [System.Windows.Forms.MessageBox]::Show('أغلق مساعد مرصاد القديم من أيقونته بجانب الساعة، ثم افتح المساعد المشترك. لا تحتاج إغلاق Chrome أو حذف الإضافة.','مساعد مرصاد') | Out-Null
+            [MirsadChromeWindow]::Alert('أغلق مساعد مرصاد القديم من أيقونته بجانب الساعة، ثم افتح المساعد المشترك. لا تحتاج إغلاق Chrome أو حذف الإضافة.') | Out-Null
             $mutex.ReleaseMutex(); $mutex.Dispose(); exit 0
         }
     } finally { if ($owned) { $legacy.ReleaseMutex() }; $legacy.Dispose() }
@@ -241,7 +255,9 @@ try {
         $script:launch = @{Chrome=$chrome; Profile=$choice.Profile; Url=$choice.Url; Edition=$choice.Edition; Label=$choice.Label}
         return $script:launch
     }
+    Write-GuardianLog 'Selecting Chrome edition/profile'
     $selectedLaunch=Get-GuardianLaunch
+    Write-GuardianLog ('Selected: '+$selectedLaunch.Label)
     # Stable shortcut points to the EXE, never to the temporary extracted PowerShell script.
     if($env:MIRSAD_GUARDIAN_LAUNCHER -and (Test-Path -LiteralPath $env:MIRSAD_GUARDIAN_LAUNCHER)) {
         try {
@@ -284,7 +300,7 @@ try {
         return $button
     }
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'مرصاد | مساعد الرصد 3.2.0'
+    $form.Text = 'مرصاد | مساعد الرصد 3.2.1'
     # Approximately 50 mm overall at 96 logical DPI; ordinary taskbar/minimize/close controls.
     $form.Size = New-Object System.Drawing.Size(189,189)
     $form.StartPosition = 'Manual'; $form.FormBorderStyle = 'FixedSingle'
@@ -316,7 +332,7 @@ try {
     $pauseButton.AccessibleName = 'إيقاف التثبيت مع بقاء التطبيق'
     $exitButton.AccessibleName = 'إيقاف وإغلاق المساعد بالكامل'
     $tip=New-Object System.Windows.Forms.ToolTip
-    $tip.SetToolTip($stateLabel,($selectedLaunch.Label+' — 3.2.0'))
+    $tip.SetToolTip($stateLabel,($selectedLaunch.Label+' — 3.2.1'))
     $tip.SetToolTip($pauseButton,'يفك تثبيت نافذة Chrome فقط؛ لا يوقف الرصد في الإضافة')
     function Set-GuardianCorner {
         $area=[System.Windows.Forms.Screen]::FromControl($form).WorkingArea
@@ -387,7 +403,7 @@ try {
             $stateLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#B45309')
             $startButton.Enabled = $true
             $tray.Text = 'مرصاد: المراقبة متوقفة'
-            [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'توقف مساعد مرصاد', 'OK', 'Error') | Out-Null
+            [MirsadChromeWindow]::Alert($_.Exception.Message) | Out-Null
         }
     })
     $startButton.add_Click({
@@ -409,7 +425,7 @@ try {
         $startButton.Enabled=$true; $stateLabel.Text='مرصاد — متوقف'
         $stateLabel.ForeColor=[System.Drawing.Color]::White; $tray.Text='مرصاد: التثبيت متوقف'
     })
-    $form.add_Shown({Set-GuardianCorner;$startButton.PerformClick()})
+    $form.add_Shown({Write-GuardianLog 'Control panel shown';Set-GuardianCorner;$startButton.PerformClick()})
     $form.add_FormClosing({ $timer.Stop(); if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }; if ($script:scanWindow -ne [IntPtr]::Zero) { [MirsadChromeWindow]::Unpin($script:scanWindow) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null })
     $hotkeys = New-Object MirsadHotkeys
     $hotkeys.add_StartRequested({ $startButton.PerformClick() })
@@ -419,12 +435,13 @@ try {
         if ($script:scanWindow -ne [IntPtr]::Zero) { [MirsadChromeWindow]::Unpin($script:scanWindow) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null
         $form.Close()
     })
-    if (-not $hotkeys.Register()) { throw 'تعذر تسجيل اختصار الخروج لأنها مستخدمة في برنامج آخر. لم تبدأ الحماية؛ أغلق البرنامج الآخر وأعد المحاولة.' }
+    if (-not $hotkeys.Register()) { Write-GuardianLog 'Global shortcuts unavailable; use control-panel Stop/Close buttons'; $tip.SetToolTip($stateLabel,'اختصار لوحة المفاتيح مستخدم ببرنامج آخر؛ استخدم إيقاف أو إغلاق من اللوحة') }
     [System.Windows.Forms.Application]::Run($form)
 
 } catch {
+    Write-GuardianLog ($_ | Out-String)
     if ($_.Exception -is [System.OperationCanceledException]) { exit 0 }
-    [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'مساعد مرصاد', 'OK', 'Error') | Out-Null
+    [MirsadChromeWindow]::Alert($_.Exception.Message) | Out-Null
     exit 1
 } finally {
     if ($hotkeys) { $hotkeys.Dispose() }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -37,8 +38,11 @@ func installSchoolNative() error {
 		if e != nil {
 			return e
 		}
-		if e = localAtomic(target, b); e != nil {
-			return e
+		existing, _ := os.ReadFile(target)
+		if !bytes.Equal(existing, b) {
+			if e = localAtomic(target, b); e != nil {
+				return e
+			}
 		}
 	}
 	manifest := map[string]interface{}{"name": "com.mirsad.school_files", "description": "School local evidence backup", "path": target, "type": "stdio", "allowed_origins": []string{schoolOrigin}}

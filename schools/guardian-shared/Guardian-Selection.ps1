@@ -37,7 +37,7 @@ function Select-MirsadChoice {
     if ($Choices.Count -eq 0) { throw 'لم أجد إضافة مرصاد مفعّلة في Chrome. فعّل إضافة الخاص أو المدارس ثم أعد تشغيل المساعد.' }
     if ($Choices.Count -eq 1) { return $Choices[0] }
     $dialog=New-Object System.Windows.Forms.Form
-    $dialog.Text='أي مرصاد تريد تشغيل مساعده؟'; $dialog.StartPosition='CenterScreen'; $dialog.ClientSize=New-Object System.Drawing.Size(550,200)
+    $dialog.TopMost=$true; $dialog.Text='أي مرصاد تريد تشغيل مساعده؟'; $dialog.StartPosition='CenterScreen'; $dialog.ClientSize=New-Object System.Drawing.Size(550,200)
     $dialog.RightToLeft='Yes'; $dialog.FormBorderStyle='FixedDialog'; $dialog.MaximizeBox=$false; $dialog.MinimizeBox=$false
     $dialog.Font=New-Object System.Drawing.Font('Segoe UI',11)
     $label=New-Object System.Windows.Forms.Label; $label.Text='اختر النسخة وحساب Chrome. لا يغيّر المساعد بيانات الإضافتين.'; $label.SetBounds(20,20,510,45)

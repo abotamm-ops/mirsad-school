@@ -1,6 +1,6 @@
 /* Optional read/merge only. No replacement, no delete, no automatic login. */
 var MirsadAutoLinks=(()=>{
- const PREF='mirsadAutoLinksEnabled',STAGED='mirsadAutoLinksStaged',STATE='mirsadAutoLinksState',NOTES='mirsadAutoLinksNotes',ALARM='mirsad-auto-links-five-minutes';let busy=false,applying=false;
+ const REMOTE='mirsadAutoLinksRemote',PREF='mirsadAutoLinksEnabled',STAGED='mirsadAutoLinksStaged',STATE='mirsadAutoLinksState',NOTES='mirsadAutoLinksNotes',ALARM='mirsad-auto-links-five-minutes';let busy=false,applying=false;
  const today=()=>MirsadMonitorModel.day();
  const edition=chrome.runtime.getManifest().name.includes('المدارس')?'schools/':'';
  const home='/'+edition+'automatic-monitoring.html';
@@ -10,7 +10,7 @@ var MirsadAutoLinks=(()=>{
  async function scope(){const c=(await chrome.storage.local.get('mirsadDriveConfig')).mirsadDriveConfig||{};return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode((c.url||'')+'|'+(c.key||''))))).map(v=>v.toString(16).padStart(2,'0')).join('')}
  async function note(text,kind='info'){const at=Date.now(),s=await chrome.storage.local.get(NOTES),notes=s[NOTES]||[];await chrome.storage.local.set({[NOTES]:[...notes,{at,date:today(),text,kind}].slice(-100),[STATE]:{at,date:today(),text,kind}})}
  async function info(){const s=await chrome.storage.local.get([PREF,STATE,NOTES,'mirsadDriveDay']);const day=s.mirsadDriveDay;return {ok:true,enabled:s[PREF]===true,missing:day?.date===today()?missing(day.snapshot):null,state:s[STATE]||null,notes:(s[NOTES]||[]).filter(n=>n.date===today()).slice(-15)}}
- async function enabled(){return (await chrome.storage.local.get(PREF))[PREF]===true}
+ async function enabled(){const v=await chrome.storage.local.get([PREF,REMOTE]);return v[PREF]===true&&v[REMOTE]?.scope===await scope()&&Date.now()-v[REMOTE].seenAt<180000}
  async function configure(on){if(typeof on!=='boolean')throw Error('خيار غير صالح');await chrome.storage.local.set({[PREF]:on});if(on){await chrome.alarms.create(ALARM,{periodInMinutes:5});await note('التحديث مفعّل: تُفحص صفحة المعلمين كل خمس دقائق طالما بقيت روابط ناقصة.')}else{await chrome.alarms.clear(ALARM);await chrome.storage.local.remove(STAGED);await note('تحديث الروابط التلقائي متوقف.')}return info()}
  async function health(tab){
   await chrome.tabs.reload(tab.id);const deadline=Date.now()+60000;
@@ -58,7 +58,20 @@ var MirsadAutoLinks=(()=>{
   await chrome.storage.local.remove(STAGED);await note(r.filled?'أُضيفت '+r.filled+' روابط جديدة؛ النتائج والصور والتوقيت محفوظة.':'لم تُضف روابط للحصص الناقصة بعد؛ يستمر الرصد بالجدول نفسه.');
  }catch(e){await note('تعذر إضافة الروابط: '+e.message+'؛ يستمر الرصد بالجدول الحالي.','warning')}finally{applying=false}}
  chrome.alarms.onAlarm.addListener(a=>{if(a.name===ALARM)void tick()});
- chrome.runtime.onMessage.addListener((m,s,reply)=>{if(!['MIRSAD_AUTO_LINKS_INFO','MIRSAD_AUTO_LINKS_CONFIG'].includes(m?.type)||!validSender(s))return;(m.type==='MIRSAD_AUTO_LINKS_CONFIG'?configure(m.enabled):info()).then(reply).catch(e=>reply({ok:false,error:e.message}));return true});
+ chrome.runtime.onMessage.addListener((m,s,reply)=>{if(!['MIRSAD_AUTO_LINKS_INFO','MIRSAD_AUTO_LINKS_CONFIG'].includes(m?.type)||!validSender(s))return;(m.type==='MIRSAD_AUTO_LINKS_CONFIG'?Promise.reject(Error('غيّر الإعداد من موقع مرصاد؛ التحكم الآن محفوظ عن بُعد')):info()).then(reply).catch(e=>reply({ok:false,error:e.message}));return true});
  void enabled().then(async on=>{if(on&&!await chrome.alarms.get(ALARM))await chrome.alarms.create(ALARM,{periodInMinutes:5})});
- return {tick,beforeCycle,configure,info};
+
+ async function acceptRemote(control,expectedScope){
+  if(!control||typeof control.enabled!=='boolean'||!Number.isInteger(control.revision)||control.revision<0)return false;
+  const fingerprint=await scope();if(expectedScope&&expectedScope!==fingerprint)return false;const old=(await chrome.storage.local.get(REMOTE))[REMOTE];
+  if(old?.scope===fingerprint&&control.revision<old.revision)return false;
+  const changed=old?.scope!==fingerprint||old.revision!==control.revision||old.enabled!==control.enabled||(await chrome.storage.local.get(PREF))[PREF]!==control.enabled;
+  if(changed)await configure(control.enabled);
+  await chrome.storage.local.set({[REMOTE]:{scope:fingerprint,revision:control.revision,enabled:control.enabled,seenAt:Date.now(),appliedAt:changed?Date.now():old.appliedAt}});
+  return changed;
+ }
+ async function remoteReport(){const v=(await chrome.storage.local.get(REMOTE))[REMOTE];if(!v||v.scope!==await scope())return null;const state=await info();return {revision:v.revision,enabled:state.enabled,appliedAt:v.appliedAt,remaining:state.missing,complete:state.state?.complete===true,notes:state.notes.slice(-5)}}
+ chrome.alarms.onAlarm.addListener(a=>{if(a.name==='mirsadAutoLinksRemoteControl')void MirsadLiveSender.sync()});
+ void chrome.alarms.get('mirsadAutoLinksRemoteControl').then(a=>{if(!a)return chrome.alarms.create('mirsadAutoLinksRemoteControl',{periodInMinutes:1})});
+ return {tick,beforeCycle,configure,info,acceptRemote,remoteReport,remoteScope:scope};
 })();
