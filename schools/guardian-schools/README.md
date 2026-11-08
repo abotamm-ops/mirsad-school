@@ -1,0 +1,1 @@
+Schools customer guardian 3.4.1. Only the fixed Schools extension ID and /schools/ monitoring URL are included. No private product or edition chooser. Chrome profile chooser is shown only if multiple school profiles are installed. Shared owner helper remains separate.
