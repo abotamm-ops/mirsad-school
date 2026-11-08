@@ -31,16 +31,16 @@ public static void Unpin(IntPtr hwnd) { if (IsWindow(hwnd)) SetWindowPos(hwnd,ne
 [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
 [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr h);
 public static void KeepWorkspace(IntPtr hwnd,IntPtr panel){
- if(!IsWindow(hwnd))return;
- if(IsIconic(hwnd)||!IsZoomed(hwnd))ShowWindowAsync(hwnd,3);
- SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13);
- var foreground=GetForegroundWindow();
- if(foreground!=panel && foreground!=hwnd){
-  uint pid;var tid=GetWindowThreadProcessId(foreground,out pid);var own=GetCurrentThreadId();
-  bool attached=tid!=0&&tid!=own&&AttachThreadInput(own,tid,true);
-  try{BringWindowToTop(hwnd);SetForegroundWindow(hwnd);}finally{if(attached)AttachThreadInput(own,tid,false);}
- }
- if(IsWindowVisible(panel))SetWindowPos(panel,new IntPtr(-1),0,0,0,0,0x13);
+if(!IsWindow(hwnd))return;
+if(IsIconic(hwnd)||!IsZoomed(hwnd))ShowWindowAsync(hwnd,3);
+SetWindowPos(hwnd,new IntPtr(-1),0,0,0,0,0x13);
+var foreground=GetForegroundWindow();
+if(foreground!=panel && foreground!=hwnd){
+uint pid;var tid=GetWindowThreadProcessId(foreground,out pid);var own=GetCurrentThreadId();
+bool attached=tid!=0&&tid!=own&&AttachThreadInput(own,tid,true);
+try{BringWindowToTop(hwnd);SetForegroundWindow(hwnd);}finally{if(attached)AttachThreadInput(own,tid,false);}
+}
+if(IsWindowVisible(panel))SetWindowPos(panel,new IntPtr(-1),0,0,0,0,0x13);
 }
 [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern IntPtr FindWindow(string c,string t);
 public static bool Reveal(){var h=FindWindow(null,"مرصاد | مساعد الرصد");if(h==IntPtr.Zero)return false;ShowWindowAsync(h,9);SetForegroundWindow(h);SetWindowPos(h,new IntPtr(-1),0,0,0,0,0x13);return true;}
@@ -81,6 +81,7 @@ public bool Dashboard;
 public bool Madrasati;
 }
 public static class MirsadChromeTabs {
+public static long GuardHandle;
 static readonly object gate=new object();
 static MirsadWindowTabs[] snapshot=new MirsadWindowTabs[0];
 static bool busy;
@@ -97,12 +98,14 @@ if(root==null)return result;
 var queue=new Queue<Tuple<AutomationElement,int>>();
 queue.Enqueue(Tuple.Create(root,0));
 int visited=0; bool sawTabs=false, truncated=false;
+AutomationElement dashboard=null,teams=null;
 while(queue.Count>0 && visited<1800) {
 var entry=queue.Dequeue(); visited++;
 var current=entry.Item1.Current;
 if(current.ControlType==ControlType.TabItem) {
 sawTabs=true;
-if(DashboardTitle(current.Name)) result.Dashboard=true;
+if(DashboardTitle(current.Name)){result.Dashboard=true;dashboard=entry.Item1;}
+else if((current.Name??"").IndexOf("Teams",StringComparison.OrdinalIgnoreCase)>=0 || (current.Name??"").Contains("تيمز"))teams=entry.Item1;
 if((current.Name??"").Contains("مدرستي")) result.Madrasati=true;
 continue;
 }
@@ -112,6 +115,10 @@ var children=entry.Item1.FindAll(TreeScope.Children,Condition.TrueCondition);
 foreach(AutomationElement child in children) queue.Enqueue(Tuple.Create(child,entry.Item2+1));
 }
 result.Reliable=result.Dashboard || (sawTabs && !truncated && queue.Count==0);
+if(dashboard!=null && teams!=null && Interlocked.Read(ref GuardHandle)==handle.ToInt64()){
+object d,t;
+if(dashboard.TryGetCurrentPattern(SelectionItemPattern.Pattern,out d) && ((SelectionItemPattern)d).Current.IsSelected && teams.TryGetCurrentPattern(SelectionItemPattern.Pattern,out t) && Interlocked.Read(ref GuardHandle)==handle.ToInt64())((SelectionItemPattern)t).Select();
+}
 } catch { result.Reliable=false; }
 return result;
 }
@@ -203,7 +210,7 @@ throw [System.OperationCanceledException]::new('إلغاء')
 }
 $mutex = New-Object System.Threading.Mutex($false, 'Local\MirsadUnifiedGuardian')
 if (-not $mutex.WaitOne(0, $false)) {
-if(-not [MirsadChromeWindow]::Reveal()){[System.Windows.Forms.MessageBox]::Show('أغلق المساعد السابق.','مرصاد') | Out-Null}
+if(-not [MirsadChromeWindow]::Reveal()){[System.Windows.Forms.MessageBox]::Show('المساعد يعمل بالفعل.','مرصاد') | Out-Null}
 $mutex.Dispose()
 exit 0
 }
@@ -270,7 +277,6 @@ $form.RightToLeft = 'Yes'; $form.RightToLeftLayout = $false
 $form.AutoScaleMode = 'Dpi'; $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96,96)
 $form.Font = New-Object System.Drawing.Font('Segoe UI',11)
 $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#F2F6FA')
-
 $bitmap = New-Object System.Drawing.Bitmap(64,64)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $graphics.SmoothingMode = 'AntiAlias'
@@ -292,9 +298,9 @@ $exitButton=New-GuardianButton $form 'إغلاق' 140 91 62 37 '#A63838' '#FFFFF
 $footer=New-GuardianLabel $form "Ctrl+Shift+Q إغلاق`nCtrl+Shift+P إيقاف`nCtrl+Shift+M تشغيل" 8 138 194 65 9 '#173B56'
 $exitButton.add_Click({$form.Close()})
 $pauseButton.add_Click({
- $timer.Stop();if($script:watched){[MirsadChromeWindow]::Unpin($script:watched)}
- [MirsadChromeWindow]::KeepAwake($false)|Out-Null
- $startButton.Enabled=$true;$stateLabel.Text='الحماية متوقفة';$tray.Text='مرصاد: متوقف'
+$timer.Stop();[MirsadChromeTabs]::GuardHandle=0;if($script:watched){[MirsadChromeWindow]::Unpin($script:watched)}
+[MirsadChromeWindow]::KeepAwake($false)|Out-Null
+$startButton.Enabled=$true;$stateLabel.Text='الحماية متوقفة';$tray.Text='مرصاد: متوقف'
 })
 $tray = New-Object System.Windows.Forms.NotifyIcon
 $tray.Icon = $guardianIcon
@@ -314,7 +320,6 @@ try {
 if (-not [MirsadChromeWindow]::KeepAwake($true)) { throw 'تعذر طلب منع السكون من ويندوز.' }
 $windows = @([MirsadChromeWindow]::Windows())
 if($script:watched -ne [IntPtr]::Zero -and [MirsadChromeWindow]::IsWindow($script:watched)){[MirsadChromeWindow]::KeepWorkspace($script:watched,$form.Handle)}
-if($windows -contains $script:watched){if ([MirsadChromeWindow]::IsIconic($script:watched)) { [MirsadChromeWindow]::ShowWindowAsync($script:watched,3) | Out-Null }}
 [MirsadChromeTabs]::Request($windows)
 $inventory = @([MirsadChromeTabs]::Snapshot() | Where-Object { $windows -contains [IntPtr]$_.Handle })
 $fresh = ([DateTime]::UtcNow - [MirsadChromeTabs]::UpdatedUtc).TotalSeconds -lt 10
@@ -329,6 +334,7 @@ if ($fresh -and $target) {
 $handle = [IntPtr]$target.Handle
 if ($script:watched -ne [IntPtr]::Zero -and $script:watched -ne $handle) { [MirsadChromeWindow]::Unpin($script:watched) }
 $script:watched = $handle
+[MirsadChromeTabs]::GuardHandle=$handle.ToInt64()
 $script:pending = $false
 [MirsadChromeWindow]::Pin($script:watched);[MirsadChromeWindow]::KeepWorkspace($script:watched,$form.Handle)
 $stateLabel.Text = 'الحماية تعمل على نافذة كروم التي تحتوي مرصاد'
@@ -358,7 +364,7 @@ $stateLabel.Text = 'تبويب مرصاد غير موجود؛ جارٍ فتحه 
 $tray.Text = 'مرصاد: يعيد فتح تبويب الرصد'
 Start-Process -FilePath $launch.Chrome -ArgumentList @(('--profile-directory="' + $launch.Profile + '"'), '--new-tab', $launch.Url) | Out-Null
 } catch {
-$timer.Stop()
+$timer.Stop();[MirsadChromeTabs]::GuardHandle=0
 if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
 [MirsadChromeWindow]::KeepAwake($false) | Out-Null
 $stateLabel.Text = 'توقفت الحماية — أعد المحاولة'
@@ -369,8 +375,11 @@ $tray.Text = 'مرصاد: المراقبة متوقفة'
 }
 })
 $startButton.add_Click({
-try{$null=Get-GuardianLaunch}catch{$stateLabel.Text=$_.Exception.Message;return}
 if ($timer.Enabled) { return }
+$warning="ستبقى نافذة الرصد مكبّرة وفي المقدمة. يُعاد فتح مرصاد إذا أغلقته ويُعرض تيمز الموجود في نافذته.`n`nCtrl + Shift + P : إيقاف`nCtrl + Shift + M : تشغيل`nCtrl + Shift + Q : إغلاق`n`nهل توافق على بدء الحماية؟"
+$answer=[System.Windows.Forms.MessageBox]::Show($form,$warning,'قبل تشغيل الحماية',[System.Windows.Forms.MessageBoxButtons]::YesNo,[System.Windows.Forms.MessageBoxIcon]::Information,[System.Windows.Forms.MessageBoxDefaultButton]::Button2)
+if($answer -ne [System.Windows.Forms.DialogResult]::Yes){$stateLabel.Text='لم تبدأ الحماية';return}
+try{$null=Get-GuardianLaunch}catch{$stateLabel.Text=$_.Exception.Message;return}
 $script:watched = [IntPtr]::Zero
 $script:pending = $false
 $script:autoHide = $false
@@ -381,16 +390,16 @@ $tray.Text = 'مرصاد: مراقبة Chrome تعمل'
 $timer.Start()
 })
 $form.add_Shown({
- $area=[System.Windows.Forms.Screen]::FromControl($form).WorkingArea
- $form.Location=New-Object System.Drawing.Point(($area.Right-$form.Width-8),($area.Bottom-$form.Height-8))
- $startButton.PerformClick()
+$area=[System.Windows.Forms.Screen]::FromControl($form).WorkingArea
+$form.Location=New-Object System.Drawing.Point(($area.Right-$form.Width-8),($area.Bottom-$form.Height-8))
+$startButton.PerformClick()
 })
-$form.add_FormClosing({ $timer.Stop(); if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null })
+$form.add_FormClosing({ $timer.Stop();[MirsadChromeTabs]::GuardHandle=0; if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }; [MirsadChromeWindow]::KeepAwake($false) | Out-Null })
 $hotkeys = New-Object MirsadHotkeys
 $hotkeys.add_StartRequested({ $startButton.PerformClick() })
 $hotkeys.add_PauseRequested({$pauseButton.PerformClick()})
 $hotkeys.add_ExitRequested({
-$timer.Stop()
+$timer.Stop();[MirsadChromeTabs]::GuardHandle=0
 if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
 [MirsadChromeWindow]::KeepAwake($false) | Out-Null
 $form.Close()
@@ -402,7 +411,7 @@ if(-not $hotkeys.Register()){$footer.Text='الاختصارات محجوزة؛ �
 exit 1
 } finally {
 if ($hotkeys) { $hotkeys.Dispose() }
-if ($timer) { $timer.Stop(); $timer.Dispose() }
+if ($timer) { $timer.Stop();[MirsadChromeTabs]::GuardHandle=0; $timer.Dispose() }
 if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }
 [MirsadChromeWindow]::KeepAwake($false) | Out-Null
 if ($tray) { $tray.Visible = $false; $tray.Dispose() }
