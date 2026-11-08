@@ -282,6 +282,7 @@ async function navigateCurrent(run){
     if(bounds&&nextAt<bounds.end.getTime()){
       run.waitingForCycle2=true;run.nextCycleAt=nextAt;await saveRun(run);
       await chrome.alarms.create(NEXT_ALARM,{when:nextAt});
+      void MirsadAutoLinks.collectGap();
       await setStatus("اكتملت الدورة "+run.cycle+" للحصة "+p.n+"؛ تنتظر الدورة "+(run.cycle+1)+" بعد "+gapMinutes+" دقائق.",{period:p.n,cycle:run.cycle,waiting:true,nextAt});
     }else{
       await setStatus("انتهى الرصد للحصة "+p.n+"؛ لا تكفي المدة لدورة أخرى داخل الحصة.",{period:p.n,cycle:run.cycle});

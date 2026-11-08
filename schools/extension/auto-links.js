@@ -1,6 +1,6 @@
 /* Optional read/merge only. No replacement, no delete, no automatic login. */
 var MirsadAutoLinks=(()=>{
- const REMOTE='mirsadAutoLinksRemote',PREF='mirsadAutoLinksEnabled',STAGED='mirsadAutoLinksStaged',STATE='mirsadAutoLinksState',NOTES='mirsadAutoLinksNotes',ALARM='mirsad-auto-links-five-minutes';let busy=false,gapBusy=false,applying=false;
+ const REMOTE='mirsadAutoLinksRemote',PREF='mirsadAutoLinksEnabled',STAGED='mirsadAutoLinksStaged',STATE='mirsadAutoLinksState',NOTES='mirsadAutoLinksNotes',ALARM='mirsad-auto-links-five-minutes';let busy=false,gapBusy=false,applying=false,gapRequested=false,completedGap=null;
  const today=()=>MirsadMonitorModel.day();
  const edition=chrome.runtime.getManifest().name.includes('المدارس')?'schools/':'';
  const home='/'+edition+'automatic-monitoring.html';
@@ -11,10 +11,10 @@ var MirsadAutoLinks=(()=>{
  async function note(text,kind='info'){const at=Date.now(),s=await chrome.storage.local.get(NOTES),notes=s[NOTES]||[];await chrome.storage.local.set({[NOTES]:[...notes,{at,date:today(),text,kind}].slice(-100),[STATE]:{at,date:today(),text,kind}})}
  async function info(){const s=await chrome.storage.local.get([PREF,STATE,NOTES,'mirsadDriveDay']);const day=s.mirsadDriveDay;return {ok:true,enabled:s[PREF]===true,missing:day?.date===today()?missing(day.snapshot):null,state:s[STATE]||null,notes:(s[NOTES]||[]).filter(n=>n.date===today()).slice(-15)}}
  async function enabled(){const v=await chrome.storage.local.get([PREF,REMOTE]);return v[PREF]===true&&v[REMOTE]?.scope===await scope()&&Date.now()-v[REMOTE].seenAt<180000}
- async function configure(on){if(typeof on!=='boolean')throw Error('خيار غير صالح');await chrome.storage.local.set({[PREF]:on});if(on){await chrome.alarms.create(ALARM,{periodInMinutes:5});await note('التحديث مفعّل: تُفحص صفحة المعلمين كل خمس دقائق طالما بقيت روابط ناقصة.')}else{await chrome.alarms.clear(ALARM);await MadrasatiSource.cancelAutomatic?.();await chrome.storage.local.remove(STAGED);await chrome.storage.local.remove('mirsadAutoLinksHealth');await note('تحديث الروابط التلقائي متوقف.')}return info()}
- async function health(tab){
-  await chrome.tabs.reload(tab.id);const deadline=Date.now()+60000;
-  while(Date.now()<deadline){if(!await enabled())throw Error('أُلغي تحديث الروابط');const t=await chrome.tabs.get(tab.id);if(t.status==='complete'&&!t.pendingUrl){let u;try{u=new URL(t.url)}catch{}if(!u||u.origin!=='https://schools.madrasati.sa'||!/^\/SchoolManagment\/Teachers\/?$/i.test(u.pathname))throw Error('جلسة مدرستي أو صفحة المعلمين غير جاهزة؛ سجّل الدخول وافتح قائمة المعلمين');try{const r=await chrome.tabs.sendMessage(tab.id,{type:'MIRSAD_MADRASATI_READ',kind:'directory'});if(r?.ok&&r.teachers?.length)return r;if(r?.error&&!r.retryable)throw Object.assign(Error(r.error),{fatal:true})}catch(e){if(e.fatal)throw e}}
+ async function configure(on){if(typeof on!=='boolean')throw Error('خيار غير صالح');await chrome.storage.local.set({[PREF]:on});if(on){await chrome.alarms.create(ALARM,{periodInMinutes:5});await note('التحديث مفعّل: تُفحص صفحة المعلمين كل خمس دقائق بحسب وضع التحميل المختار.')}else{await chrome.alarms.clear(ALARM);await MadrasatiSource.cancelAutomatic?.();await chrome.storage.local.remove(STAGED);await chrome.storage.local.remove('mirsadAutoLinksHealth');await note('تحديث الروابط التلقائي متوقف.')}return info()}
+ async function health(tab,until=Date.now()+60000,allowed=enabled){
+  if(!await allowed())throw Error('انتهى وقت تحديث صفحة المعلمين');await chrome.tabs.reload(tab.id);const deadline=Math.min(Date.now()+60000,until);
+  while(Date.now()<deadline){if(!await enabled()||!await allowed())throw Error('انتهى وقت تحديث صفحة المعلمين أو أُلغي التحديث');const t=await chrome.tabs.get(tab.id);if(t.status==='complete'&&!t.pendingUrl){let u;try{u=new URL(t.url)}catch{}if(!u||u.origin!=='https://schools.madrasati.sa'||!/^\/SchoolManagment\/Teachers\/?$/i.test(u.pathname))throw Error('جلسة مدرستي أو صفحة المعلمين غير جاهزة؛ سجّل الدخول وافتح قائمة المعلمين');try{const r=await chrome.tabs.sendMessage(tab.id,{type:'MIRSAD_MADRASATI_READ',kind:'directory'});if(r?.ok&&r.teachers?.length)return r;if(r?.error&&!r.retryable)throw Object.assign(Error(r.error),{fatal:true})}catch(e){if(e.fatal)throw e}}
    await pause(500);
   }throw Error('لم تتأكد جاهزية قائمة المعلمين بعد التحديث؛ بقي الجدول كما هو');
  }
@@ -26,21 +26,31 @@ var MirsadAutoLinks=(()=>{
   const tabs=await chrome.tabs.query({url:'https://schools.madrasati.sa/SchoolManagment/Teachers*'}),tab=tabs.find(t=>t.windowId===run?.workspaceWindowId)||tabs[0];if(!tab)throw Error('افتح صفحة معلمي مدرستي؛ لم يُفتح تبويب جديد');
   const fingerprint=await scope();await health(tab);if(!await enabled()||fingerprint!==await scope())return;
   await chrome.storage.local.set({mirsadAutoLinksHealth:{date:today(),at:Date.now(),scope:fingerprint,tabId:tab.id,revision:d.snapshot.scheduleRevision},[STATE]:{at:Date.now(),date:today(),text:'تم تحديث صفحة المعلمين فقط؛ تحميل الجدول ينتظر فاصل دورات الرصد.'}});
- }catch(e){await note('لم تُحدّث صفحة المعلمين: '+e.message,'warning')}finally{busy=false}}
+ }catch(e){await note('لم تُحدّث صفحة المعلمين: '+e.message,'warning')}finally{busy=false;if(gapRequested){gapRequested=false;void collectGap()}}}
  async function selectedMode(){const v=(await chrome.storage.local.get(REMOTE))[REMOTE];return v?.mode==='continuous'?'continuous':'missing'}
- async function collectGap(){if(gapBusy||busy||applying||!await enabled())return;gapBusy=true;try{
+ async function collectGap(){if(!await enabled())return;if(gapBusy||applying)return;if(busy){gapRequested=true;return}gapBusy=true;try{
   const run=await getRun();if(!run?.running||run.paused||run.current||!run.waitingForCycle2||!(run.nextCycleAt>Date.now()+2000))return;
   const d=(await chrome.storage.local.get('mirsadDriveDay')).mirsadDriveDay;if(d?.date!==today()||d.snapshot?.sourceType!=='madrasati')return;
   const fingerprint=await scope(),mode=await selectedMode(),startPeriod=Math.max(1,run.period||1),rows=d.snapshot.lessons.filter(l=>l.period>=startPeriod&&!MirsadMonitorModel.isExcludedPeriod(today(),l.period,d.snapshot));
   if(!rows.length||mode==='missing'&&!rows.some(l=>!MirsadScheduleCore.normalizeTeamsUrl(l.url)))return;
-  const healthState=(await chrome.storage.local.get('mirsadAutoLinksHealth')).mirsadAutoLinksHealth;
-  if(!healthState||healthState.date!==today()||healthState.scope!==fingerprint||Date.now()-healthState.at>360000||healthState.revision!==d.snapshot.scheduleRevision){await note('أُجّل تحميل الجدول حتى يتأكد تحديث صفحة المعلمين وسلامتها.');return}
-  const source=await MadrasatiSource.info();if(source.state?.running||source.pending)return;
   const shouldContinue=async()=>{if(!await enabled()||fingerprint!==await scope()||mode!==await selectedMode())return false;const r=await getRun();return r?.running&&!r.paused&&!r.current&&r.waitingForCycle2&&r.nextCycleAt===run.nextCycleAt&&r.startedAt===run.startedAt&&(r.controlEpoch??0)===(run.controlEpoch??0)&&Date.now()<run.nextCycleAt-1000};
-  const result=await MadrasatiSource.collect(today(),{collectOnly:true,directoryTabId:healthState.tabId,shouldContinue,mode,startPeriod});
+  const gapKey=[fingerprint,run.startedAt,run.controlEpoch||0,run.period,run.cycle,run.nextCycleAt,mode].join('|');
+  const previous=(await chrome.storage.local.get(STAGED))[STAGED];if(completedGap===gapKey||previous?.gapKey===gapKey)return;
+  const source=await MadrasatiSource.info();if(source.state?.running||source.pending){await note('تعذر تحميل الجدول في الفاصل: هناك تحميل آخر أو استيراد ينتظر التأكيد.');return}
+  let healthState=(await chrome.storage.local.get('mirsadAutoLinksHealth')).mirsadAutoLinksHealth;
+  if(!healthState||healthState.date!==today()||healthState.scope!==fingerprint||Date.now()-healthState.at>360000||healthState.revision!==d.snapshot.scheduleRevision){
+   const tabs=await chrome.tabs.query({url:'https://schools.madrasati.sa/SchoolManagment/Teachers*'}),tab=tabs.find(t=>t.windowId===run.workspaceWindowId)||tabs[0];
+   if(!tab)throw Error('افتح صفحة معلمي مدرستي؛ بقي الجدول الحالي');
+   await note('بدأ فاصل الدورات؛ التحقق من صفحة المعلمين قبل تحميل الجدول.');
+   await health(tab,run.nextCycleAt-1000,shouldContinue);if(!await shouldContinue())return;
+   healthState={date:today(),at:Date.now(),scope:fingerprint,tabId:tab.id,revision:d.snapshot.scheduleRevision};await chrome.storage.local.set({mirsadAutoLinksHealth:healthState});
+  }
+  const sourceDate=d.snapshot.sourceScheduleDate||today();
+  await note('بدأ تحميل الجدول في فاصل الدورات للتاريخ '+sourceDate+'.');
+  const result=await MadrasatiSource.collect(sourceDate,{collectOnly:true,directoryTabId:healthState.tabId,shouldContinue,mode,startPeriod});
   if(!result?.payload||!await shouldContinue())return;
-  await chrome.storage.local.set({[STAGED]:{date:today(),revision:d.snapshot.scheduleRevision,scope:fingerprint,payload:result.payload,at:Date.now(),mode,startPeriod}});
-  await note('اكتملت قراءة الجدول وأُغلقت تبويبات التحميل؛ التحقق من الروابط قبل الدورة التالية.');
+  await chrome.storage.local.set({[STAGED]:{gapKey,date:today(),revision:d.snapshot.scheduleRevision,scope:fingerprint,payload:result.payload,at:Date.now(),mode,startPeriod}});
+  completedGap=gapKey;await beforeCycle(run);
  }catch(e){await note(e.cancelled?e.message:'لم يُحمّل الجدول: '+e.message,e.cancelled?'info':'warning')}finally{gapBusy=false}}
  async function beforeCycle(run){await MadrasatiSource.cancelAutomatic?.();if(applying||!await enabled())return;applying=true;try{
   const stored=await chrome.storage.local.get([STAGED,'mirsadDriveDay']),pending=stored[STAGED],d=stored.mirsadDriveDay;if(!pending)return;
@@ -66,7 +76,7 @@ var MirsadAutoLinks=(()=>{
  chrome.alarms.onAlarm.addListener(a=>{if(a.name===ALARM)void tick()});
  chrome.storage.onChanged.addListener((changes,area)=>{const n=changes.mirsadAutoRun?.newValue,o=changes.mirsadAutoRun?.oldValue;if(area==='local'&&n?.running&&!n.current&&n.waitingForCycle2&&(!o?.waitingForCycle2||o.nextCycleAt!==n.nextCycleAt))void collectGap()});
  chrome.runtime.onMessage.addListener((m,s,reply)=>{if(!['MIRSAD_AUTO_LINKS_INFO','MIRSAD_AUTO_LINKS_CONFIG'].includes(m?.type)||!validSender(s))return;(m.type==='MIRSAD_AUTO_LINKS_CONFIG'?Promise.reject(Error('غيّر الإعداد من موقع مرصاد؛ التحكم الآن محفوظ عن بُعد')):info()).then(reply).catch(e=>reply({ok:false,error:e.message}));return true});
- void enabled().then(async on=>{if(on&&!await chrome.alarms.get(ALARM))await chrome.alarms.create(ALARM,{periodInMinutes:5})});
+ void enabled().then(async on=>{if(on){if(!await chrome.alarms.get(ALARM))await chrome.alarms.create(ALARM,{periodInMinutes:5});void collectGap()}});
 
  async function acceptRemote(control,expectedScope){
   if(!control||typeof control.enabled!=='boolean'||!Number.isInteger(control.revision)||control.revision<0)return false;
