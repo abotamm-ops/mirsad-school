@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "مرصاد — المدارس",
-  "version": "2.3.3",
-  "description": "رصد حصص المعلمين من مدرستي وتيمز بحساب مستقل للمدرسة وجهاز رصد واحد",
+  "version": "2.4.0",
+  "description": "تجربة تقويم تيمز محليًا: مطابقة الروابط المضافة وفحصها دون تعديل التحضير الفعلي.",
   "permissions": [
     "activeTab",
     "tabs",
@@ -44,7 +44,8 @@
       ],
       "js": [
         "schedule-core.js",
-        "content.js"
+        "content.js",
+        "teams-calendar-reader.js"
       ],
       "run_at": "document_idle"
     },

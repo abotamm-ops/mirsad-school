@@ -3,6 +3,7 @@
  const normalize=s=>String(s||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim();
  const day=(date=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
  function state(rounds,count){if(rounds.length!==count||rounds.some(x=>!['present','absent'].includes(x?.status)))return 'unresolved';const n=rounds.filter(x=>x.status==='absent').length;return n===count?'absent':n===0?'present':count===3&&n===2?'partial-absence':'partial'}
+ function lessonEvidence(records){return records.flatMap(function(record){var children=Array.isArray(record.linkResults)?record.linkResults:[],proofs=children.filter(r=>r.evidenceUrl&&r.status!=='present').map(child=>({...record,...child,aggregateScanId:record.scanId,meetingSource:child.source,scannedUrl:child.url}));if(record.evidenceUrl&&record.status!=='present'&&!proofs.some(r=>r.evidenceUrl===record.evidenceUrl))proofs.unshift(record);return proofs})}
  const defaultSchedule={manualStart:'06:30',periodDuration:45,manualGapMinutes:1};
  function lessonEnded(data,period,now=new Date()){
   const date=data.snapshot.date,today=day(now);if(date<today)return true;if(date>today)return false;
@@ -32,13 +33,13 @@
    const conclusive=rounds.filter(r=>['present','absent'].includes(r.status));
    const override=[...audit].reverse().find(a=>a.type==='override'&&a.teacherId===lesson.teacherId&&a.period===lesson.period&&(!reset||a.sequence>reset.sequence));
    const ended=lessonEnded(data,lesson.period,options.now||new Date());
-   const noLinkAbsence=!reset&&!conclusive.some(r=>r.status==='present')&&started&&(lesson.url||'')==='';
+   const noLinkAbsence=!reset&&!conclusive.some(r=>r.status==='present')&&started&&!(lesson.url||lesson.calendarUrl);
    const inferred=noLinkAbsence||(!reset&&!conclusive.length&&ended&&(!scans.length||scans.every(r=>r.status==='no-link')));
    const complete=rounds.every(r=>['present','absent'].includes(r.status));
    const finalState=override?override.status:inferred?'absent':data.snapshot.roundCount===3?(complete?state(rounds,3):rounds.some(r=>!r.pending&&!['present','absent'].includes(r.status))?'unresolved':'pending'):conclusive.length?state(conclusive,conclusive.length):scans.some(r=>r.status==='unresolved')?'unresolved':'pending';
    return {...lesson,rounds,state:finalState,displayState:finalState,override:override||null,inferred:!override&&inferred,noLinkAbsence:!override&&noLinkAbsence,ended,started,reset:!!reset&&!scans.length&&!override,
     pendingRounds:override||inferred?0:rounds.filter(r=>r.pending).length,failedRounds:override?0:rounds.filter(r=>!r.pending&&!['present','absent'].includes(r.status)).length,
-    evidence:allScans.filter(r=>r.evidenceUrl&&r.status!=='present'),history:allScans,adjustments:audit.filter(a=>a.type==='reset'||(a.teacherId===lesson.teacherId&&a.period===lesson.period)),
+    evidence:lessonEvidence(allScans),history:allScans,adjustments:audit.filter(a=>a.type==='reset'||(a.teacherId===lesson.teacherId&&a.period===lesson.period)),
     late:!override&&finalState==='partial'&&rounds[0]?.status==='absent'&&rounds.slice(1).some(r=>r.status==='present')};
   });
  }

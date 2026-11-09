@@ -1,17 +1,25 @@
 /* Durable, authenticated Drive sync. No change to Teams scanning or capture timing. */
 var CloudMonitoring=(function(){
- const CONFIG='mirsadDriveConfig',ACTIVE='mirsadDriveDay',STATUS='mirsadDriveStatus';let database,working=false,rerun=false,editingLinks=false;
+ const CONFIG='mirsadDriveConfig',ACTIVE='mirsadDriveDay',STATUS='mirsadDriveStatus';let database,working=false,rerun=false,editingLinks=false,calendarSaving=false;
  const db=()=>database||(database=new Promise((resolve,reject)=>{const r=indexedDB.open('mirsad-drive-outbox',1);r.onupgradeneeded=()=>r.result.createObjectStore('jobs',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)}));
  async function store(mode,action){const d=await db();return new Promise((resolve,reject)=>{const tx=d.transaction('jobs',mode),r=action(tx.objectStore('jobs'));tx.oncomplete=()=>resolve(r.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
  const jobs=()=>store('readonly',s=>s.getAll());
  async function status(text,error=false){await chrome.storage.local.set({[STATUS]:{text,error,at:Date.now()}})}
- async function request(action,payload={}){const c=(await chrome.storage.local.get(CONFIG))[CONFIG];if(!c?.url||!c?.key)throw new Error('أكمل ربط Drive أولًا');const response=await fetch(c.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,key:c.key,...payload}),signal:AbortSignal.timeout(25000)});if(!response.ok)throw new Error('تعذر الاتصال بخدمة Drive ('+response.status+')');const data=await response.json();if(!data.ok)throw new Error(data.error||'تعذر حفظ البيانات');return data}
+ function calendarRequestSignal(options={}){const remaining=Number.isFinite(options.deadlineAt)?options.deadlineAt-Date.now():25000;if(remaining<=0)throw new Error('انتهى وقت قراءة التقويم قبل حفظ الروابط');const timeout=AbortSignal.timeout(Math.max(1,Math.min(25000,Math.floor(remaining))));if(options.signal?.aborted)throw options.signal.reason||new Error('أُلغيت قراءة التقويم');return options.signal&&AbortSignal.any?AbortSignal.any([timeout,options.signal]):timeout}
+ async function assertCalendarRequest(options={}){
+  const cancelled=text=>Object.assign(new Error(text),{cancelled:true});
+  if(options.signal?.aborted)throw options.signal.reason||cancelled('أُلغيت قراءة التقويم');
+  if(Number.isFinite(options.deadlineAt)&&Date.now()>=options.deadlineAt)throw cancelled('انتهى وقت قراءة التقويم');
+  if(options.expectedConfig){const selected=(await chrome.storage.local.get(CONFIG))[CONFIG]||{};if(JSON.stringify(selected)!==JSON.stringify(options.expectedConfig))throw cancelled('تغير ربط خدمة الرصد؛ أُلغيت روابط التقويم السابقة');}
+  if(options.signal?.aborted)throw options.signal.reason||cancelled('أُلغيت قراءة التقويم');
+ }
+async function request(action,payload={},requestOptions={}){const c=requestOptions.expectedConfig||(await chrome.storage.local.get(CONFIG))[CONFIG];await assertCalendarRequest(requestOptions);if(!c?.url||!c?.key)throw new Error('أكمل ربط Drive أولًا');const response=await fetch(c.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,key:c.key,...payload}),signal:calendarRequestSignal(requestOptions)});if(!response.ok)throw new Error('تعذر الاتصال بخدمة Drive ('+response.status+')');const data=await response.json();await assertCalendarRequest(requestOptions);if(!data.ok)throw new Error(data.error||'تعذر حفظ البيانات');return data}
  async function configure(url,key){if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url))throw new Error('أدخل رابط نشر Apps Script الذي ينتهي بـ /exec');const old=(await chrome.storage.local.get(CONFIG))[CONFIG]||{};key=key||old.key;if(typeof key!=='string'||key.length<32)throw new Error('أدخل رمز الرفع المحفوظ في إعدادات الخدمة (32 حرفًا على الأقل)');await chrome.storage.local.set({[CONFIG]:{url,key}});const persisted=(await chrome.storage.local.get(CONFIG))[CONFIG];if(persisted?.key!==key||persisted?.url!==url)throw new Error('تعذر تثبيت الربط في تخزين المتصفح؛ حاول مجددًا');await status('حُفظ الربط؛ اضغط بداية اليوم لإنشاء المجلد');return {ok:true}}
  async function notify(){try{const tabs=await chrome.tabs.query({url:'https://mirsad-school.onrender.com/automatic-monitoring.html*'});await Promise.allSettled(tabs.filter(t=>t.id).map(t=>chrome.tabs.sendMessage(t.id,{type:'MIRSAD_MONITOR_CHANGED'})))}catch{}}
  const timing=()=>({...MirsadMonitorModel.defaultSchedule,...scheduleSettings});
  async function visibleHash(p){const norm=MirsadMonitorModel.normalize,body={source:p.sourceType,sourceDate:p.sourceScheduleDate||'',sourceUpload:!p.sourceScheduleDate&&p.sourceType==='naqar'?p.sourceUploadedAt||'':'',roundCount:p.roundCount,teachers:p.teachers.map(norm).sort(),lessons:p.items.map(l=>[norm(l.teacher),l.period,String(l.subject||'').trim(),String(l.className||'').trim(),String(l.url||'').trim()]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))};return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(body))))].map(b=>b.toString(16).padStart(2,'0')).join('')}
  async function alignSite(){const c=(await chrome.storage.local.get(CONFIG))[CONFIG];if(!c?.url)return false;let changed=false;const tabs=await chrome.tabs.query({url:'https://mirsad-school.onrender.com/*'});for(const tab of tabs){try{const r=await chrome.tabs.sendMessage(tab.id,{type:'MIRSAD_CLASSIC_SERVICE',url:c.url});if(r?.changed){changed=true;await chrome.tabs.reload(tab.id)}}catch{}}return changed}
- async function protectedState(){let state;try{state=await request('protectedDayState')}catch(e){throw new Error('تعذر التحقق من حماية اليوم. يلزم سكربت 0.6.35؛ لم يُغيّر الجدول. '+e.message)}if(state.protection!=='explicit-reset-only-v1')throw new Error('حدّث سكربت الحماية 0.6.35 أولًا؛ لم يُغيّر جدول اليوم');return state}
+ async function protectedState(requestOptions={}){let state;try{state=await request('protectedDayState',{},requestOptions)}catch(e){throw new Error('تعذر التحقق من حماية اليوم. يلزم سكربت 0.6.35؛ لم يُغيّر الجدول. '+e.message)}if(state.protection!=='explicit-reset-only-v1')throw new Error('حدّث سكربت الحماية 0.6.35 أولًا؛ لم يُغيّر جدول اليوم');return state}
  async function cacheProtected(state){const active={date:state.snapshot.date,snapshot:state.snapshot,folderUrl:state.folderUrl};await chrome.storage.local.set({[ACTIVE]:active});if(typeof setSeventhPeriodPolicy==='function')await setSeventhPeriodPolicy(state.snapshot);return active}
  async function assertSelected(run=null){const s=await chrome.storage.local.get([CONFIG,ACTIVE,'mirsadMadrasatiSelectedDate','mirsadMadrasatiLastSuccess','mirsadLoadIntent']);if(!s[CONFIG]?.key&&!s[ACTIVE])return;if(s.mirsadLoadIntent?.date===MirsadMonitorModel.day()&&!['verified','cancelled'].includes(s.mirsadLoadIntent.status))throw new Error('تحميل الجدول المطلوب لم يكتمل أو ينتظر قرارك؛ لن يُستخدم الجدول القديم بدلًا عنه');const active=s[ACTIVE],snapshot=active?.snapshot,wanted=s.mirsadMadrasatiSelectedDate||MirsadMonitorModel.day(),proof=s.mirsadMadrasatiLastSuccess;if(active?.date!==MirsadMonitorModel.day()||snapshot?.sourceType!=='madrasati')throw new Error('لم يبدأ الفحص: مدرستي هي المصدر الوحيد. جدول اليوم المحفوظ من مصدر سابق؛ لم يُحمّل جدول مدرستي المطلوب، ولن يُستخدم الجدول القديم');if(snapshot.sourceScheduleDate!==wanted)throw new Error('تاريخ الجدول المحفوظ '+(snapshot.sourceScheduleDate||'غير محدد')+' يختلف عن المطلوب '+wanted+'؛ حمّل تاريخ مدرستي المطلوب أولًا');if(!proof?.monitoringPrepared||proof.importedForDate!==MirsadMonitorModel.day()||proof.date!==wanted||proof.revision!==snapshot.scheduleRevision)throw new Error('لم يُؤكّد تحميل جدول مدرستي المطلوب في الرصد؛ نفّذ الخطوة 1 أولًا');if(run?.scheduleRevision&&run.scheduleRevision!==snapshot.scheduleRevision)throw new Error('الجلسة السابقة تخص جدولًا آخر؛ لن تُستأنف أو تُخلط مع الجدول المطلوب');return active}
  async function ensureDay(verify=false){const config=(await chrome.storage.local.get(CONFIG))[CONFIG];if(!config?.key){const saved=(await chrome.storage.local.get(ACTIVE))[ACTIVE];if(saved?.date===MirsadMonitorModel.day()){await assertSelected();return saved;}throw new Error('أكمل ربط Drive أولًا')}const state=await protectedState();if(state.exists){if(state.snapshot.sourceType!=='madrasati')throw new Error('جدول اليوم من مصدر ملغى؛ لن يُستخدم بدل جدول مدرستي');const active=await cacheProtected(state);await assertSelected();return active}return beginDay()}
@@ -19,23 +27,32 @@ var CloudMonitoring=(function(){
  let matching=null;
  async function syncVisible(reference){if(matching)return matching;matching=(async()=>{await MirsadClassicReady;const state=await protectedState();if(state.exists)return {ok:true,locked:true};throw new Error('جهّز جدول اليوم يدويًا من الإضافة؛ لا توجد مطابقة تلقائية تستبدل السجل')})().finally(()=>{matching=null});return matching}
  async function syncTiming(settings){const config=(await chrome.storage.local.get(CONFIG))[CONFIG];if(!config?.key)return;const result=await request('setMonitoringTiming',{scheduleSettings:settings});if(!result.saved||!result.snapshot)throw new Error('لم يؤكد الرصد حفظ التوقيت؛ حدّث سكربت 0.6.38');await cacheProtected(result);await notify()}
- async function syncRunLinks(snapshot,replace=null){const run=await getRun();if(!run||run.scheduleRevision!==snapshot.scheduleRevision)return;if(run.running)throw new Error('أوقف الرصد مؤقتًا قبل تعديل الروابط');for(const row of snapshot.lessons.filter(l=>l.url||replace?.teacherId===l.teacherId&&Number(replace.period)===l.period)){const item={...row,teacher:row.teacherName,hasLesson:true,validPeriod:true};for(const list of [run.schedule,...(run.period===row.period?[run.periodItems]:[])]){if(!Array.isArray(list))continue;const old=list.find(l=>MirsadMonitorModel.normalize(l.teacher)===MirsadMonitorModel.normalize(row.teacherName)&&Number(l.period??run.period)===row.period);if(old){if(!old.url||replace?.teacherId===row.teacherId&&Number(replace.period)===row.period)old.url=row.url}else if(row.url)list.push({...item})}}await saveRun(run)}
- async function mergeRemoteSnapshot(state){
-  const latest=await getRun();if(!latest||latest.scheduleRevision!==state.snapshot.scheduleRevision)return null;
-  const update=(list,activePeriod=false)=>Array.isArray(list)?list.map((item,index)=>{
-   if(activePeriod&&((latest.current&&index===latest.index)||index<latest.index))return item;
-   const row=state.snapshot.lessons.find(l=>Number(l.period)===Number(item.period??latest.period)&&MirsadMonitorModel.normalize(l.teacherName)===MirsadMonitorModel.normalize(item.teacher));
-   return row?{...item,url:row.url||''}:item;
-  }):list;
-  const next={...latest,schedule:update(latest.schedule),periodItems:update(latest.periodItems,true)};
-  // A previously linkless teacher may join the remaining queue, never an already finished result.
-  if(latest.running&&latest.current&&!latest.waitingForCycle2&&Array.isArray(next.periodItems))for(const row of state.snapshot.lessons){
-   const name=MirsadMonitorModel.normalize(row.teacherName),same=item=>Number(item.period??latest.period)===Number(row.period)&&MirsadMonitorModel.normalize(item.scheduledTeacher||item.teacher)===name;
-   if(Number(row.period)!==Number(latest.period)||!row.url||!next.schedule?.some(same)||next.periodItems.some(same)||(latest.results||[]).some(r=>same(r)&&Number(r.cycle)===Number(latest.cycle)))continue;
-   next.periodItems.push({...row,teacher:row.teacherName,hasLesson:true,validPeriod:true});
+ async function syncRunLinks(snapshot,replace=null){
+ const run=await getRun();if(!run||run.scheduleRevision!==snapshot.scheduleRevision)return;if(run.running)throw new Error('أوقف الرصد مؤقتًا قبل تعديل الروابط');
+ for(const row of snapshot.lessons.filter(row=>row.url||row.calendarUrl||replace?.teacherId===row.teacherId&&Number(replace.period)===row.period)){
+  const item={...row,teacher:row.teacherName,hasLesson:true,validPeriod:true};
+  for(const list of [run.schedule,...(run.period===row.period?[run.periodItems]:[])]){if(!Array.isArray(list))continue;
+   const old=list.find(item=>MirsadMonitorModel.normalize(item.teacher)===MirsadMonitorModel.normalize(row.teacherName)&&Number(item.period??run.period)===row.period);
+   if(old){if(!old.url||replace?.teacherId===row.teacherId&&Number(replace.period)===row.period)old.url=row.url;old.calendarUrl=row.calendarUrl||''}else if(row.url||row.calendarUrl)list.push({...item});
   }
-  await saveRun(next);return next;
  }
+ await saveRun(run);
+}
+ async function mergeRemoteSnapshot(state){
+ const latest=await getRun();if(!latest||latest.scheduleRevision!==state.snapshot.scheduleRevision)return null;
+ const same=(item,row)=>Number(item.period??latest.period)===Number(row.period)&&MirsadMonitorModel.normalize(item.scheduledTeacher||item.teacher)===MirsadMonitorModel.normalize(row.teacherName);
+ const update=(list,activePeriod=false)=>Array.isArray(list)?list.map((item,index)=>{
+  if(activePeriod&&(((latest.current||latest.meetingScan)&&index===latest.index)||index<latest.index))return item;
+  const row=state.snapshot.lessons.find(row=>same(item,row));return row?{...item,url:row.url||'',calendarUrl:row.calendarUrl||''}:item;
+ }):list;
+ const next={...latest,schedule:update(latest.schedule),periodItems:update(latest.periodItems,true)};
+ if(Array.isArray(next.schedule))for(const row of state.snapshot.lessons){if(!(row.url||row.calendarUrl)||next.schedule.some(item=>same(item,row)))continue;next.schedule.push({...row,teacher:row.teacherName,hasLesson:true,validPeriod:true})}
+ if(latest.running&&latest.current&&!latest.waitingForCycle2&&Array.isArray(next.periodItems))for(const row of state.snapshot.lessons){
+  if(Number(row.period)!==Number(latest.period)||!(row.url||row.calendarUrl)||!next.schedule?.some(item=>same(item,row))||next.periodItems.some(item=>same(item,row))||(latest.results||[]).some(item=>same(item,row)&&Number(item.cycle)===Number(latest.cycle)))continue;
+  next.periodItems.push({...row,teacher:row.teacherName,hasLesson:true,validPeriod:true});
+ }
+ if(await saveRun(next)===false)return null;return next;
+}
  let remotePull=null;
  async function pullRemoteLinks(){
   if(remotePull)return remotePull;
@@ -64,10 +81,31 @@ var CloudMonitoring=(function(){
  async function acceptDirect(result,payload){if(payload?.source!=='madrasati'||result?.snapshot?.sourceType!=='madrasati')throw new Error('مدرستي هي المصدر الوحيد المسموح للتحميل');if(!result?.monitoringPrepared||!result.snapshot?.scheduleRevision)throw new Error('لم يؤكد الخادم تطبيق الجدول في الرصد الآلي؛ حدّث سكربت 0.6.38');const reference=MirsadVisibleSchedule.reference(payload,MirsadMonitorModel.day());if(!MirsadVisibleSchedule.matches(result.snapshot,reference))throw new Error('جدول الرصد لا يطابق الجدول المحمّل؛ لم تُسجّل العملية كنجاح');const verified=await protectedState();if(!verified.exists||verified.snapshot.scheduleRevision!==result.snapshot.scheduleRevision||!MirsadVisibleSchedule.matches(verified.snapshot,reference))throw new Error('تعذر تأكيد جدول الرصد بعد الحفظ؛ لم تُسجّل العملية كنجاح');const oldRun=await getRun();if(oldRun&&oldRun.scheduleRevision!==verified.snapshot.scheduleRevision)await stopAndResetMonitoring();const active=await cacheProtected(verified);await status('تم تطبيق الجدول والتحقق منه في الرصد الآلي — '+active.snapshot.lessons.length+' حصة');await alignSite();await notify();return active}
  async function resetAfterPurge(date,requestId){if(date!==MirsadMonitorModel.day())return {ok:true,ignored:true};const verified=await request('resetState',{date,requestId});if(!verified.confirmed)throw new Error('لم تؤكد الخدمة تصفير اليوم؛ حدّث سكربت مرصاد ثم أعد المحاولة');await stopAndResetMonitoring();await chrome.storage.local.remove(ACTIVE);await status('صُفّر يوم الرصد وأُلغي جدول الإضافة القديم. انقل الجدول المطلوب ثم ابدأ الرصد.');await notify();return {ok:true}}
  async function enqueue(action,record,image){const active=(await chrome.storage.local.get(ACTIVE))[ACTIVE];if(!active||MirsadMonitorModel.day(new Date(record.scannedAt))!==active.date)return;const id=action+'|'+record.scanId;await store('readwrite',s=>s.put({id,action,date:active.date,record,image,scheduleSettings:timing(),queuedAt:Date.now()}));void flush().catch(()=>{});}
- async function capture(run,message,image,at,filename){if(run.testMode||run.backtestMode||run.immediateMode)return;return enqueue('image',{scanId:message.scanId,teacher:message.teacher,scheduledTeacher:run.current.teacher,period:run.period,cycle:run.cycle,status:message.status,scheduleRevision:run.scheduleRevision||'legacy',scannedAt:at,localName:String(filename||'').split(/[\\/]/).pop(),detail:message.detail||''},image)}
+ async function addCalendarLinks(entries,guard={}){
+ if(editingLinks||calendarSaving)throw new Error('حفظ الروابط قيد التنفيذ');calendarSaving=true;let requestOptions;
+ try{
+  const selected=(await chrome.storage.local.get(CONFIG))[CONFIG]||{};requestOptions={expectedConfig:{...selected},deadlineAt:guard.deadlineAt,signal:guard.signal};
+  await assertCalendarRequest(requestOptions);
+  const state=await protectedState(requestOptions),snapshot=state.snapshot,date=guard.date||MirsadMonitorModel.day();
+  await assertCalendarRequest(requestOptions);
+  if(!state.exists||snapshot?.date!==date||date!==MirsadMonitorModel.day())throw new Error('تاريخ التقويم لا يطابق جدول الرصد الحالي');
+  if(guard.expectedRevision&&guard.expectedRevision!==(snapshot.scheduleRevision||'legacy')||guard.sourceDate&&guard.sourceDate!==snapshot.sourceScheduleDate)throw new Error('تغير جدول الرصد أثناء قراءة التقويم؛ لم تُضف الروابط');
+  await assertCalendarRequest(requestOptions);
+  const result=await request('addCalendarLinks',{entries,date,sourceDate:guard.sourceDate||snapshot.sourceScheduleDate,expectedRevision:guard.expectedRevision||snapshot.scheduleRevision||'legacy'},requestOptions),saved=result.snapshot||result.day?.snapshot;
+  await assertCalendarRequest(requestOptions);
+  if(!saved||saved.date!==date||saved.scheduleRevision!==snapshot.scheduleRevision)throw new Error('لم يتأكد حفظ روابط التقويم في الجدول نفسه');
+  const merged={...result,snapshot:saved,folderUrl:result.folderUrl||result.day?.folderUrl||state.folderUrl};
+  await mergeRemoteSnapshot(merged);await assertCalendarRequest(requestOptions);const active=await cacheProtected(merged);if(typeof wakeUpdatedLinks==='function')await wakeUpdatedLinks();await notify();
+  return {...result,snapshot:saved,day:result.day||active};
+ }catch(error){if(requestOptions)await assertCalendarRequest(requestOptions);throw error}finally{calendarSaving=false}
+}
+async function capture(run,message,image,at,filename){
+ if(run.testMode||run.backtestMode||run.immediateMode)return;
+ return enqueue('image',{scanId:message.scanId,teacher:message.teacher,scheduledTeacher:run.current.teacher,period:run.period,cycle:run.cycle,status:message.status,scheduleRevision:run.scheduleRevision||'legacy',scannedAt:at,localName:String(filename||'').split(/[\\/]/).pop(),detail:message.detail||'',...(run.current.aggregateScanId?{aggregateScanId:run.current.aggregateScanId,meetingSource:run.current.meetingSource,scannedUrl:run.current.url}:{})},image);
+}
  async function record(run,value){if(run.testMode||run.backtestMode||run.immediateMode)return;return enqueue('record',{...value,scheduleRevision:run.scheduleRevision||'legacy',status:value.scanStatus||value.status})}
  async function flush(){if(working){rerun=true;return}const configuration=(await chrome.storage.local.get(CONFIG))[CONFIG];if(!configuration?.key)return;working=true;try{const list=(await jobs()).sort((a,b)=>a.queuedAt-b.queuedAt);const active=(await chrome.storage.local.get(ACTIVE))[ACTIVE];if(!list.length&&active?.date!==MirsadMonitorModel.day()){await status('الربط والرمز محفوظان؛ اضغط بداية اليوم لإنشاء مجلد التاريخ');return}for(const job of list.slice(0,20)){const data=await request(job.action,{date:job.date,record:job.record,scheduleSettings:job.scheduleSettings,...(job.image?{image:job.image}:{})});if(job.action==='image'&&!data.archived&&!data.discarded){const saved=await chrome.storage.local.get('mirsadEvidenceRecords'),records=saved.mirsadEvidenceRecords||[];for(const r of records)if(r.scanId===job.record.scanId){r.driveUrl=data.url;r.driveFileId=data.fileId}await chrome.storage.local.set({mirsadEvidenceRecords:records})}await store('readwrite',s=>s.delete(job.id))}const pending=(await jobs()).length;await status(pending?'متبقٍ للرفع: '+pending:'تمت مزامنة الصور والنتائج مع Drive');if(list.length)await notify();if(pending)rerun=true}catch(e){rerun=false;await status('الرفع مؤجل مع حفظ النسخة المحلية: '+e.message,true)}finally{working=false;if(rerun){rerun=false;setTimeout(()=>void flush(),250)}}}
  async function info(){const s=await chrome.storage.local.get([CONFIG,ACTIVE,STATUS,'mirsadScheduleAdoption']);let selectionError=null;try{await assertSelected()}catch(e){selectionError=e.message}return {ready:!selectionError&&s[ACTIVE]?.date===MirsadMonitorModel.day(),selectionError,configured:!!s[CONFIG]?.key,url:s[CONFIG]?.url||'',day:s[ACTIVE]||null,status:s[STATUS]||null,pendingAdoption:s.mirsadScheduleAdoption||null}}
  chrome.alarms.create('mirsadDriveSync',{periodInMinutes:1});chrome.alarms.onAlarm.addListener(a=>{if(a.name==='mirsadDriveSync')return flush()});
- return {pullRemoteLinks,missingLinkState,previewMissingLinks,applyMissingReport,linksBusy:()=>editingLinks,fillMissingLinks,manualLessonLink,configure,beginDay,syncTiming,stageImport,confirmImport,cancelImport,acceptDirect,assertSelected,syncVisible,ensureDay,resetAfterPurge,capture,record,flush,info,heartbeat:payload=>request('heartbeat',payload)};
+ return {addCalendarLinks,pullRemoteLinks,missingLinkState,previewMissingLinks,applyMissingReport,linksBusy:()=>editingLinks,fillMissingLinks,manualLessonLink,configure,beginDay,syncTiming,stageImport,confirmImport,cancelImport,acceptDirect,assertSelected,syncVisible,ensureDay,resetAfterPurge,capture,record,flush,info,heartbeat:payload=>request('heartbeat',payload)};
 })();

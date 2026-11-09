@@ -148,7 +148,7 @@
   function selectPeriodLinks(items, period) {
     const seen = new Set();
     return items.filter(item => {
-      if (item.period !== period || !validTeamsUrl(item.url)) return false;
+      if (item.period !== period || (!validTeamsUrl(item.url)&&!validTeamsUrl(item.calendarUrl))) return false;
       const key = `${item.teacher}\u0000${item.period}\u0000${item.url}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -159,7 +159,7 @@
   function selectPeriodItems(items, period) {
     const seen=new Set();
     return (items||[]).filter(item=>{
-      if(item.period!==period||!item.teacher||!validTeamsUrl(item.url))return false;
+      if(item.period!==period||!item.teacher||(!validTeamsUrl(item.url)&&!validTeamsUrl(item.calendarUrl)))return false;
       const key=`${item.teacher}\u0000${item.period}\u0000${item.url}`;
       if(seen.has(key))return false;
       seen.add(key);return true;

@@ -1,6 +1,6 @@
 /* Actual scan progress and next-cycle timing are shared through the writer heartbeat. */
 var MirsadLiveSender=(()=>{let busy=false,pending=false,pendingForce=false,last=0,lastSignature='';async function sync(force=false){if(busy){pending=true;pendingForce=pendingForce||force;return;}busy=true;try{
- let r=(await chrome.storage.local.get('mirsadAutoRun')).mirsadAutoRun;if(r?.immediateMode)r=r.suspendedRun;
+ let r=(await chrome.storage.local.get('mirsadAutoRun')).mirsadAutoRun;if(r?.immediateMode||r?.calendarTrial)r=r.suspendedRun;
  const running=!!r?.running&&!r.paused&&!r.testMode&&!r.backtestMode,phase=running?(r.current?'scanning':'waiting'):r?.paused?'paused':'stopped',nextCycleAt=running&&r.waitingForCycle2?r.nextCycleAt:null;
  const device=typeof MirsadDeviceState!=='undefined'?await MirsadDeviceState.read():{sessionState:'unknown'};
  const signature=[device.sessionState,phase,r?.period,r?.cycle,r?.current?.scanId,nextCycleAt].join('|');if(!force&&lastSignature===signature&&(Date.now()-last<20000))return;

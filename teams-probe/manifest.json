@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "مرصاد - الرصد الآلي لـ Teams",
-  "version": "0.6.81",
-  "description": "الرصد باسم المنظّم من Teams بدورة أو دورتين أو ثلاث وفاصل مستقل بين الأولى والثانية وبين الثانية والثالثة.",
+  "version": "0.6.82",
+  "description": "تجربة تقويم تيمز محليًا: مطابقة الروابط المضافة وفحصها دون تعديل التحضير الفعلي.",
   "permissions": [
     "activeTab",
     "tabs",
@@ -42,7 +42,8 @@
       ],
       "js": [
         "schedule-core.js",
-        "content.js"
+        "content.js",
+        "teams-calendar-reader.js"
       ],
       "run_at": "document_idle"
     },
