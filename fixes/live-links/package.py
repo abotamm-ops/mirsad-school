@@ -1,7 +1,7 @@
 from pathlib import Path
 import zipfile,json,hashlib
 root=Path('schools/downloads');checks=[]
-for kind,old,new in [('Teams','0.6.81.1','0.6.81.2'),('Schools','2.3.3.1','2.3.3.2')]:
+for kind,old,new in [('Teams','0.6.81.1','0.6.81.3'),('Schools','2.3.3.1','2.3.3.3')]:
  source=root/f'Mirsad-{kind}-{old}.zip';target=root/f'Mirsad-{kind}-{new}.zip'
  patch=Path('/tmp/stable-link-'+kind+'/drive-sync.js').read_bytes()
  with zipfile.ZipFile(source) as a,zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as b:

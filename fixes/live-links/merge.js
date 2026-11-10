@@ -12,7 +12,7 @@ async function mergeRemoteSnapshot(state){
   if(!MirsadScheduleCore.validTeamsUrl(row.url)||next.schedule.some(item=>same(item,row)))continue;
   next.schedule.push(itemFor(row));
  }
- if(latest.running&&latest.current&&!latest.waitingForCycle2&&Array.isArray(next.periodItems))for(const row of state.snapshot.lessons){
+ if((latest.running||latest.paused)&&!latest.waitingForCycle2&&Array.isArray(next.periodItems))for(const row of state.snapshot.lessons){
   if(Number(row.period)!==Number(latest.period)||!MirsadScheduleCore.validTeamsUrl(row.url)||next.periodItems.some(item=>same(item,row))||(latest.results||[]).some(item=>same(item,row)&&Number(item.cycle)===Number(latest.cycle)))continue;
   next.periodItems.push(itemFor(row));
  }
