@@ -218,14 +218,20 @@ $d.Controls.AddRange(@($c,$b));$d.AcceptButton=$b
 try{if($d.ShowDialog() -eq 'OK'){return $c.SelectedItem}}finally{$d.Dispose()}
 throw [System.OperationCanceledException]::new('إلغاء')
 }
+$showSignal=[System.Threading.EventWaitHandle]::new($false,[System.Threading.EventResetMode]::AutoReset,'Local\MirsadGuardianShowPanel')
 $mutex = New-Object System.Threading.Mutex($false, 'Local\MirsadUnifiedGuardian')
-if (-not $mutex.WaitOne(0, $false)) {
+$ownsMutex=$false
+try{$ownsMutex=$mutex.WaitOne(0,$false)}catch [System.Threading.AbandonedMutexException]{$ownsMutex=$true}
+if (-not $ownsMutex) {
+[void]$showSignal.Set()
+
 if(-not [MirsadChromeWindow]::Reveal()){[System.Windows.Forms.MessageBox]::Show('المساعد يعمل بالفعل.','مرصاد') | Out-Null}
-$mutex.Dispose()
+$mutex.Dispose();$showSignal.Dispose()
 exit 0
 }
 $tray = $null
 $timer = $null
+$panelTimer=$null
 $form = $null
 $hotkeys = $null
 try {
@@ -320,11 +326,23 @@ $button.UseVisualStyleBackColor = $false
 $parent.Controls.Add($button); Set-GuardianRound $button 12
 return $button
 }
+function Show-GuardianPanel {
+if($script:exiting -or !$form -or $form.IsDisposed){return}
+$form.ShowInTaskbar=$true
+$form.WindowState='Normal'
+if($script:panelLocation){$form.Location=$script:panelLocation}
+$form.TopMost=$true
+$form.Show()
+[MirsadChromeWindow]::ShowWindowAsync($form.Handle,9)|Out-Null
+$form.BringToFront()
+$form.Activate()
+}
+
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'مرصاد | مساعد الرصد'
 $form.ClientSize = New-Object System.Drawing.Size(210,210)
 $form.StartPosition = 'Manual'; $form.FormBorderStyle = 'FixedSingle'; $form.MinimizeBox=$true
-$form.MaximizeBox = $false; $form.TopMost = $true
+$form.MaximizeBox = $false; $form.TopMost = $true; $form.ShowInTaskbar=$true; $form.WindowState='Normal'
 $form.RightToLeft = 'Yes'; $form.RightToLeftLayout = $false
 $form.AutoScaleMode = 'Dpi'; $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96,96)
 $form.Font = New-Object System.Drawing.Font('Segoe UI',11)
@@ -382,11 +400,11 @@ $tray.Icon = $guardianIcon
 $tray.Text = 'مساعد مرصاد'
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $show = $menu.Items.Add('فتح لوحة المساعد')
-$show.add_Click({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })
+$show.add_Click({Show-GuardianPanel})
 $stop = $menu.Items.Add('إيقاف وإغلاق المساعد — إبقاء Chrome مفتوحًا')
 $stop.add_Click({ $form.Close() })
 $tray.ContextMenuStrip = $menu
-$tray.add_DoubleClick({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })
+$tray.add_DoubleClick({Show-GuardianPanel})
 $tray.Visible = $true
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 500
@@ -475,10 +493,14 @@ $timer.Start()
 $form.add_Shown({
 $area=[System.Windows.Forms.Screen]::FromControl($form).WorkingArea
 $form.Location=New-Object System.Drawing.Point(($area.Right-$form.Width-8),($area.Bottom-$form.Height-8))
-$startButton.PerformClick()
+$script:panelLocation=$form.Location
+Show-GuardianPanel
+$stateLabel.Text='جاهز — اختر ثم اضغط تشغيل'
+
 })
 $form.add_FormClosing({
 $script:exiting=$true
+if($panelTimer){$panelTimer.Stop()}
 Stop-Guardian
 if($tray){$tray.Visible=$false}
 })
@@ -487,11 +509,17 @@ $hotkeys.add_StartRequested({ $startButton.PerformClick() })
 $hotkeys.add_PauseRequested({$pauseButton.PerformClick()})
 $hotkeys.add_ExitRequested({$form.Close()})
 if(-not $hotkeys.Register()){$footer.Text='الاختصارات محجوزة؛ استخدم الأزرار'}
+$panelTimer=New-Object System.Windows.Forms.Timer
+$panelTimer.Interval=250
+$panelTimer.add_Tick({if($showSignal.WaitOne(0)){Show-GuardianPanel}})
+$panelTimer.Start()
 [System.Windows.Forms.Application]::Run($form)
 } catch {
 [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'مساعد مرصاد', 'OK', 'Error') | Out-Null
 exit 1
 } finally {
+if($panelTimer){$panelTimer.Stop();$panelTimer.Dispose()}
+if($showSignal){$showSignal.Dispose()}
 if ($hotkeys) { $hotkeys.Dispose() }
 if ($timer) { $timer.Stop();[MirsadChromeTabs]::GuardHandle=0; $timer.Dispose() }
 if ($script:watched) { [MirsadChromeWindow]::Unpin($script:watched) }

@@ -45,10 +45,40 @@ $modeTip.SetToolTip($restoreModeChoice,'عند إغلاق نافذة الرصد:
  warning='ستبقى نافذة الرصد مكبّرة وفي المقدمة. يسترجع تبويبات كروم المغلقة عند إغلاق نافذة الرصد ثم يتحقق من وجود مرصاد ويُعرض تيمز الموجود في نافذته.'
  assert warning in s
  s=s.replace(warning, "ستبقى نافذة الرصد مكبّرة وفي المقدمة. يُعرض تيمز الموجود في نافذته.`n$(if($script:restoreMode -eq 'session'){'عند إغلاق النافذة: استرجاع مرصاد ومدرستي من تبويبات كروم.'}else{'عند إغلاق النافذة: فتح مرصاد فقط دون استرجاع التبويبات.'})")
+ # Show the panel first; browser protection starts only after the user's Start action.
+ s=s.replace("$form.MaximizeBox = $false; $form.TopMost = $true", "$form.MaximizeBox = $false; $form.TopMost = $true; $form.ShowInTaskbar=$true; $form.WindowState='Normal'")
+ marker='$mutex = New-Object System.Threading.Mutex'
+ s=s.replace(marker,"$showSignal=[System.Threading.EventWaitHandle]::new($false,[System.Threading.EventResetMode]::AutoReset,'Local\\MirsadGuardianShowPanel')\n"+marker,1)
+ s=s.replace('if (-not $mutex.WaitOne(0, $false)) {','''$ownsMutex=$false
+try{$ownsMutex=$mutex.WaitOne(0,$false)}catch [System.Threading.AbandonedMutexException]{$ownsMutex=$true}
+if (-not $ownsMutex) {
+[void]$showSignal.Set()
+''',1)
+ s=s.replace('$mutex.Dispose()\nexit 0', '$mutex.Dispose();$showSignal.Dispose()\nexit 0',1)
+ s=s.replace('$timer = $null\n$form = $null', '$timer = $null\n$panelTimer=$null\n$form = $null',1)
+ marker='$form = New-Object System.Windows.Forms.Form'
+ s=s.replace(marker,(here/'panel-visibility.ps1').read_text()+'\n'+marker,1)
+ s=s.replace("$show.add_Click({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })", "$show.add_Click({Show-GuardianPanel})")
+ s=s.replace("$tray.add_DoubleClick({ $form.Show(); $form.WindowState = 'Normal'; $form.Activate() })", "$tray.add_DoubleClick({Show-GuardianPanel})")
+ start=s.index('$form.add_Shown({');end=s.index('$form.add_FormClosing',start)
+ block=s[start:end].replace('$startButton.PerformClick()','''$script:panelLocation=$form.Location
+Show-GuardianPanel
+$stateLabel.Text='جاهز — اختر ثم اضغط تشغيل'
+''')
+ s=s[:start]+block+s[end:]
+ s=s.replace('$script:exiting=$true\nStop-Guardian', '$script:exiting=$true\nif($panelTimer){$panelTimer.Stop()}\nStop-Guardian',1)
+ s=s.replace('[System.Windows.Forms.Application]::Run($form)','''$panelTimer=New-Object System.Windows.Forms.Timer
+$panelTimer.Interval=250
+$panelTimer.add_Tick({if($showSignal.WaitOne(0)){Show-GuardianPanel}})
+$panelTimer.Start()
+[System.Windows.Forms.Application]::Run($form)''',1)
+ s=s.replace('if ($hotkeys) { $hotkeys.Dispose() }', 'if($panelTimer){$panelTimer.Stop();$panelTimer.Dispose()}\nif($showSignal){$showSignal.Dispose()}\nif ($hotkeys) { $hotkeys.Dispose() }',1)
  assert 'Restore-GuardianWorkspace -Windows' in s
  (here/f'{edition}.ps1').write_bytes(b'\xef\xbb\xbf'+s.encode())
  build=Path('/tmp/mirsad-guardian-session-build')/edition;build.mkdir(parents=True,exist_ok=True)
  for name in ['go.mod','launcher.go','launcher_windows.go','launcher_test.go','rsrc_windows_amd64.syso']:
   shutil.copy2(root/'chrome-guardian'/name,build/name)
+ launcher=build/'launcher_windows.go'
+ launcher.write_text(launcher.read_text().replace('HideWindow: true', 'HideWindow: false').replace('// Hide the console only; the PowerShell WinForms control window stays visible.', '// CREATE_NO_WINDOW hides the console; do not pass SW_HIDE to the first WinForms window.'))
  (build/'MirsadChromeGuardian.ps1').write_bytes(b'\xef\xbb\xbf'+s.encode())
  print(build)
