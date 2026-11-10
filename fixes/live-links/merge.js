@@ -14,7 +14,13 @@ function reconcileRunLinks(latest,snapshot=runLinkSnapshot){
   next.schedule.push(itemFor(row));
  }
  if((latest.running||latest.paused)&&!latest.waitingForCycle2&&Array.isArray(next.periodItems))for(const row of snapshot.lessons){
-  if(Number(row.period)!==Number(latest.period)||!MirsadScheduleCore.validTeamsUrl(row.url)||next.periodItems.some(item=>same(item,row))||(latest.results||[]).some(item=>same(item,row)&&Number(item.cycle)===Number(latest.cycle)))continue;
+  if(Number(row.period)!==Number(latest.period)||!MirsadScheduleCore.validTeamsUrl(row.url))continue;
+  // A consumed no-link placeholder is not a completed Teams check. Queue it again once a link exists.
+  if(next.periodItems.some((item,index)=>index>=Number(latest.index||0)&&same(item,row)))continue;
+  const history=(latest.results||[]).filter(item=>same(item,row)&&Number(item.cycle)===Number(latest.cycle));
+  if(history.some(item=>(item.scanStatus||item.status)!=='no-link'))continue;
+  const consumed=next.periodItems.filter((item,index)=>index<Number(latest.index||0)&&same(item,row));
+  if(consumed.some(item=>MirsadScheduleCore.validTeamsUrl(item.url))&&!history.some(item=>(item.scanStatus||item.status)==='no-link'))continue;
   next.periodItems.push(itemFor(row));
  }
  return Object.assign(latest,next);
