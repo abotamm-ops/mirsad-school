@@ -9,3 +9,7 @@ The build currently uses the existing Acorn installation at /tmp/mirsad-review-t
 Windows and live Madrasati/Teams end-to-end verification remain manual.
 
 Resume regression: a paused run now admits newly linked lessons into the unfinished current-cycle queue as well as the master schedule. A gap wait still remains unchanged.
+
+Stale scan-save protection (0.6.81.4 / 2.3.3.4): retain the latest successfully merged snapshot in the service worker. Every subsequent saveRun reapplies its matching-revision link delta while preserving scan progress and results. This prevents a scan that began before a manual timetable reload from writing its older link queue over the newly downloaded one. An active scan retains its original URL; later scans/cycles use the saved URL.
+
+Verified: 16 merge/state regressions, 2 full extension runtime navigation tests (private and schools), 6 manual reader/backend integration tests, and 12 cycle-gap regressions. Runtime tests mock Chrome and backend transport; they are not a live Windows/Teams browser test.
