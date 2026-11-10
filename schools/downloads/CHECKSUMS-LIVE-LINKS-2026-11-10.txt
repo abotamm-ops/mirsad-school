@@ -1,2 +1,2 @@
-5900bec5ef66f40ef51b0b3b0c132d9ac69a57e0c5c0ff62b1de19efb3f67db4  Mirsad-Teams-0.6.81.4.zip
-c33729f660cd8d8f485502a57e8ef6ca5e3813621dead90e00cf12c6baca1a59  Mirsad-Schools-2.3.3.4.zip
+b9996f02fce9ee43e64d7349c8e8f26a19324dde79d6b85a550838ec7305ec0c  Mirsad-Teams-0.6.81.5.zip
+6737feedc4dd5ca718f54a87156ca1c1e4566c96f4e21120e5e9cfeb1f920bc6  Mirsad-Schools-2.3.3.5.zip

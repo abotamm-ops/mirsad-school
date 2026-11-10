@@ -19,3 +19,22 @@ for(const kind of ['Teams','Schools'])test(kind+': manual reload adds missing li
  assert.equal(f.store.mirsadAutoRun.current.url,late.url);assert.equal(f.store.mirsadAutoRun.current.teacher,late.teacherName);
  assert.equal(f.store.mirsadAutoRun.results.length,1);
 });
+for(const kind of ['Teams','Schools'])test(kind+': saving an individual link after a previous reload supersedes the old cached URL',async()=>{
+ const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
+ await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};
+ const date=f.invoke('MirsadMonitorModel.day()');f.store.mirsadAutoRun.scheduleRevision='rev';
+ const name=f.store.mirsadAutoRun.schedule[0].teacher;
+ let snapshot={date,scheduleRevision:'rev',sourceType:'madrasati',sourceScheduleDate:date,lessons:[{teacherId:'a',teacherName:name,period:7,url:'https://teams.microsoft.com/meet/old'}]};
+ f.ctx.CloudMonitoring.assertSelected=async()=>({date,snapshot});
+ f.store.mirsadDriveConfig={url:'https://fixture.invalid',key:'w'.repeat(40)};
+ f.ctx.fetch=async()=>({ok:true,json:async()=>({ok:true,saved:true,exists:true,protection:'explicit-reset-only-v1',snapshot})});
+ await f.invoke('CloudMonitoring.pullRemoteLinks()');f.store.mirsadMadrasatiSelectedDate=date;f.store.mirsadMadrasatiLastSuccess={monitoringPrepared:true,importedForDate:date,date,revision:'rev'};f.store.mirsadLoadIntent={date,status:'verified'};await f.invoke('pauseMonitoring()');
+ snapshot=structuredClone(snapshot);snapshot.lessons[0].url='https://teams.microsoft.com/meet/manual-new';
+ f.ctx.manual={date,teacherId:'a',period:7,url:snapshot.lessons[0].url,expectedRevision:'rev'};
+ await f.invoke('CloudMonitoring.manualLessonLink(manual)');
+ assert.equal(f.store.mirsadAutoRun.schedule[0].url,snapshot.lessons[0].url);
+ assert.equal(f.store.mirsadAutoRun.periodItems[0].url,snapshot.lessons[0].url);
+ await f.invoke('resumeMonitoring()');
+ if(kind==='Schools')await f.nextAlarm();
+ assert.equal(f.store.mirsadAutoRun.current.url,snapshot.lessons[0].url);
+});
