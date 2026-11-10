@@ -8,7 +8,7 @@ static [bool]RestoreTabs([IntPtr]$h){if(![MirsadChromeWindow]::Allowed){return $
 }
 function Start-Process {param($FilePath,$ArgumentList)$script:launches++;$script:argsUsed=$ArgumentList}
 function Reset-Restore {
-$script:launches=0;$script:hadWorkspace=$true;$script:restoreTried=$false;$script:restoreUntil=[DateTime]::MinValue;$script:restoreTarget=[IntPtr]::Zero;$script:watched=[IntPtr]42
+$script:restoreMode='session';$script:launches=0;$script:hadWorkspace=$true;$script:restoreTried=$false;$script:restoreUntil=[DateTime]::MinValue;$script:restoreTarget=[IntPtr]::Zero;$script:watched=[IntPtr]42
 [MirsadChromeWindow]::Focused=0;[MirsadChromeWindow]::Restored=0;[MirsadChromeWindow]::Allowed=$true
 }
 . (Join-Path $PSScriptRoot 'restore.ps1')
@@ -48,3 +48,10 @@ if($body.IndexOf('if ($fresh -and $target)') -gt $body.IndexOf('if(Restore-Guard
 if($body.IndexOf('if(Restore-GuardianWorkspace') -gt $body.IndexOf('Start-Process -FilePath $launch.Chrome')){throw 'URL opened before restore attempt'}
 "PASS $edition actual tick checks existing dashboard before restore, then falls back to open URL"
 }
+
+Reset-Restore
+$script:restoreMode='dashboard'
+if(Restore-GuardianWorkspace @() @() $launch $now){throw 'Dashboard-only mode restored a closed session'}
+if(Restore-GuardianWorkspace $windows $inventory $launch $now){throw 'Dashboard-only mode restored a closed tab'}
+if($script:launches -ne 0 -or [MirsadChromeWindow]::Restored -ne 0){throw 'Dashboard-only mode sent a restore action'}
+'PASS dashboard-only mode never invokes session or keyboard restoration'

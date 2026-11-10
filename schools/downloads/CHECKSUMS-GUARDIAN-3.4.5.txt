@@ -1,0 +1,2 @@
+40fcd62b892846c87ff74ad01fa707ff5572027fb5396b49c97b535f055abcf5  Mirsad-Shared-Guardian-3.4.5.zip
+4aff09dc7cb07ec25b6fe40e3cfbbd5df2d5e73481ebeef49c4ec8b6ac63eda8  Mirsad-Schools-Guardian-3.4.5.zip

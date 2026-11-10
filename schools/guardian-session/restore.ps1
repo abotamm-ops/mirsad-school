@@ -1,4 +1,5 @@
 function Restore-GuardianWorkspace($Windows,$Inventory,$Launch,[DateTime]$Now=[DateTime]::UtcNow) {
+if($script:restoreMode -eq 'dashboard'){return $false}
 if($script:restoreTried){return $Now -lt $script:restoreUntil}
 if($Windows.Count -eq 0){
 $script:restoreTried=$true;$script:restoreUntil=$Now.AddSeconds(15)
