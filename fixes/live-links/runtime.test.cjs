@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('assert/strict'),path=require('path');
 const fixture=require('../../tests/extension-runtime-fixture.cjs');
 for(const outcome of ['present','absent'])for(const consumed of [false,true])for(const kind of ['Teams','Schools'])test(kind+' '+outcome+(consumed?' with consumed no-link entry':'')+': manual reload adds missing link and actual navigation opens it after existing teacher',async()=>{
- const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
+ const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),(kind==='Schools'&&process.env.MIRSAD_SCHOOLS_FIX_DIR?process.env.MIRSAD_SCHOOLS_FIX_DIR:'/tmp/stable-link-'+kind))});
  await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.CloudMonitoring.assertSelected=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};
  const run=f.store.mirsadAutoRun;run.scheduleRevision='rev';const date=f.invoke('MirsadMonitorModel.day()');
  const late={teacherId:'late',teacherName:'معلم وصل رابطه أثناء اليوم',period:7,url:'https://teams.microsoft.com/meet/late123'};
@@ -22,7 +22,7 @@ for(const outcome of ['present','absent'])for(const consumed of [false,true])for
  await verifyResultRecorded(f,outcome);
 });
 for(const outcome of ['present','absent'])for(const kind of ['Teams','Schools'])test(kind+' '+outcome+': saving an individual link after a previous reload supersedes the old cached URL',async()=>{
- const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
+ const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),(kind==='Schools'&&process.env.MIRSAD_SCHOOLS_FIX_DIR?process.env.MIRSAD_SCHOOLS_FIX_DIR:'/tmp/stable-link-'+kind))});
  await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};
  const date=f.invoke('MirsadMonitorModel.day()');f.store.mirsadAutoRun.scheduleRevision='rev';
  const name=f.store.mirsadAutoRun.schedule[0].teacher;
@@ -42,7 +42,7 @@ for(const outcome of ['present','absent'])for(const kind of ['Teams','Schools'])
  await verifyResultRecorded(f,outcome);
 });
 for(const outcome of ['present','absent'])for(const kind of ['Teams','Schools'])test(kind+' '+outcome+': automatic gap merge admits its links into the next cycle without changing the wait',async()=>{
- const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
+ const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),(kind==='Schools'&&process.env.MIRSAD_SCHOOLS_FIX_DIR?process.env.MIRSAD_SCHOOLS_FIX_DIR:'/tmp/stable-link-'+kind))});
  await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};f.ctx.TextEncoder=TextEncoder;
  f.ctx.chrome.storage.local.remove=async key=>delete f.store[key];
  const run=f.store.mirsadAutoRun,date=f.invoke('MirsadMonitorModel.day()'),now=f.invoke('Date.now()');
