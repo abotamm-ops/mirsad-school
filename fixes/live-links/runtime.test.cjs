@@ -39,3 +39,26 @@ for(const kind of ['Teams','Schools'])test(kind+': saving an individual link aft
  if(kind==='Schools')await f.nextAlarm();
  assert.equal(f.store.mirsadAutoRun.current.url,snapshot.lessons[0].url);
 });
+for(const kind of ['Teams','Schools'])test(kind+': automatic gap merge admits its links into the next cycle without changing the wait',async()=>{
+ const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
+ await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};f.ctx.TextEncoder=TextEncoder;
+ f.ctx.chrome.storage.local.remove=async key=>delete f.store[key];
+ const run=f.store.mirsadAutoRun,date=f.invoke('MirsadMonitorModel.day()'),now=f.invoke('Date.now()');
+ Object.assign(run,{scheduleRevision:'rev',current:null,waitingForCycle2:true,nextCycleAt:now+60000});
+ const late={teacherId:'late',teacherName:'أسامة',period:7,url:'https://teams.microsoft.com/meet/new-gap'};
+ const snapshot={date,scheduleRevision:'rev',sourceType:'madrasati',sourceScheduleDate:date,lessons:[...run.schedule.map(l=>({...l,teacherName:l.teacher})),late]};
+ f.store.mirsadDriveConfig={url:'https://fixture.invalid',key:'w'.repeat(40)};
+ f.store.mirsadDriveDay={date,snapshot:{...snapshot,lessons:snapshot.lessons.map(l=>l.teacherId==='late'?{...l,url:''}:l)}};
+ f.ctx.fetch=async()=>({ok:true,json:async()=>({ok:true,exists:true,protection:'explicit-reset-only-v1',snapshot,merged:true,filled:1,completed:[late]})});
+ f.store.mirsadMadrasatiSelectedDate=date;f.store.mirsadMadrasatiLastSuccess={monitoringPrepared:true,importedForDate:date,date,revision:'rev'};f.store.mirsadLoadIntent={date,status:'verified'};
+ const scope=await f.ctx.MirsadAutoLinks.remoteScope();
+ f.store.mirsadAutoLinksEnabled=true;f.store.mirsadAutoLinksRemote={scope,revision:1,enabled:true,mode:'missing',seenAt:now};
+ f.store.mirsadAutoLinksStaged={date,revision:'rev',scope,payload:{scheduleDate:date},mode:'missing',startPeriod:7};
+ await f.ctx.MirsadAutoLinks.beforeCycle(run);
+ assert.equal(f.store.mirsadAutoRun.schedule.find(l=>l.teacher===late.teacherName)?.url,late.url);
+ assert.equal(f.store.mirsadAutoRun.nextCycleAt,now+60000);
+ assert.equal(f.store.mirsadAutoRun.waitingForCycle2,true);
+ f.ctx.nextCycle=structuredClone(f.store.mirsadAutoRun);
+ await f.invoke('nextCycle.periodItems=scheduleCore.selectPeriodItems(nextCycle.schedule,7);nextCycle.index=1;nextCycle.waitingForCycle2=false;nextCycle.cycle=2;navigateCurrent(nextCycle)');
+ assert.equal(f.store.mirsadAutoRun.current.url,late.url);
+});
