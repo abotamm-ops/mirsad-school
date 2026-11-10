@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('assert/strict'),path=require('path');
 const fixture=require('../../tests/extension-runtime-fixture.cjs');
-for(const consumed of [false,true])for(const kind of ['Teams','Schools'])test(kind+(consumed?' with consumed no-link entry':'')+': manual reload adds missing link and actual navigation opens it after existing teacher',async()=>{
+for(const outcome of ['present','absent'])for(const consumed of [false,true])for(const kind of ['Teams','Schools'])test(kind+' '+outcome+(consumed?' with consumed no-link entry':'')+': manual reload adds missing link and actual navigation opens it after existing teacher',async()=>{
  const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
  await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.CloudMonitoring.assertSelected=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};
  const run=f.store.mirsadAutoRun;run.scheduleRevision='rev';const date=f.invoke('MirsadMonitorModel.day()');
@@ -19,8 +19,9 @@ for(const consumed of [false,true])for(const kind of ['Teams','Schools'])test(ki
  await f.invoke('(async()=>{const r=await getRun();await navigateCurrent(r)})()');
  assert.equal(f.store.mirsadAutoRun.current.url,late.url);assert.equal(f.store.mirsadAutoRun.current.teacher,late.teacherName);
  assert.equal(f.store.mirsadAutoRun.results.length,consumed?2:1);
+ await verifyResultRecorded(f,outcome);
 });
-for(const kind of ['Teams','Schools'])test(kind+': saving an individual link after a previous reload supersedes the old cached URL',async()=>{
+for(const outcome of ['present','absent'])for(const kind of ['Teams','Schools'])test(kind+' '+outcome+': saving an individual link after a previous reload supersedes the old cached URL',async()=>{
  const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
  await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};
  const date=f.invoke('MirsadMonitorModel.day()');f.store.mirsadAutoRun.scheduleRevision='rev';
@@ -38,8 +39,9 @@ for(const kind of ['Teams','Schools'])test(kind+': saving an individual link aft
  await f.invoke('resumeMonitoring()');
  if(kind==='Schools')await f.nextAlarm();
  assert.equal(f.store.mirsadAutoRun.current.url,snapshot.lessons[0].url);
+ await verifyResultRecorded(f,outcome);
 });
-for(const kind of ['Teams','Schools'])test(kind+': automatic gap merge admits its links into the next cycle without changing the wait',async()=>{
+for(const outcome of ['present','absent'])for(const kind of ['Teams','Schools'])test(kind+' '+outcome+': automatic gap merge admits its links into the next cycle without changing the wait',async()=>{
  const f=fixture({edition:kind==='Schools'?'schools':'private',extensionPath:path.relative(path.resolve('tests'),'/tmp/stable-link-'+kind)});
  await f.launch();f.ctx.MirsadLiveSender.sync=async()=>{};f.ctx.MirsadCommercialAccount.identity=async()=>({});f.ctx.LocalBackup.snapshot=async()=>{};f.ctx.TextEncoder=TextEncoder;
  f.ctx.chrome.storage.local.remove=async key=>delete f.store[key];
@@ -61,4 +63,17 @@ for(const kind of ['Teams','Schools'])test(kind+': automatic gap merge admits it
  f.ctx.nextCycle=structuredClone(f.store.mirsadAutoRun);
  await f.invoke('nextCycle.periodItems=scheduleCore.selectPeriodItems(nextCycle.schedule,7);nextCycle.index=1;nextCycle.waitingForCycle2=false;nextCycle.cycle=2;navigateCurrent(nextCycle)');
  assert.equal(f.store.mirsadAutoRun.current.url,late.url);
+ await verifyResultRecorded(f,outcome);
 });
+
+async function verifyResultRecorded(f,status){
+ const current=structuredClone(f.store.mirsadAutoRun.current),cycle=f.store.mirsadAutoRun.cycle,period=f.store.mirsadAutoRun.period;
+ if(status==='absent')f.store.mirsadEvidenceRecords=[...(f.store.mirsadEvidenceRecords||[]),{scanId:current.scanId,teacher:current.teacher,period,status:'absent',evidenceVerified:true}];
+ f.ctx.updatedScanResult={scanId:current.scanId,result:{status,teacher:current.teacher,evidenceTeacher:current.teacher,detail:'fixture verified '+status}};
+ await f.invoke('receiveResult(updatedScanResult)');
+ const sent=f.cloud.find(event=>event.record?.scanId===current.scanId)?.record;
+ assert.ok(sent,'updated-link scan result must be submitted to cloud recording');
+ assert.equal(sent.status,status);assert.equal(sent.url,current.url);assert.equal(sent.scheduledTeacher,current.teacher);assert.equal(sent.period,period);assert.equal(sent.cycle,cycle);
+ assert.ok(f.local.some(event=>event.record.scanId===current.scanId),'local backup must receive updated-link result');
+ assert.ok(f.store.mirsadAutoRun.results.some(record=>record.scanId===current.scanId&&record.status===status),'run must retain updated-link result');
+}
