@@ -13,7 +13,7 @@ readme='''تجربة تسجيل الفيديو في مرصاد
 اختبر مقطعًا واحدًا بصورة وصوت ووصول النسختين ثم راقب الدورة التالية قبل توزيع نسخة التجربة. لم تُختبر هذه النسخة ميدانيًا على جهاز ويندوز وتيمز حقيقي بعد.
 '''
 checks={}
-for edition,version in [('Teams','0.6.90'),('Schools','2.6.6')]:
+for edition,version in [('Teams','0.6.91'),('Schools','2.6.7')]:
  p=root/'schools/downloads'/f'Mirsad-{edition}-{version}-Video-Trial.zip'
  with zipfile.ZipFile(p,'w',zipfile.ZIP_DEFLATED) as z:
   for f in sorted(Path('/tmp/mirsad-video-'+edition).rglob('*')):
