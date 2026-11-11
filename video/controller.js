@@ -27,10 +27,10 @@ var MirsadVideo=(()=>{
    else await patch({active:null,message:'انتهى المقطع؛ الحفظ والرفع حسب الفرصة الآمنة'});
   }finally{clearTimeout(deadlineTimer);leaving=false}
  }
- async function start(job){const s=await get();job={...job,scope:s.scope};await patch({active:job,message:'جارٍ الدخول إلى الحصة للتسجيل'});deadlineTimer=setTimeout(()=>void finishMeeting(),Math.max(0,job.deadline-Date.now()));
+ async function start(job){const s=await get();job={...job,scope:s.scope};await patch({active:job,message:'جارٍ فتح الحصة وعرض الأشخاص'});deadlineTimer=setTimeout(()=>void finishMeeting(),Math.max(0,job.deadline-Date.now()));
   try{if(!await allowed(job))throw Error('لا يوجد فاصل آمن للتسجيل');await chrome.tabs.update(s.tabId,{url:job.url,active:true});let joined=false;
    while(await allowed(job)){
-    try{const r=await chrome.tabs.sendMessage(s.tabId,{type:'MIRSAD_VIDEO_ENTER',id:job.id,deadline:job.deadline});if(r?.joined){joined=true;break}if(r?.error)throw Error(r.error)}catch(e){if(!/receiving end|closed|establish connection/i.test(e.message))throw e}
+    try{const r=await chrome.tabs.sendMessage(s.tabId,{type:'MIRSAD_VIDEO_ENTER',id:job.id,deadline:job.deadline});if(r?.joined&&r.peopleReady===true){joined=true;break}if(r?.error)throw Error(r.error)}catch(e){if(!/receiving end|closed|establish connection/i.test(e.message))throw e}
     await new Promise(resolve=>setTimeout(resolve,700));
    }
    if(!joined||!await allowed(job))throw Error('تعذر دخول الحصة ضمن الفاصل الآمن');

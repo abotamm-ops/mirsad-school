@@ -1,5 +1,5 @@
 from pathlib import Path
-import zipfile,json,hashlib,secrets,base64
+import zipfile,json,hashlib,secrets,base64,sys
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 root=Path(__file__).resolve().parents[1];out=Path('/workspace/downloads');site=root/'schools'
 readme='''تجربة تسجيل الفيديو في مرصاد
@@ -13,7 +13,7 @@ readme='''تجربة تسجيل الفيديو في مرصاد
 اختبر مقطعًا واحدًا بصورة وصوت ووصول النسختين ثم راقب الدورة التالية قبل توزيع نسخة التجربة. لم تُختبر هذه النسخة ميدانيًا على جهاز ويندوز وتيمز حقيقي بعد.
 '''
 checks={}
-for edition,version in [('Teams','0.6.85'),('Schools','2.6.1')]:
+for edition,version in [('Teams','0.6.86'),('Schools','2.6.2')]:
  p=root/'schools/downloads'/f'Mirsad-{edition}-{version}-Video-Trial.zip'
  with zipfile.ZipFile(p,'w',zipfile.ZIP_DEFLATED) as z:
   for f in sorted(Path('/tmp/mirsad-video-'+edition).rglob('*')):
@@ -21,6 +21,7 @@ for edition,version in [('Teams','0.6.85'),('Schools','2.6.1')]:
   z.writestr('ابدأ هنا.txt',readme)
  checks[p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
 for name,source,edition in [('owner-script-2.6.1','Mirsad-Schools-OWNER-ONLY-2.6.1.gs','schools'),('private-video-script-0.6.85','Mirsad-PRIVATE-VIDEO-0.6.85.gs','private')]:
+ if '--extensions-only' in sys.argv:break
  data=(out/source).read_bytes();key=secrets.token_bytes(32);nonce=secrets.token_bytes(12);cipher=AESGCM(key).encrypt(nonce,data,None)
  assert AESGCM(key).decrypt(nonce,cipher,None)==data
  (site/(name+'.encrypted.json')).write_text(json.dumps({'nonce':base64.b64encode(nonce).decode(),'data':base64.b64encode(cipher).decode()}))
