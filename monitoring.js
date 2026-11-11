@@ -232,3 +232,6 @@ updateReportReadiness();
 
 
 window.addEventListener("mirsad-schedule-adopted",()=>{cache.clear();renderedDays.clear();void refreshRemote()});
+
+// Mirsad video cell controls v1
+{const renderBeforeVideo=renderTable;renderTable=function(target,data){renderBeforeVideo(target,data);globalThis.MirsadVideoUI?.mount(target,data,{call:api})}}

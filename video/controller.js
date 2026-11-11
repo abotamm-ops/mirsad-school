@@ -1,0 +1,80 @@
+/* Video owns a separate tab. It never writes attendance state or changes its alarms. */
+var MirsadVideo=(()=>{
+ if(!chrome.offscreen||!chrome.tabCapture||!chrome.storage.session)return {beforeScan:async()=>{}};
+ const KEY='mirsadVideoCapture',ALARM='mirsadVideoPoll',OFFSCREEN=chrome.runtime.getURL('video/offscreen.html'),POPUP=chrome.runtime.getURL('popup.html');
+ let polling=false,processing=false,uploadAbort=null,deadlineTimer=null,leaving=false,creatingDocument=null,mutating=Promise.resolve();
+ const get=async()=> (await chrome.storage.session.get(KEY))[KEY]||{};
+ const patch=change=>{const task=mutating.then(async()=>{const s=await get();await chrome.storage.session.set({[KEY]:typeof change==='function'?change(s):{...s,...change}})});mutating=task.catch(()=>{});return task};
+ async function scope(){const c=(await chrome.storage.local.get('mirsadDriveConfig')).mirsadDriveConfig||{};if(!c.url||!c.key)throw Error('اربط خدمة الرصد أولًا');return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(c.url+'|'+c.key)))).map(x=>x.toString(16).padStart(2,'0')).join('')}
+ const teams=url=>{try{const u=new URL(url);return u.protocol==='https:'&&['teams.microsoft.com','teams.live.com'].includes(u.hostname)}catch{return false}};
+ async function documentReady(){if(creatingDocument)return creatingDocument;creatingDocument=(async()=>{const contexts=await chrome.runtime.getContexts({contextTypes:['OFFSCREEN_DOCUMENT'],documentUrls:[OFFSCREEN]});if(!contexts.length)await chrome.offscreen.createDocument({url:'video/offscreen.html',reasons:['USER_MEDIA'],justification:'تسجيل تبويب تيمز بالصوت والصورة في فواصل الرصد المحددة، وحفظ المقطع.'})})();try{await creatingDocument}finally{creatingDocument=null}}
+ async function off(type,p={}){await documentReady();const r=await chrome.runtime.sendMessage({target:'mirsad-video-offscreen',type,...p});if(!r?.ok)throw Error(r?.error||'تعذر الاتصال بتسجيل الفيديو');return r}
+ async function api(action,p={}){if(!CloudMonitoring.video)throw Error('يلزم تحديث إضافة الفيديو');return CloudMonitoring.video(action,p)}
+ async function closeOwnedTab(id){if(!id)return;try{const t=await chrome.tabs.get(id);if(teams(t.url)&&(!t.pendingUrl||teams(t.pendingUrl)))await chrome.tabs.remove(id)}catch{}}
+ async function currentGap(){return MirsadVideoCore.gap(await getRun(),Date.now())}
+ async function allowed(job){const s=await get();return s.ready&&s.active?.id===job.id&&s.scope===await scope()&&MirsadVideoCore.budget(await getRun(),job,Date.now())>=1}
+ async function info(){const s=await get();return {ok:true,ready:!!s.ready,tabId:s.tabId||null,phase:s.active?.phase||'',teacher:s.active?.teacherName||'',message:s.message||''}}
+ async function update(job,p){if(job.scope!==await scope())throw Error('تغير حساب الرصد');return api('videoUpdate',{date:job.date,id:job.id,lease:job.lease,...p})}
+ async function openTab(){const s=await get();if(s.tabId){try{const t=await chrome.tabs.get(s.tabId);await chrome.tabs.update(t.id,{active:true});return info()}catch{}}const tab=await chrome.tabs.create({url:'https://teams.microsoft.com/v2/',active:true});await patch({active:null,tabId:tab.id,ready:false,scope:await scope(),message:'افتح الإضافة من تبويب التسجيل واضغط تهيئة التسجيل'});return info()}
+ async function prepare(){const s=await get(),active=(await chrome.tabs.query({active:true,currentWindow:true}))[0];if(!s.tabId||active?.id!==s.tabId||!teams(active.url))throw Error('افتح تبويب التسجيل المخصص، ثم افتح الإضافة واضغط تهيئة التسجيل');if(s.active)throw Error('انتظر نهاية المقطع الجاري');const key=await scope();await documentReady();const streamId=await chrome.tabCapture.getMediaStreamId({targetTabId:s.tabId});await off('prepare',{streamId});await patch({scope:key,ready:true,sessionId:crypto.randomUUID(),message:'جاهز لطلبات التسجيل من الموقع والجوال'});await chrome.alarms.create(ALARM,{periodInMinutes:.5});void poll();return info()}
+ async function finishMeeting(reason=''){
+  if(leaving)return;leaving=true;try{const s=await get(),job=s.active;if(!job)return;
+   void off('stop',{reason}).catch(()=>{});let left=false;
+   try{const r=await Promise.race([chrome.tabs.sendMessage(s.tabId,{type:'MIRSAD_VIDEO_LEAVE',id:job.id}),new Promise(resolve=>setTimeout(()=>resolve(null),1400))]);left=r?.left===true}catch{}
+   const latest=await get();if(latest.active?.id!==job.id)return;
+   if(!left){await closeOwnedTab(s.tabId);void off('release',{reason}).catch(()=>{});await patch({tabId:null,ready:false,active:null,message:'انتهى التسجيل؛ أعد فتح تبويب التسجيل وتهيئته للفواصل القادمة'})}
+   else await patch({active:null,message:'انتهى المقطع؛ الحفظ والرفع حسب الفرصة الآمنة'});
+  }finally{clearTimeout(deadlineTimer);leaving=false}
+ }
+ async function start(job){const s=await get();job={...job,scope:s.scope};await patch({active:job,message:'جارٍ الدخول إلى الحصة للتسجيل'});deadlineTimer=setTimeout(()=>void finishMeeting(),Math.max(0,job.deadline-Date.now()));
+  try{if(!await allowed(job))throw Error('لا يوجد فاصل آمن للتسجيل');await chrome.tabs.update(s.tabId,{url:job.url,active:true});let joined=false;
+   while(await allowed(job)){
+    try{const r=await chrome.tabs.sendMessage(s.tabId,{type:'MIRSAD_VIDEO_ENTER',id:job.id,deadline:job.deadline});if(r?.joined){joined=true;break}if(r?.error)throw Error(r.error)}catch(e){if(!/receiving end|closed|establish connection/i.test(e.message))throw e}
+    await new Promise(resolve=>setTimeout(resolve,700));
+   }
+   if(!joined||!await allowed(job))throw Error('تعذر دخول الحصة ضمن الفاصل الآمن');
+   const durationMs=MirsadVideoCore.budget(await getRun(),job,Date.now());await off('start',{job,durationMs,scope:s.scope});
+  }catch(e){await update(job,{phase:'failed',error:e.message}).catch(()=>{});await finishMeeting(e.message)}
+ }
+ async function poll(){if(polling)return;polling=true;try{let s=await get();if(!s.ready||s.scope!==await scope())return;const status=await off('status');if(!status.ready){if(s.active)await finishMeeting('انقطع التقاط تبويب التسجيل');await patch({ready:false,active:null,message:'انتهت صلاحية التقاط التبويب؛ أعد التهيئة'});return}if(s.active&&!await allowed(s.active)){await finishMeeting();s=await get()}
+  const gap=await currentGap(),r=await api('videoPoll',{date:MirsadMonitorModel.day(),ready:s.ready===true,sessionId:s.sessionId,recordingId:status.recording?status.id:null,gap});if(r.cancelled&&s.active?.id===r.cancelled)await finishMeeting('أُلغي اختيار التسجيل');if(r.job&&!s.active&&gap)void start(r.job);
+ }catch(e){const s=await get();await patch({message:e.message})}finally{polling=false;void processMedia()}}
+ async function beforeScan(){uploadAbort?.abort();const s=await get();if(!s.active)return;
+  // Emergency stop never waits for Drive, disk finalization or meeting UI.
+  void off('stop',{reason:'بدأ الرصد؛ أُوقف الفيديو حفاظًا على موعد الدورة'}).catch(()=>{});
+  if(s.tabId)await closeOwnedTab(s.tabId);
+  await patch({tabId:null,ready:false,active:null,message:'أُوقف الفيديو قبل الفحص؛ أعد تهيئة تبويبه'});clearTimeout(deadlineTimer);
+ }
+ async function release(){await finishMeeting('إيقاف التهيئة');const s=await get();await off('release');await patch({ready:false,active:null,message:'تهيئة التسجيل متوقفة'});await chrome.alarms.create(ALARM,{periodInMinutes:1});return info()}
+ async function canUpload(){const r=await getRun(),s=await get();if(s.active)return false;if(!r?.running||r.paused)return true;if(r.current)return false;if(r.waitingForCycle2)return r.nextCycleAt-Date.now()>35000;return typeof periodNow==='function'&&!periodNow()}
+ async function download(clip){if(clip.localSaved||clip.downloadId)return;const r=await off('url',{id:clip.id});const id=await chrome.downloads.download({url:r.url,filename:'Mirsad-Videos/'+clip.job.date+'/'+MirsadVideoCore.fileName(clip.job),saveAs:false});await MirsadVideoStore.patch(clip.id,{downloadId:id})}
+ async function upload(clip){if(clip.driveSaved||!await canUpload())return;const job=clip.job,begin=await api('videoUploadBegin',{date:job.date,id:job.id,lease:job.lease,size:clip.size,mime:clip.mime});if(begin.complete){await MirsadVideoStore.patch(clip.id,{driveSaved:true});return}
+  const url=begin.uploadSession;if(!/^https:\/\/www\.googleapis\.com\/upload\/drive\/v3\/files\?/.test(url||''))throw Error('رابط رفع الفيديو غير صالح');
+  const blob=await MirsadVideoStore.blob(clip.id);let offset=clip.offset||0,fileId=clip.fileId||'';uploadAbort=new AbortController();
+  // Probe the resumable session after interruptions; only Google-confirmed bytes count.
+  const probe=await fetch(url,{method:'PUT',headers:{'Content-Range':'bytes */'+blob.size},signal:uploadAbort.signal});
+  if(probe.status===200||probe.status===201)fileId=(await probe.json()).id;
+  else if(probe.status===308)offset=Number(/-(\d+)$/.exec(probe.headers.get('Range')||'')?.[1]||-1)+1;
+  else throw Error('تعذر استئناف رفع الفيديو ('+probe.status+')');
+  while(!fileId&&offset<blob.size){if(!await canUpload())return;const end=Math.min(offset+1024*1024,blob.size),timer=setTimeout(()=>uploadAbort.abort(),20000);let response;try{response=await fetch(url,{method:'PUT',headers:{'Content-Type':'video/webm','Content-Range':'bytes '+offset+'-'+(end-1)+'/'+blob.size},body:blob.slice(offset,end),signal:uploadAbort.signal})}finally{clearTimeout(timer)}
+   if(response.status===200||response.status===201){fileId=(await response.json()).id;offset=blob.size}
+   else if(response.status===308){const next=Number(/-(\d+)$/.exec(response.headers.get('Range')||'')?.[1]||-1)+1;if(next<=offset)throw Error('لم يؤكد Drive استلام بيانات الفيديو');offset=next}
+   else throw Error('تعذر رفع الفيديو ('+response.status+')');await MirsadVideoStore.patch(clip.id,{offset,fileId});
+  }
+  if(fileId){await api('videoUploadFinish',{date:job.date,id:job.id,lease:job.lease,fileId});await MirsadVideoStore.patch(clip.id,{driveSaved:true});await MirsadVideoStore.prune(clip.id)}
+ }
+ async function processMedia(){if(processing)return;processing=true;try{const key=await scope();for(let clip of await MirsadVideoStore.list()){if(clip.scope!==key||clip.phase!=='saved'||!clip.size)continue;await download(clip).catch(()=>{});clip=await MirsadVideoStore.get(clip.id);await update(clip.job,{phase:'saving',error:clip.error||'',localSaved:clip.localSaved,durationMs:clip.durationMs}).catch(()=>{});try{await upload(clip)}catch(e){if(e.name!=='AbortError')await chrome.storage.local.set({mirsadVideoUploadStatus:{at:Date.now(),error:e.message}})}}}catch{}finally{uploadAbort=null;processing=false}}
+ chrome.runtime.onMessage.addListener((p,sender,reply)=>{
+  if(p?.type==='MIRSAD_VIDEO_AUTH'){(async()=>{const s=await get();return {allowed:sender.tab?.id===s.tabId&&s.active?.id===p.id&&s.scope===await scope()&&(p.leave||await allowed(s.active))}})().then(reply).catch(()=>reply({allowed:false}));return true}
+  if(p?.type==='MIRSAD_VIDEO_EVENT'&&sender.url===OFFSCREEN){(async()=>{const s=await get();if(p.event==='recording'&&s.active?.id===p.id){await patch(latest=>latest.active?.id===p.id?{...latest,active:{...latest.active,phase:'recording'}}:latest);await update(s.active,{phase:'recording'})}if(p.event==='saved'||p.event==='failed'){const clip=await MirsadVideoStore.get(p.id);if(clip&&clip.scope===await scope()){if(p.event==='saved')await update(clip.job,{phase:'saving',durationMs:p.durationMs});else await update(clip.job,{phase:'failed',error:p.error});await finishMeeting();void processMedia()}}if(p.event==='unprepared'){await finishMeeting('انقطع التقاط تبويب التسجيل');await patch({ready:false,message:'انقطع التقاط تبويب التسجيل'})}})().then(()=>reply({ok:true})).catch(e=>reply({ok:false,error:e.message}));return true}
+  if(p?.type==='MIRSAD_VIDEO_CHECK'&&sender.url===OFFSCREEN){(async()=>{const s=await get();return {allowed:!!s.active&&s.active.id===p.id&&await allowed(s.active)}})().then(reply).catch(()=>reply({allowed:false}));return true}
+  if(sender.url?.split('?')[0]!==POPUP)return;
+  const action={MIRSAD_VIDEO_INFO:info,MIRSAD_VIDEO_OPEN:openTab,MIRSAD_VIDEO_PREPARE:prepare,MIRSAD_VIDEO_RELEASE:release,MIRSAD_VIDEO_RETRY:async()=>{await processMedia();return info()}}[p?.type];if(!action)return;action().then(reply).catch(e=>reply({ok:false,error:e.message}));return true;
+ });
+ chrome.alarms.onAlarm.addListener(a=>{if(a.name===ALARM)void poll()});
+ chrome.tabs.onRemoved.addListener(id=>{void (async()=>{const s=await get();if(id===s.tabId){void off('release').catch(()=>{});await patch({tabId:null,ready:false,active:null,message:'أُغلق تبويب التسجيل؛ أعد تهيئته'})}})()});
+ chrome.tabs.onUpdated.addListener((id,change)=>{if(!change.url)return;void (async()=>{const s=await get();if(id!==s.tabId)return;const key=MirsadScheduleCore.teamsMeetingKey(change.url),expected=s.active&&MirsadScheduleCore.teamsMeetingKey(s.active.url);if(!teams(change.url)||s.active?.phase==='recording'&&key&&expected&&key!==expected){void off('release',{reason:'تغير تبويب التسجيل'}).catch(()=>{});await patch({ready:false,tabId:null,active:null,message:'تغير التبويب؛ أُوقفت تهيئة التسجيل لحماية الرصد'})}})()});
+ chrome.storage.onChanged.addListener((change,area)=>{if(area==='local'&&change.mirsadDriveConfig)void release().catch(()=>{});const next=change.mirsadAutoRun?.newValue,previous=change.mirsadAutoRun?.oldValue;if(area==='local'&&next?.running&&next.waitingForCycle2&&!next.current&&(!previous?.waitingForCycle2||previous.nextCycleAt!==next.nextCycleAt))void poll();if(area==='local'&&next?.current)void beforeScan()});
+ chrome.downloads.onChanged.addListener(change=>{if(!change.state)return;void (async()=>{const clip=(await MirsadVideoStore.list()).find(c=>c.downloadId===change.id);if(!clip)return;if(change.state.current==='complete'){await MirsadVideoStore.patch(clip.id,{localSaved:true});await MirsadVideoStore.prune(clip.id);await update(clip.job,{phase:clip.error?'failed':clip.driveSaved?'saved':'saving',localSaved:true}).catch(()=>{});void off('revoke',{id:clip.id}).catch(()=>{})}else if(change.state.current==='interrupted')await MirsadVideoStore.patch(clip.id,{downloadId:null})})()});
+ return {beforeScan,poll};
+})();
