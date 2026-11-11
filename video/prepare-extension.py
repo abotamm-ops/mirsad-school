@@ -1,7 +1,7 @@
 from pathlib import Path
 import zipfile,json,shutil
 repo=Path(__file__).resolve().parents[1];here=repo/'video'
-for label,old,new in [('Teams','0.6.81.6','0.6.86'),('Schools','2.3.3.7','2.6.2')]:
+for label,old,new in [('Teams','0.6.81.6','0.6.87'),('Schools','2.3.3.7','2.6.3')]:
  out=Path('/tmp/mirsad-video-'+label);out.mkdir(exist_ok=True)
  with zipfile.ZipFile(repo/'schools/downloads'/f'Mirsad-{label}-{old}.zip') as z:
   for name in z.namelist():

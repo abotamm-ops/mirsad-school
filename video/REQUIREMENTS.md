@@ -14,3 +14,5 @@ No second Teams account is available. Recording only in scan-free gaps and after
 
 - Final cycle is supported: capture stops 30 seconds before lesson end or any earlier next-class boundary. Duration remains an optional maximum; earliest boundary wins.
 - Video square is 12 by 12 CSS pixels, with equal min/max dimensions to prevent stretching.
+
+- One-button setup from the invoked monitoring dashboard captures that permitted tab before navigation, preserves dashboard access in a second tab, and repurposes the captured tab for Teams. It never repurposes Madrasati or a live probe. Capture failure keeps the original page untouched. No manual open-tab and prepare-tab sequence in popup.
