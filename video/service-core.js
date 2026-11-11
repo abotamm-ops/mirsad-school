@@ -14,7 +14,7 @@ function createMirsadVideoService(env){
    const snap=env.snapshot();if(p.scheduleRevision!==snap.scheduleRevision)throw Error('تغير جدول الحصص؛ حدّث الجدول');
    const lesson=snap.lessons.find(l=>l.teacherId===p.teacherId&&Number(l.period)===Number(p.period));if(!lesson?.url)throw Error('لا يوجد رابط صالح للحصة المطلوبة');
    const config=MirsadVideoCore.settings({teacherId:lesson.teacherId,teacherName:lesson.teacherName,period:Number(lesson.period),minutes:p.minutes,cycles:p.cycles,scheduleRevision:snap.scheduleRevision},snap.roundCount);
-   if(s.configs.some(c=>c.teacherId!==config.teacherId&&c.period===config.period&&c.scheduleRevision===config.scheduleRevision&&c.cycles.some(n=>config.cycles.includes(n))))throw Error('اختر معلمًا واحدًا للتسجيل في الفاصل نفسه');
+   if(config.enabled)s.configs=s.configs.filter(c=>c.teacherId===config.teacherId||c.period!==config.period);
    const old=s.configs.findIndex(c=>c.teacherId===config.teacherId&&c.period===config.period);if(old<0){if(s.configs.length>=100)throw Error('وصلت اختيارات التسجيل إلى الحد الأقصى');s.configs.push(config)}else s.configs[old]=config;
    s.revision++;save(s);return {...view(s),saved:true};
   }

@@ -12,11 +12,11 @@ for edition,base in [('private','/workspace/mirsad-remote-controls/source/privat
   s=s.replace("'fillMissingLinks','addCalendarLinks'],admin=", "'fillMissingLinks','addCalendarLinks','videoPoll','videoUpdate','videoUploadBegin','videoUploadFinish'],admin=")
   s=s.replace("'reportSchedule','setAutoLinksControl'];", "'reportSchedule','setAutoLinksControl','videoConfigure'];")
   adapter=adapter.replace('drive=DriveApp,root=','drive=commercialSchoolDrive_(),root=')
-  s=s.replace("version:'2.5.0',ownerPortal:true", "version:'2.6.8',videoRecording:true,ownerPortal:true")
+  s=s.replace("version:'2.5.0',ownerPortal:true", "version:'2.6.9',videoRecording:true,ownerPortal:true")
   s=s.replace('// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.5.0','')
  else:s=s.replace('// END MIRSAD PRIVATE REMOTE CONTROL 0.6.83','')
  s=s.replace("  var matches=root.getFoldersByName('توثيق غياب '+p.date);","  if(!experimentId)monitorVideoReset_(p.date,props,root,p.requestId);\n  var matches=root.getFoldersByName('توثيق غياب '+p.date);")
  s+='\n'+(r/'core.js').read_text()+'\n'+(r/'service-core.js').read_text()+'\n'+adapter
- s+='\n// END MIRSAD '+('SCHOOLS COMPLETE SCRIPT 2.6.8' if edition=='schools' else 'PRIVATE VIDEO SCRIPT 0.6.92')+'\n'
- (Path('/workspace/downloads')/('Mirsad-Schools-OWNER-ONLY-2.6.8.gs' if edition=='schools' else 'Mirsad-PRIVATE-VIDEO-0.6.92.gs')).write_text(s)
+ s+='\n// END MIRSAD '+('SCHOOLS COMPLETE SCRIPT 2.6.9' if edition=='schools' else 'PRIVATE VIDEO SCRIPT 0.6.93')+'\n'
+ (Path('/workspace/downloads')/('Mirsad-Schools-OWNER-ONLY-2.6.9.gs' if edition=='schools' else 'Mirsad-PRIVATE-VIDEO-0.6.93.gs')).write_text(s)
  print('Built separate '+edition+' video service')
