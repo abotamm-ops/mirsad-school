@@ -1,6 +1,6 @@
 /* Video owns a separate tab. It never writes attendance state or changes its alarms. */
 var MirsadVideo=(()=>{
- if(!chrome.offscreen||!chrome.tabCapture||!chrome.storage.session)return {beforeScan:async()=>{}};
+ if(!chrome.offscreen||!chrome.tabCapture||!chrome.storage.session)return {beforeScan:async()=>{},completed:async()=>{}};
  const KEY='mirsadVideoCapture',ALARM='mirsadVideoPoll',OFFSCREEN=chrome.runtime.getURL('video/offscreen.html'),POPUP=chrome.runtime.getURL('popup.html');
  let polling=false,processing=false,uploadAbort=null,deadlineTimer=null,leaving=false,creatingDocument=null,mutating=Promise.resolve();
  const get=async()=> (await chrome.storage.session.get(KEY))[KEY]||{};
@@ -11,8 +11,9 @@ var MirsadVideo=(()=>{
  async function off(type,p={}){await documentReady();const r=await chrome.runtime.sendMessage({target:'mirsad-video-offscreen',type,...p});if(!r?.ok)throw Error(r?.error||'تعذر الاتصال بتسجيل الفيديو');return r}
  async function api(action,p={}){if(!CloudMonitoring.video)throw Error('يلزم تحديث إضافة الفيديو');return CloudMonitoring.video(action,p)}
  async function closeOwnedTab(id){if(!id)return;try{const t=await chrome.tabs.get(id);if(teams(t.url)&&(!t.pendingUrl||teams(t.pendingUrl)))await chrome.tabs.remove(id)}catch{}}
- async function currentGap(){return MirsadVideoCore.gap(await getRun(),Date.now())}
- async function allowed(job){const s=await get();return s.ready&&s.active?.id===job.id&&s.scope===await scope()&&MirsadVideoCore.budget(await getRun(),job,Date.now())>=1}
+ async function currentGap(){return MirsadVideoCore.gap(await getRun(),Date.now(),5000,(await get()).tail)}
+ async function completed(run,after){if(!run?.running||run.current||run.paused||run.waitingForCycle2||run.period!==after||!run.periodItems?.length||run.index<run.periodItems.length||run.testMode||run.backtestMode||run.immediateMode||run.calendarTrial)return;const p=typeof PERIODS!=='undefined'&&PERIODS.find(p=>p.n===after);if(!p||periodNow()?.n!==after)return;const bounds=periodBounds(p,new Date(),'past');if(!bounds)return;let endAt=bounds.end.getTime();for(const next of PERIODS){if(next.n<=after)continue;const b=periodBounds(next,new Date(),'activeOrNext');if(b?.start.getTime()>Date.now())endAt=Math.min(endAt,b.start.getTime())}if(endAt-Date.now()<35000)return;await patch({tail:{startedAt:run.startedAt,controlEpoch:run.controlEpoch||0,period:after,cycle:run.cycle,endAt}});void poll()}
+ async function allowed(job){const s=await get();return s.ready&&s.active?.id===job.id&&s.scope===await scope()&&MirsadVideoCore.budget(await getRun(),job,Date.now(),s.tail)>=1}
  async function info(){const s=await get();return {ok:true,ready:!!s.ready,tabId:s.tabId||null,phase:s.active?.phase||'',teacher:s.active?.teacherName||'',message:s.message||''}}
  async function update(job,p){if(job.scope!==await scope())throw Error('تغير حساب الرصد');return api('videoUpdate',{date:job.date,id:job.id,lease:job.lease,...p})}
  async function openTab(){const s=await get();if(s.tabId){try{const t=await chrome.tabs.get(s.tabId);await chrome.tabs.update(t.id,{active:true});return info()}catch{}}const tab=await chrome.tabs.create({url:'https://teams.microsoft.com/v2/',active:true});await patch({active:null,tabId:tab.id,ready:false,scope:await scope(),message:'افتح الإضافة من تبويب التسجيل واضغط تهيئة التسجيل'});return info()}
@@ -33,19 +34,19 @@ var MirsadVideo=(()=>{
     await new Promise(resolve=>setTimeout(resolve,700));
    }
    if(!joined||!await allowed(job))throw Error('تعذر دخول الحصة ضمن الفاصل الآمن');
-   const durationMs=MirsadVideoCore.budget(await getRun(),job,Date.now());await off('start',{job,durationMs,scope:s.scope});
+   const durationMs=MirsadVideoCore.budget(await getRun(),job,Date.now(),(await get()).tail);await off('start',{job,durationMs,scope:s.scope});
   }catch(e){await update(job,{phase:'failed',error:e.message}).catch(()=>{});await finishMeeting(e.message)}
  }
  async function poll(){if(polling)return;polling=true;try{let s=await get();if(!s.ready||s.scope!==await scope())return;const status=await off('status');if(!status.ready){if(s.active)await finishMeeting('انقطع التقاط تبويب التسجيل');await patch({ready:false,active:null,message:'انتهت صلاحية التقاط التبويب؛ أعد التهيئة'});return}if(s.active&&!await allowed(s.active)){await finishMeeting();s=await get()}
   const gap=await currentGap(),r=await api('videoPoll',{date:MirsadMonitorModel.day(),ready:s.ready===true,sessionId:s.sessionId,recordingId:status.recording?status.id:null,gap});if(r.cancelled&&s.active?.id===r.cancelled)await finishMeeting('أُلغي اختيار التسجيل');if(r.job&&!s.active&&gap)void start(r.job);
  }catch(e){const s=await get();await patch({message:e.message})}finally{polling=false;void processMedia()}}
- async function beforeScan(){uploadAbort?.abort();const s=await get();if(!s.active)return;
+ async function beforeScan(){uploadAbort?.abort();const s=await get();await patch({tail:null});if(!s.active)return;void update(s.active,{phase:'failed',error:'أُوقف الفيديو لبدء الرصد'}).catch(()=>{});
   // Emergency stop never waits for Drive, disk finalization or meeting UI.
   void off('stop',{reason:'بدأ الرصد؛ أُوقف الفيديو حفاظًا على موعد الدورة'}).catch(()=>{});
   if(s.tabId)await closeOwnedTab(s.tabId);
   await patch({tabId:null,ready:false,active:null,message:'أُوقف الفيديو قبل الفحص؛ أعد تهيئة تبويبه'});clearTimeout(deadlineTimer);
  }
- async function release(){await finishMeeting('إيقاف التهيئة');const s=await get();await off('release');await patch({ready:false,active:null,message:'تهيئة التسجيل متوقفة'});await chrome.alarms.create(ALARM,{periodInMinutes:1});return info()}
+ async function release(){await finishMeeting('إيقاف التهيئة');const s=await get();await off('release');await patch({ready:false,active:null,tail:null,message:'تهيئة التسجيل متوقفة'});await chrome.alarms.create(ALARM,{periodInMinutes:1});return info()}
  async function canUpload(){const r=await getRun(),s=await get();if(s.active)return false;if(!r?.running||r.paused)return true;if(r.current)return false;if(r.waitingForCycle2)return r.nextCycleAt-Date.now()>35000;return typeof periodNow==='function'&&!periodNow()}
  async function download(clip){if(clip.localSaved||clip.downloadId)return;const r=await off('url',{id:clip.id});const id=await chrome.downloads.download({url:r.url,filename:'Mirsad-Videos/'+clip.job.date+'/'+MirsadVideoCore.fileName(clip.job),saveAs:false});await MirsadVideoStore.patch(clip.id,{downloadId:id})}
  async function upload(clip){if(clip.driveSaved||!await canUpload())return;const job=clip.job,begin=await api('videoUploadBegin',{date:job.date,id:job.id,lease:job.lease,size:clip.size,mime:clip.mime});if(begin.complete){await MirsadVideoStore.patch(clip.id,{driveSaved:true});return}
@@ -76,5 +77,5 @@ var MirsadVideo=(()=>{
  chrome.tabs.onUpdated.addListener((id,change)=>{if(!change.url)return;void (async()=>{const s=await get();if(id!==s.tabId)return;const key=MirsadScheduleCore.teamsMeetingKey(change.url),expected=s.active&&MirsadScheduleCore.teamsMeetingKey(s.active.url);if(!teams(change.url)||s.active?.phase==='recording'&&key&&expected&&key!==expected){void off('release',{reason:'تغير تبويب التسجيل'}).catch(()=>{});await patch({ready:false,tabId:null,active:null,message:'تغير التبويب؛ أُوقفت تهيئة التسجيل لحماية الرصد'})}})()});
  chrome.storage.onChanged.addListener((change,area)=>{if(area==='local'&&change.mirsadDriveConfig)void release().catch(()=>{});const next=change.mirsadAutoRun?.newValue,previous=change.mirsadAutoRun?.oldValue;if(area==='local'&&next?.running&&next.waitingForCycle2&&!next.current&&(!previous?.waitingForCycle2||previous.nextCycleAt!==next.nextCycleAt))void poll();if(area==='local'&&next?.current)void beforeScan()});
  chrome.downloads.onChanged.addListener(change=>{if(!change.state)return;void (async()=>{const clip=(await MirsadVideoStore.list()).find(c=>c.downloadId===change.id);if(!clip)return;if(change.state.current==='complete'){await MirsadVideoStore.patch(clip.id,{localSaved:true});await MirsadVideoStore.prune(clip.id);await update(clip.job,{phase:clip.error?'failed':clip.driveSaved?'saved':'saving',localSaved:true}).catch(()=>{});void off('revoke',{id:clip.id}).catch(()=>{})}else if(change.state.current==='interrupted')await MirsadVideoStore.patch(clip.id,{downloadId:null})})()});
- return {beforeScan,poll};
+ return {beforeScan,poll,completed};
 })();

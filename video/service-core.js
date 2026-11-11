@@ -24,8 +24,8 @@ function createMirsadVideoService(env){
    if(changed)save(s);
    const active=s.jobs.find(j=>['joining','recording'].includes(j.phase));if(active){const selected=s.configs.find(c=>c.teacherId===active.teacherId&&c.period===active.period&&c.scheduleRevision===active.scheduleRevision&&c.enabled&&c.cycles.includes(active.afterCycle));if(!selected){active.phase='failed';active.error='أُلغي اختيار التسجيل';active.updatedAt=now();save(s);return {job:null,cancelled:active.id,serverTime:now()}}if(p.ready&&p.recordingId===active.id&&p.gap?.key===active.gapKey){active.updatedAt=now();save(s)}return {job:{...active},serverTime:now()};}
    if(p.ready!==true||!p.gap||!Number.isFinite(p.gap.nextCycleAt))return {job:null,serverTime:now()};
-   const g=p.gap;if(typeof g.key!=='string'||!g.key||g.key.length>200||!Number.isInteger(g.period)||g.period<1||g.period>7||g.deadline!==g.nextCycleAt-30000||g.deadline-now()<5000||g.deadline-now()>12*60*60*1000||![1,2].includes(g.afterCycle))return {job:null,serverTime:now()};
-   const snap=env.snapshot();if(g.afterCycle>=snap.roundCount)return {job:null,serverTime:now()};
+   const g=p.gap;if(typeof g.key!=='string'||!g.key||g.key.length>200||!Number.isInteger(g.period)||g.period<1||g.period>7||g.deadline!==g.nextCycleAt-30000||g.deadline-now()<5000||g.deadline-now()>12*60*60*1000||![1,2,3].includes(g.afterCycle))return {job:null,serverTime:now()};
+   const snap=env.snapshot();if(g.afterCycle>snap.roundCount)return {job:null,serverTime:now()};
    const config=s.configs.find(c=>c.enabled&&c.period===g.period&&c.cycles.includes(g.afterCycle)&&c.scheduleRevision===snap.scheduleRevision);
    if(!config||s.jobs.some(j=>j.gapKey===g.key))return {job:null,serverTime:now()};
    if(s.jobs.length>=100)throw Error('وصلت تسجيلات اليوم إلى الحد الأقصى');
