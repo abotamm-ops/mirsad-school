@@ -32,16 +32,16 @@ for edition,version in [('Teams','0.6.93'),('Schools','2.6.10')]:
   z.writestr(prefix+'تحديث حفظ الفيديو.cmd',command)
 
  checks[p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
-for name,source,edition in [('owner-script-2.6.9','Mirsad-Schools-OWNER-ONLY-2.6.9.gs','schools'),('private-video-script-0.6.93','Mirsad-PRIVATE-VIDEO-0.6.93.gs','private')]:
+for name,source,edition in [('owner-script-2.6.11','Mirsad-Schools-OWNER-ONLY-2.6.11.gs','schools'),('private-video-script-0.6.94','Mirsad-PRIVATE-VIDEO-0.6.94.gs','private')]:
  if '--extensions-only' in sys.argv:break
  data=(out/source).read_bytes();key=secrets.token_bytes(32);nonce=secrets.token_bytes(12);cipher=AESGCM(key).encrypt(nonce,data,None)
  assert AESGCM(key).decrypt(nonce,cipher,None)==data
  (site/(name+'.encrypted.json')).write_text(json.dumps({'nonce':base64.b64encode(nonce).decode(),'data':base64.b64encode(cipher).decode()}))
- html=(site/'owner-script-2.5.0.html').read_text().replace('owner-script-2.5.0',name).replace('2.5.0','2.6.9' if edition=='schools' else '0.6.93')
+ html=(site/'owner-script-2.5.0.html').read_text().replace('owner-script-2.5.0',name).replace('2.5.0','2.6.11' if edition=='schools' else '0.6.94')
  js=(site/'owner-script-2.5.0-preview.js').read_text().replace('owner-script-2.5.0',name).replace('Mirsad-Schools-OWNER-ONLY-2.5.0.txt',source.replace('.gs','.txt'))
  if edition=='private':
   html=html.replace('مرصاد المدارس','مرصاد الشخصي').replace('سكربت قوقل للمدارس','سكربت قوقل الشخصي').replace('مشروع Google Apps Script الحالي للمدارس فقط — لا تستخدم مشروع توثيق مرصاد الخاص','مشروع Google Apps Script الحالي لمرصاد الشخصي فقط — لا تستخدم مشروع المدارس')
-  js=js.replace('SCHOOLS COMPLETE SCRIPT 2\\.\\d+\\.\\d+','PRIVATE VIDEO SCRIPT 0\\.6\\.93').replace('مشروع المدارس الحالي فقط','مشروع مرصاد الشخصي الحالي فقط')
+  js=js.replace('SCHOOLS COMPLETE SCRIPT 2\\.\\d+\\.\\d+','PRIVATE VIDEO SCRIPT 0\\.6\\.94').replace('مشروع المدارس الحالي فقط','مشروع مرصاد الشخصي الحالي فقط')
  (site/(name+'.html')).write_text(html);(site/(name+'-preview.js')).write_text(js)
  (out/(name+'-LINK.txt')).write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
 if checks:(root/'schools/downloads/Mirsad-Video-Trial-CHECKSUMS.txt').write_text(''.join(v+'  '+k+'\n' for k,v in checks.items()))
