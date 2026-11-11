@@ -361,3 +361,46 @@ func videoIndex(dir string) error {
 	}
 	return os.Rename(name, dest)
 }
+
+func videoDelete(root, date string, ids []string) error {
+	d, e := time.Parse("2006-01-02", date)
+	if e != nil || d.Format("2006-01-02") != date || len(ids) > 1000 {
+		return errors.New("invalid video selection")
+	}
+	for _, id := range ids {
+		if !regexp.MustCompile(`^[A-Za-z0-9-]{1,80}$`).MatchString(id) {
+			return errors.New("invalid video ID")
+		}
+	}
+	dir := filepath.Join(root, "Videos", date)
+	if _, e = os.Lstat(dir); os.IsNotExist(e) {
+		return nil
+	}
+	if e = videoDirs(root, dir); e != nil {
+		return e
+	}
+	entries, e := os.ReadDir(dir)
+	if e != nil {
+		return e
+	}
+	for _, entry := range entries {
+		match := false
+		for _, id := range ids {
+			name := entry.Name()
+			if strings.HasSuffix(name, "_"+id+".webm") || strings.HasSuffix(name, "_"+id+".webm.json") || name == ".video-"+id+".part" || name == ".video-"+id+".part.json" {
+				match = true
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		if e = videoRegular(filepath.Join(dir, entry.Name())); e != nil {
+			return e
+		}
+		if e = os.Remove(filepath.Join(dir, entry.Name())); e != nil {
+			return e
+		}
+	}
+	return videoIndex(dir)
+}

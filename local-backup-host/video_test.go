@@ -82,3 +82,25 @@ func TestVideoResetOnlySelectedDate(t *testing.T) {
 		}
 	}
 }
+func TestVideoRangeDeleteKeepsOtherClipsSameDay(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "Videos", "2026-11-11")
+	os.MkdirAll(dir, 0700)
+	for _, name := range []string{"teacher_a.webm", "teacher_a.webm.json", "teacher_b.webm", ".video-a.part"} {
+		os.WriteFile(filepath.Join(dir, name), []byte("data"), 0600)
+	}
+	if e := videoDelete(root, "2026-11-11", []string{"a"}); e != nil {
+		t.Fatal(e)
+	}
+	for _, name := range []string{"teacher_a.webm", "teacher_a.webm.json", ".video-a.part"} {
+		if _, e := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(e) {
+			t.Fatal("selected retained", name)
+		}
+	}
+	if _, e := os.Stat(filepath.Join(dir, "teacher_b.webm")); e != nil {
+		t.Fatal("other clip removed")
+	}
+	if e := videoDelete(root, "2026-11-11", []string{"../b"}); e == nil {
+		t.Fatal("unsafe ID accepted")
+	}
+}

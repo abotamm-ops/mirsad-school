@@ -27,7 +27,7 @@ function createMirsadVideoService(env){
    const g=p.gap;if(typeof g.key!=='string'||!g.key||g.key.length>200||!Number.isInteger(g.period)||g.period<1||g.period>7||g.deadline!==g.nextCycleAt-30000||g.deadline-now()<5000||g.deadline-now()>12*60*60*1000||![1,2,3].includes(g.afterCycle))return {job:null,serverTime:now()};
    const snap=env.snapshot();if(g.afterCycle>snap.roundCount)return {job:null,serverTime:now()};
    const config=s.configs.find(c=>c.enabled&&c.period===g.period&&c.cycles.includes(g.afterCycle)&&c.scheduleRevision===snap.scheduleRevision);
-   if(!config||s.jobs.some(j=>j.gapKey===g.key))return {job:null,serverTime:now()};
+   if(!config||s.jobs.some(j=>j.gapKey===g.key)||(s.usedGaps||[]).includes(g.key))return {job:null,serverTime:now()};
    if(s.jobs.length>=100)throw Error('وصلت تسجيلات اليوم إلى الحد الأقصى');
    const lesson=snap.lessons.find(l=>l.teacherId===config.teacherId&&Number(l.period)===config.period);if(!lesson?.url)return {job:null,serverTime:now()};
    const job={generation:s.generation||0,id:env.id(),lease:env.id(),date:env.date,teacherId:config.teacherId,teacherName:config.teacherName,period:config.period,afterCycle:g.afterCycle,minutes:config.minutes,deadline:g.deadline,gapKey:g.key,scheduleRevision:snap.scheduleRevision,url:lesson.url,phase:'joining',createdAt:now(),updatedAt:now(),localSaved:false,driveSaved:false};s.jobs.push(job);save(s);return {job,serverTime:now()};
@@ -39,6 +39,7 @@ function createMirsadVideoService(env){
    // Terminal capture failures cannot be turned into a successful recording by a late event.
    if(j.phase==='failed'&&p.phase==='recording')throw Error('جلسة التسجيل منتهية');
    if(j.driveSaved&&p.phase!=='failed')j.phase=j.localSaved||p.localSaved===true?'completed':'saved';else j.phase=p.phase;
+   if(p.phase==='recording'&&!j.recordingStartedAt)j.recordingStartedAt=now();
    if(p.localSaved===true)j.localSaved=true;if(p.diskSaved===true){j.diskSaved=true;j.diskPaths=Array.isArray(p.diskPaths)?p.diskPaths.filter(x=>typeof x==='string').map(x=>x.slice(0,700)).slice(0,3):[]}if(typeof p.diskError==='string')j.diskError=p.diskError.slice(0,500);
    if(Number.isFinite(p.durationMs))j.durationMs=Math.max(0,Math.min(600000,p.durationMs));
    if(p.error)j.error=String(p.error).slice(0,500);j.updatedAt=now();save(s);return {saved:true,job:publicJob(j)};
@@ -48,7 +49,7 @@ function createMirsadVideoService(env){
    if(!Number.isInteger(p.size)||p.size<1||p.size>200*1024*1024||!/^video\/webm(?:;.*)?$/.test(p.mime||''))throw Error('ملف فيديو غير صالح');
    if(j.driveSaved)return {complete:true,job:publicJob(j)};
    if(j.size&&j.size!==p.size)throw Error('تغير حجم ملف التسجيل');j.size=p.size;j.mime=p.mime;
-   if(!j.uploadSession)j.uploadSession=env.uploadBegin(j);
+   try{if(!j.uploadSession)j.uploadSession=env.uploadBegin(j)}catch(e){save(s);throw e}
    j.phase='uploading';save(s);return {uploadSession:j.uploadSession};
   }
   if(action==='videoUploadFinish'){

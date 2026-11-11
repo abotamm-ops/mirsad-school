@@ -10,11 +10,11 @@ readme='''تجربة تسجيل الفيديو في مرصاد
 التسجيل لمعـلم واحد في كل فاصل. لكل فاصل مقطع مستقل، ويتوقف عند المدة المختارة أو قبل الدورة التالية أو نهاية الحصة بـ30 ثانية، أيهما أسبق. لا تُعدّل توقيت الرصد.
 الحفظ: مجلد Videos ثم تاريخ اليوم، داخل مسار الحفظ الحالي وفي Google Drive المرتبط. افتح «سجل الفيديو» في الموقع لعرض النسخ المؤكدة. شغّل «تحديث حفظ الفيديو.cmd» من مجلد تحديث حفظ الفيديو مرة واحدة لتحديث مكوّن الحفظ الموجود. الخاص يستخدم أقراص Data Copy المعتادة؛ المدارس تستخدم مجلد المدرسة المحلي المعتاد. للمدارس يجب ربط حساب Google Drive أولًا.
 الالتقاط يتطلب تهيئة صريحة من جهاز الرصد. المساعد الحالي كما هو؛ لا يحتاج تحديثًا.
-تصفير اليوم المختار يلغي طلبات فيديو ذلك التاريخ ويحذف فيديوهاته من Drive، وينفذ حذف نسخها المحلية عند اتصال جهاز الرصد؛ يظهر الحذف المحلي المعلق ولا يعتبر مؤكدًا حتى يكتمل. بقية التواريخ لا تتغير.
+تصفير اليوم المختار يلغي طلبات فيديو ذلك التاريخ ويحذف فيديوهاته من Drive، وتصفير الفترة الزمنية يحذف المقاطع التي يتداخل وقتها مع الفترة المختارة فقط، وينفذ حذف نسخها المحلية عند اتصال جهاز الرصد؛ يظهر الحذف المحلي المعلق ولا يعتبر مؤكدًا حتى يكتمل. بقية التواريخ والمقاطع خارج الفترة لا تتغير.
 اختبر مقطعًا واحدًا بصورة وصوت ووصول النسختين ثم راقب الدورة التالية قبل توزيع نسخة التجربة. لم تُختبر هذه النسخة ميدانيًا على جهاز ويندوز وتيمز حقيقي بعد.
 '''
 checks={}
-for edition,version in [('Teams','0.6.93'),('Schools','2.6.10')]:
+for edition,version in [('Teams','0.6.95'),('Schools','2.6.12')]:
  if '--scripts-only' in sys.argv:break
  p=root/'schools/downloads'/f'Mirsad-{edition}-{version}-Video-Trial.zip'
  with zipfile.ZipFile(p,'w',zipfile.ZIP_DEFLATED) as z:
@@ -32,16 +32,16 @@ for edition,version in [('Teams','0.6.93'),('Schools','2.6.10')]:
   z.writestr(prefix+'تحديث حفظ الفيديو.cmd',command)
 
  checks[p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
-for name,source,edition in [('owner-script-2.6.11','Mirsad-Schools-OWNER-ONLY-2.6.11.gs','schools'),('private-video-script-0.6.94','Mirsad-PRIVATE-VIDEO-0.6.94.gs','private')]:
+for name,source,edition in [('owner-script-2.6.12','Mirsad-Schools-OWNER-ONLY-2.6.12.gs','schools'),('private-video-script-0.6.95','Mirsad-PRIVATE-VIDEO-0.6.95.gs','private')]:
  if '--extensions-only' in sys.argv:break
  data=(out/source).read_bytes();key=secrets.token_bytes(32);nonce=secrets.token_bytes(12);cipher=AESGCM(key).encrypt(nonce,data,None)
  assert AESGCM(key).decrypt(nonce,cipher,None)==data
  (site/(name+'.encrypted.json')).write_text(json.dumps({'nonce':base64.b64encode(nonce).decode(),'data':base64.b64encode(cipher).decode()}))
- html=(site/'owner-script-2.5.0.html').read_text().replace('owner-script-2.5.0',name).replace('2.5.0','2.6.11' if edition=='schools' else '0.6.94')
+ html=(site/'owner-script-2.5.0.html').read_text().replace('owner-script-2.5.0',name).replace('2.5.0','2.6.12' if edition=='schools' else '0.6.95')
  js=(site/'owner-script-2.5.0-preview.js').read_text().replace('owner-script-2.5.0',name).replace('Mirsad-Schools-OWNER-ONLY-2.5.0.txt',source.replace('.gs','.txt'))
  if edition=='private':
   html=html.replace('مرصاد المدارس','مرصاد الشخصي').replace('سكربت قوقل للمدارس','سكربت قوقل الشخصي').replace('مشروع Google Apps Script الحالي للمدارس فقط — لا تستخدم مشروع توثيق مرصاد الخاص','مشروع Google Apps Script الحالي لمرصاد الشخصي فقط — لا تستخدم مشروع المدارس')
-  js=js.replace('SCHOOLS COMPLETE SCRIPT 2\\.\\d+\\.\\d+','PRIVATE VIDEO SCRIPT 0\\.6\\.94').replace('مشروع المدارس الحالي فقط','مشروع مرصاد الشخصي الحالي فقط')
+  js=js.replace('SCHOOLS COMPLETE SCRIPT 2\\.\\d+\\.\\d+','PRIVATE VIDEO SCRIPT 0\\.6\\.95').replace('مشروع المدارس الحالي فقط','مشروع مرصاد الشخصي الحالي فقط')
  (site/(name+'.html')).write_text(html);(site/(name+'-preview.js')).write_text(js)
  (out/(name+'-LINK.txt')).write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
 if checks:(root/'schools/downloads/Mirsad-Video-Trial-CHECKSUMS.txt').write_text(''.join(v+'  '+k+'\n' for k,v in checks.items()))

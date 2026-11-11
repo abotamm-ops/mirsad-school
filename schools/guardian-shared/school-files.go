@@ -20,13 +20,14 @@ import (
 const schoolOrigin = "chrome-extension://ologpgneejnippbdhboiaaijpgkejcck/"
 
 type localRequest struct {
-	Video  videoWriteRequest `json:"video"`
-	Action string            `json:"action"`
-	School string            `json:"school"`
-	Date   string            `json:"date"`
-	Record json.RawMessage   `json:"record"`
-	Image  string            `json:"image"`
-	Data   json.RawMessage   `json:"data"`
+	VideoIDs []string          `json:"videoIds"`
+	Video    videoWriteRequest `json:"video"`
+	Action   string            `json:"action"`
+	School   string            `json:"school"`
+	Date     string            `json:"date"`
+	Record   json.RawMessage   `json:"record"`
+	Image    string            `json:"image"`
+	Data     json.RawMessage   `json:"data"`
 }
 type localResponse struct {
 	VideoSupport bool   `json:"videoSupport,omitempty"`
@@ -212,11 +213,17 @@ func handleLocal(root, origin string, r localRequest, open func(string) error) l
 		}
 		return localResponse{OK: true, Path: p}
 	}
-	if r.Action == "videoReset" {
+	if r.Action == "videoReset" || r.Action == "videoDelete" {
 		if _, e := localDir(root, r.School, r.Date); e != nil {
 			return localResponse{Error: e.Error()}
 		}
-		if e := videoReset(filepath.Join(root, "school-"+r.School), r.Date); e != nil {
+		var e error
+		if r.Action == "videoDelete" {
+			e = videoDelete(filepath.Join(root, "school-"+r.School), r.Date, r.VideoIDs)
+		} else {
+			e = videoReset(filepath.Join(root, "school-"+r.School), r.Date)
+		}
+		if e != nil {
 			return localResponse{Error: e.Error()}
 		}
 		return localResponse{OK: true, Verified: true, VideoSupport: true}

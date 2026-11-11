@@ -22,6 +22,7 @@ import (
 const maxMessage = 32 * 1024 * 1024
 
 type request struct {
+	VideoIDs     []string          `json:"videoIds"`
 	VideoRoots   []int             `json:"videoRoots"`
 	Video        videoWriteRequest `json:"video"`
 	ExperimentID string            `json:"experimentId"`
@@ -287,7 +288,7 @@ func copies(j job, roots [3]string, write func(string, job) copyResult, timeout 
 	return r
 }
 func execute(r request) response {
-	if r.Action == "videoReset" {
+	if r.Action == "videoReset" || r.Action == "videoDelete" {
 		out := response{OK: true, VideoSupport: true, Paths: []string{}}
 		for index, root := range []string{`G:\`, `K:\`, `C:\`} {
 			selected := len(r.VideoRoots) == 0
@@ -306,7 +307,13 @@ func execute(r request) response {
 				}
 				continue
 			}
-			if e := videoReset(filepath.Join(root, "Data Copy"), r.Date); e != nil {
+			var e error
+			if r.Action == "videoDelete" {
+				e = videoDelete(filepath.Join(root, "Data Copy"), r.Date, r.VideoIDs)
+			} else {
+				e = videoReset(filepath.Join(root, "Data Copy"), r.Date)
+			}
+			if e != nil {
 				out.OK = false
 				out.Errors = append(out.Errors, e.Error())
 			}
