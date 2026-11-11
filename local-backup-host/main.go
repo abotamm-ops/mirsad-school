@@ -22,14 +22,16 @@ import (
 const maxMessage = 32 * 1024 * 1024
 
 type request struct {
-	ExperimentID string          `json:"experimentId"`
-	WindowOpen   *bool           `json:"windowOpen"`
-	Running      *bool           `json:"running"`
-	Action       string          `json:"action"`
-	Date         string          `json:"date"`
-	Filename     string          `json:"filename"`
-	Image        *string         `json:"image"`
-	Record       json.RawMessage `json:"record"`
+	VideoRoots   []int             `json:"videoRoots"`
+	Video        videoWriteRequest `json:"video"`
+	ExperimentID string            `json:"experimentId"`
+	WindowOpen   *bool             `json:"windowOpen"`
+	Running      *bool             `json:"running"`
+	Action       string            `json:"action"`
+	Date         string            `json:"date"`
+	Filename     string            `json:"filename"`
+	Image        *string           `json:"image"`
+	Record       json.RawMessage   `json:"record"`
 }
 type job struct {
 	date, name, recordName string
@@ -42,6 +44,7 @@ type copyResult struct {
 	err  error
 }
 type response struct {
+	VideoSupport           bool     `json:"videoSupport,omitempty"`
 	BrowserRecoverySupport bool     `json:"browserRecoverySupport"`
 	ExperimentSupport      bool     `json:"experimentSupport"`
 	OK                     bool     `json:"ok"`
@@ -270,7 +273,7 @@ func copies(j job, roots [3]string, write func(string, job) copyResult, timeout 
 		results = append(results, c)
 		ok = c.err == nil
 	}
-	r := response{ExperimentSupport: true, OK: ok, Fallback: fallback, Paths: []string{}}
+	r := response{ExperimentSupport: true, VideoSupport: true, OK: ok, Fallback: fallback, Paths: []string{}}
 	for _, result := range results {
 		if result.err != nil {
 			r.Errors = append(r.Errors, result.err.Error())
@@ -284,6 +287,46 @@ func copies(j job, roots [3]string, write func(string, job) copyResult, timeout 
 	return r
 }
 func execute(r request) response {
+	if r.Action == "videoReset" {
+		out := response{OK: true, VideoSupport: true, Paths: []string{}}
+		for index, root := range []string{`G:\`, `K:\`, `C:\`} {
+			selected := len(r.VideoRoots) == 0
+			for _, i := range r.VideoRoots {
+				if i == index {
+					selected = true
+				}
+			}
+			if !selected {
+				continue
+			}
+			if _, e := os.Stat(root); os.IsNotExist(e) {
+				if len(r.VideoRoots) > 0 {
+					out.OK = false
+					out.Errors = append(out.Errors, "pending disconnected video drive: "+root)
+				}
+				continue
+			}
+			if e := videoReset(filepath.Join(root, "Data Copy"), r.Date); e != nil {
+				out.OK = false
+				out.Errors = append(out.Errors, e.Error())
+			}
+		}
+		if !out.OK {
+			out.Error = strings.Join(out.Errors, "; ")
+		}
+		return out
+	}
+
+	if r.Action == "videoWrite" {
+		return copies(job{}, [3]string{`G:\`, `K:\`, `C:\`}, func(root string, _ job) copyResult {
+			if _, e := os.Stat(root); e != nil {
+				return copyResult{err: e}
+			}
+			p, e := videoWrite(filepath.Join(root, "Data Copy"), r.Video)
+			return copyResult{path: p, err: e}
+		}, 5*time.Second)
+	}
+
 	if r.Action == "browserRecovery" {
 		origin := ""
 		if len(os.Args) > 1 {

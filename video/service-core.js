@@ -2,7 +2,7 @@
 function createMirsadVideoService(env){
  const now=env.now,load=()=>env.load()||{revision:0,configs:[],jobs:[]},save=env.save;
  const publicJob=j=>{const {lease,uploadSession,url,...rest}=j;return rest};
- const view=s=>({supported:true,canManage:env.admin,serverTime:now(),revision:s.revision,configs:s.configs,jobs:s.jobs.map(publicJob),device:env.deviceRead()});
+ const view=s=>({supported:true,canManage:env.admin,serverTime:now(),revision:s.revision,generation:s.generation||0,configs:s.configs,jobs:s.jobs.map(publicJob),device:env.deviceRead()});
  const requireAdmin=()=>{if(!env.admin)throw Error('التسجيل يتطلب دخول إدارة الموقع')};
  const requireWriter=()=>{if(!env.writer)throw Error('التسجيل يتطلب جهاز الرصد المرتبط')};
  function currentJob(s,input){const j=s.jobs.find(j=>j.id===input.id);if(!j||j.lease!==input.lease)throw Error('جلسة فيديو غير صالحة');return j}
@@ -19,7 +19,7 @@ function createMirsadVideoService(env){
    s.revision++;save(s);return {...view(s),saved:true};
   }
   if(action==='videoPoll'){
-   requireWriter();env.deviceWrite({ready:p.ready===true,at:now(),sessionId:String(p.sessionId||'').slice(0,80)});
+   requireWriter();env.deviceWrite({ready:p.ready===true,at:now(),sessionId:String(p.sessionId||'').slice(0,80),resetPendingDates:Array.isArray(p.resetPendingDates)?p.resetPendingDates.filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0,200):[]});
    let changed=false;for(const job of s.jobs)if(['joining','recording'].includes(job.phase)&&now()>=job.deadline){job.phase='failed';job.error='انتهى فاصل التسجيل؛ الرصد له الأولوية';job.updatedAt=now();changed=true}
    if(changed)save(s);
    const active=s.jobs.find(j=>['joining','recording'].includes(j.phase));if(active){const selected=s.configs.find(c=>c.teacherId===active.teacherId&&c.period===active.period&&c.scheduleRevision===active.scheduleRevision&&c.enabled&&c.cycles.includes(active.afterCycle));if(!selected){active.phase='failed';active.error='أُلغي اختيار التسجيل';active.updatedAt=now();save(s);return {job:null,cancelled:active.id,serverTime:now()}}if(p.ready&&p.recordingId===active.id&&p.gap?.key===active.gapKey){active.updatedAt=now();save(s)}return {job:{...active},serverTime:now()};}
@@ -30,7 +30,7 @@ function createMirsadVideoService(env){
    if(!config||s.jobs.some(j=>j.gapKey===g.key))return {job:null,serverTime:now()};
    if(s.jobs.length>=100)throw Error('وصلت تسجيلات اليوم إلى الحد الأقصى');
    const lesson=snap.lessons.find(l=>l.teacherId===config.teacherId&&Number(l.period)===config.period);if(!lesson?.url)return {job:null,serverTime:now()};
-   const job={id:env.id(),lease:env.id(),date:env.date,teacherId:config.teacherId,teacherName:config.teacherName,period:config.period,afterCycle:g.afterCycle,minutes:config.minutes,deadline:g.deadline,gapKey:g.key,scheduleRevision:snap.scheduleRevision,url:lesson.url,phase:'joining',createdAt:now(),updatedAt:now(),localSaved:false,driveSaved:false};s.jobs.push(job);save(s);return {job,serverTime:now()};
+   const job={generation:s.generation||0,id:env.id(),lease:env.id(),date:env.date,teacherId:config.teacherId,teacherName:config.teacherName,period:config.period,afterCycle:g.afterCycle,minutes:config.minutes,deadline:g.deadline,gapKey:g.key,scheduleRevision:snap.scheduleRevision,url:lesson.url,phase:'joining',createdAt:now(),updatedAt:now(),localSaved:false,driveSaved:false};s.jobs.push(job);save(s);return {job,serverTime:now()};
   }
   requireWriter();const j=currentJob(s,p);
   if(action==='videoUpdate'){
@@ -39,7 +39,7 @@ function createMirsadVideoService(env){
    // Terminal capture failures cannot be turned into a successful recording by a late event.
    if(j.phase==='failed'&&p.phase==='recording')throw Error('جلسة التسجيل منتهية');
    if(j.driveSaved&&p.phase!=='failed')j.phase=j.localSaved||p.localSaved===true?'completed':'saved';else j.phase=p.phase;
-   if(p.localSaved===true)j.localSaved=true;
+   if(p.localSaved===true)j.localSaved=true;if(p.diskSaved===true){j.diskSaved=true;j.diskPaths=Array.isArray(p.diskPaths)?p.diskPaths.filter(x=>typeof x==='string').map(x=>x.slice(0,700)).slice(0,3):[]}if(typeof p.diskError==='string')j.diskError=p.diskError.slice(0,500);
    if(Number.isFinite(p.durationMs))j.durationMs=Math.max(0,Math.min(600000,p.durationMs));
    if(p.error)j.error=String(p.error).slice(0,500);j.updatedAt=now();save(s);return {saved:true,job:publicJob(j)};
   }

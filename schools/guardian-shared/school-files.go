@@ -20,18 +20,20 @@ import (
 const schoolOrigin = "chrome-extension://ologpgneejnippbdhboiaaijpgkejcck/"
 
 type localRequest struct {
-	Action string          `json:"action"`
-	School string          `json:"school"`
-	Date   string          `json:"date"`
-	Record json.RawMessage `json:"record"`
-	Image  string          `json:"image"`
-	Data   json.RawMessage `json:"data"`
+	Video  videoWriteRequest `json:"video"`
+	Action string            `json:"action"`
+	School string            `json:"school"`
+	Date   string            `json:"date"`
+	Record json.RawMessage   `json:"record"`
+	Image  string            `json:"image"`
+	Data   json.RawMessage   `json:"data"`
 }
 type localResponse struct {
-	OK       bool   `json:"ok"`
-	Error    string `json:"error,omitempty"`
-	Path     string `json:"path,omitempty"`
-	Verified bool   `json:"verified"`
+	VideoSupport bool   `json:"videoSupport,omitempty"`
+	OK           bool   `json:"ok"`
+	Error        string `json:"error,omitempty"`
+	Path         string `json:"path,omitempty"`
+	Verified     bool   `json:"verified"`
 }
 
 func localHash(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
@@ -185,7 +187,7 @@ func handleLocal(root, origin string, r localRequest, open func(string) error) l
 			return localResponse{Error: e.Error()}
 		}
 		_ = os.Remove(probe)
-		return localResponse{OK: true, Path: root, Verified: true}
+		return localResponse{OK: true, Path: root, Verified: true, VideoSupport: true}
 	}
 	if r.Action == "open" {
 		p := root
@@ -209,6 +211,25 @@ func handleLocal(root, origin string, r localRequest, open func(string) error) l
 			return localResponse{Error: e.Error()}
 		}
 		return localResponse{OK: true, Path: p}
+	}
+	if r.Action == "videoReset" {
+		if _, e := localDir(root, r.School, r.Date); e != nil {
+			return localResponse{Error: e.Error()}
+		}
+		if e := videoReset(filepath.Join(root, "school-"+r.School), r.Date); e != nil {
+			return localResponse{Error: e.Error()}
+		}
+		return localResponse{OK: true, Verified: true, VideoSupport: true}
+	}
+	if r.Action == "videoWrite" {
+		if _, e := localDir(root, r.School, r.Video.Date); e != nil {
+			return localResponse{Error: e.Error()}
+		}
+		p, e := videoWrite(filepath.Join(root, "school-"+r.School), r.Video)
+		if e != nil {
+			return localResponse{Error: e.Error()}
+		}
+		return localResponse{OK: true, Path: p, Verified: p != "", VideoSupport: true}
 	}
 	dir, e := localDir(root, r.School, r.Date)
 	if e != nil {
