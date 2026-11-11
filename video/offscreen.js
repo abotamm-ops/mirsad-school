@@ -1,9 +1,9 @@
 /* Incoming tab audio/video only. No microphone or camera permission is requested. */
-(()=>{'use strict';let stream=null,audioContext=null,recorder=null,active=null,hardStop=null,guard=null,writes=Promise.resolve(),index=0,bytes=0,startedAt=0,stopping=false;const urls=new Map(),cancelled=new Set();let finalized=Promise.resolve(),resolveFinalized=()=>{};
+(()=>{'use strict';let captureToken=null,stream=null,audioContext=null,recorder=null,active=null,hardStop=null,guard=null,writes=Promise.resolve(),index=0,bytes=0,startedAt=0,stopping=false;const urls=new Map(),cancelled=new Set();let finalized=Promise.resolve(),resolveFinalized=()=>{};
  const emit=(event,extra={})=>chrome.runtime.sendMessage({type:'MIRSAD_VIDEO_EVENT',event,...extra}).catch(()=>{});
- async function prepare(p){if(recorder?.state==='recording')throw Error('يوجد تسجيل جارٍ');if(stream)stream.getTracks().forEach(t=>t.stop());stream=await navigator.mediaDevices.getUserMedia({audio:{mandatory:{chromeMediaSource:'tab',chromeMediaSourceId:p.streamId}},video:{mandatory:{chromeMediaSource:'tab',chromeMediaSourceId:p.streamId,maxWidth:1280,maxHeight:720,maxFrameRate:15}}});if(!stream.getAudioTracks().length||!stream.getVideoTracks().length){stream.getTracks().forEach(t=>t.stop());stream=null;throw Error('يلزم السماح بصورة تبويب تيمز وصوته')}
+ async function prepare(p){const token=p.token||null;if(recorder?.state==='recording')throw Error('يوجد تسجيل جارٍ');if(stream)stream.getTracks().forEach(t=>t.stop());stream=await navigator.mediaDevices.getUserMedia({audio:{mandatory:{chromeMediaSource:'tab',chromeMediaSourceId:p.streamId}},video:{mandatory:{chromeMediaSource:'tab',chromeMediaSourceId:p.streamId,maxWidth:1280,maxHeight:720,maxFrameRate:15}}});if(!stream.getAudioTracks().length||!stream.getVideoTracks().length){stream.getTracks().forEach(t=>t.stop());stream=null;throw Error('يلزم السماح بصورة تبويب تيمز وصوته')}
   if(audioContext)await audioContext.close();audioContext=new AudioContext();audioContext.createMediaStreamSource(stream).connect(audioContext.destination);await audioContext.resume();
-  for(const t of stream.getTracks())t.addEventListener('ended',()=>{void stop('انقطع التقاط تبويب التسجيل');void emit('unprepared')},{once:true});return {ready:true};
+  captureToken=token;for(const t of stream.getTracks())t.addEventListener('ended',()=>{if(captureToken!==token)return;void stop('انقطع التقاط تبويب التسجيل');void emit('unprepared',{token})},{once:true});return {ready:true};
  }
  async function start(p){if(!stream?.getTracks().every(t=>t.readyState==='live'))throw Error('هيئ تسجيل تبويب تيمز أولًا');if(active||recorder&&recorder.state!=='inactive')throw Error('يوجد مقطع آخر جارٍ');const duration=Math.min(p.durationMs,p.job.deadline-Date.now());if(duration<5000||duration>600000)throw Error('لا يتبقى فاصل آمن للتسجيل');
   const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));if(!mime)throw Error('هذا المتصفح لا يدعم تسجيل فيديو WebM');
@@ -23,7 +23,7 @@
   if(p.type==='prepare')action=prepare(p);
   if(p.type==='start')action=start(p);
   if(p.type==='stop')action=stop(p.reason);
-  if(p.type==='release')action=(async()=>{await stop(p.reason);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;return {ready:false}})();
+  if(p.type==='release')action=(async()=>{if(p.token&&p.token!==captureToken)return {ignored:true};await stop(p.reason);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;return {ready:false}})();
   if(p.type==='status')action=Promise.resolve({ready:!!stream?.getTracks().every(t=>t.readyState==='live'),recording:recorder?.state==='recording',id:active?.id||null});
   if(p.type==='url')action=makeURL(p.id);
   if(p.type==='revoke')action=Promise.resolve().then(()=>{if(urls.has(p.id))URL.revokeObjectURL(urls.get(p.id));urls.delete(p.id);return {ok:true}});
