@@ -5,21 +5,21 @@ for edition,base in [('private','/workspace/mirsad-remote-controls/source/privat
  s=s.replace("'setSeventhPeriod','setAutoLinksControl']", "'setSeventhPeriod','setAutoLinksControl','videoConfigure']")
  s=s.replace("'scheduleVersions','getAutoLinksControl'].indexOf(p.action)","'scheduleVersions','getAutoLinksControl','videoStatus'].indexOf(p.action)")
  needle=" var root=monitorPrivate_(";pos=s.index(needle,s.index('function monitorRequest_(p)'))
- s=s[:pos]+" if(p.action.startsWith('video')){if(experimentId)throw new Error('الفيديو غير متاح في التجارب');return monitorVideoRequest_(p,props,monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT)),writer,siteReader)}\n"+s[pos:]
+ s=s[:pos]+" if(p.action==='restoreArchivedSchedule'){if(experimentId||!writer)throw new Error('الاسترجاع خاص بإضافة المدرسة المرتبطة');return monitorRestoreArchived_(monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT)),p)}\n if(p.action.startsWith('video')){if(experimentId)throw new Error('الفيديو غير متاح في التجارب');return monitorVideoRequest_(p,props,monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT)),writer,siteReader)}\n"+s[pos:]
  adapter=(r/'service-adapter.gs').read_text()
  if edition=='schools':
   s=s.replace("'teachersLive','getAutoLinksControl'],writer=", "'teachersLive','getAutoLinksControl','videoStatus'],writer=")
-  s=s.replace("'fillMissingLinks','addCalendarLinks'],admin=", "'fillMissingLinks','addCalendarLinks','videoPoll','videoUpdate','videoUploadBegin','videoUploadFinish'],admin=")
+  s=s.replace("'fillMissingLinks','addCalendarLinks'],admin=", "'fillMissingLinks','addCalendarLinks','videoPoll','videoUpdate','videoUploadBegin','videoUploadFinish','restoreArchivedSchedule'],admin=")
   s=s.replace("'reportSchedule','setAutoLinksControl'];", "'reportSchedule','setAutoLinksControl','videoConfigure'];")
   adapter=adapter.replace('drive=DriveApp,root=','drive=commercialSchoolDrive_(),root=')
-  s=s.replace("version:'2.5.0',ownerPortal:true", "version:'2.6.14',videoRecording:true,ownerPortal:true")
+  s=s.replace("version:'2.5.0',ownerPortal:true", "version:'2.6.20',videoRecording:true,ownerPortal:true")
   s=s.replace('// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.5.0','')
  else:s=s.replace('// END MIRSAD PRIVATE REMOTE CONTROL 0.6.83','')
  s=s.replace("  var matches=root.getFoldersByName('توثيق غياب '+p.date);","  if(!experimentId)monitorVideoReset_(p.date,props,root,p.requestId);\n  var matches=root.getFoldersByName('توثيق غياب '+p.date);")
  s=s.replace("  var previousRange=(data.rangePurges||[])","  var videoRangeResult=experimentId?{videos:0}:monitorVideoRangeReset_(p.date,props,root,p.requestId,from,until);\n  var previousRange=(data.rangePurges||[])")
  s=s.replace("records:previousRange.records,images:previousRange.images}","records:previousRange.records,images:previousRange.images,videos:videoRangeResult.videos}")
  s=s.replace("records:removed.length,images:imageIds.length};\n }", "records:removed.length,images:imageIds.length,videos:videoRangeResult.videos};\n }")
- s+='\n'+(r/'core.js').read_text()+'\n'+(r/'service-core.js').read_text()+'\n'+adapter
- s+='\n// END MIRSAD '+('SCHOOLS COMPLETE SCRIPT 2.6.14' if edition=='schools' else 'PRIVATE VIDEO SCRIPT 0.6.97')+'\n'
- (Path('/workspace/downloads')/('Mirsad-Schools-OWNER-ONLY-2.6.14.gs' if edition=='schools' else 'Mirsad-PRIVATE-VIDEO-0.6.97.gs')).write_text(s)
+ s+='\n'+(r/'core.js').read_text()+'\n'+(r/'service-core.js').read_text()+'\n'+(r/'schedule-restore.gs').read_text()+'\n'+adapter
+ s+='\n// END MIRSAD '+('SCHOOLS COMPLETE SCRIPT 2.6.20' if edition=='schools' else 'PRIVATE VIDEO SCRIPT 0.6.103')+'\n'
+ (Path('/workspace/downloads')/('Mirsad-Schools-OWNER-ONLY-2.6.20.gs' if edition=='schools' else 'Mirsad-PRIVATE-VIDEO-0.6.103.gs')).write_text(s)
  print('Built separate '+edition+' video service')

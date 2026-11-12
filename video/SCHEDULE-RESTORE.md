@@ -1,0 +1,9 @@
+# Restore a saved current-day schedule
+
+Personal extension/script 0.6.103; Schools extension/script 2.6.20. Popup adds a saved-version selector listing source date, archived time and record count. Pause attendance, wait for recording to end, list versions, choose the desired source date, then confirm restore. Running attendance and active capture are rejected. Old days remain read-only.
+
+The authenticated writer route restores only an archive within the same today's attendance folder, checks expected current revision, and archives the displaced active attendance first. It clones the saved attendance, evidence and adjustments without recreating them, preserving the original scheduleRevision and archived original. Canonical source payload is reconstructed from verified stored snapshot under the same source school's identifier, so begin-day preparation cannot inadvertently reload the displaced source. Source/table writes roll back on failure. Request IDs permit retries after lost responses. No purge or image/video deletion is performed. Video storage is independent and unchanged.
+
+The extension verifies the returned active revision, checks unchanged account, aligns date/proof/preparation/timing and discards only the displaced local scan cursor. It clears action/timeout alarms and waits for explicit start. It never automatically starts attendance after restoring. If attendance starts concurrently it pauses and reports verification is needed.
+
+Tests reproduce 12 -> archived -> 16 -> restore 12, keeping records/evidence/adjustments and both archived sources; idempotent retry, stale revision, reader denial, cross-day rejection; extension proof/selection sync and active-run rejection. Existing video, morning refresh and live-link runtime tests pass. No live Google/Windows data was accessed.
