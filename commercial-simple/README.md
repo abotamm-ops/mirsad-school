@@ -29,3 +29,7 @@ Tests cover actual service dispatch, OTP secrecy/replay/expiry/rate limits, devi
 ## Compact interface 2.7.1
 
 Extension-only update, owner script stays 2.7.0. Popup is 780px wide with three RTL columns, smaller typography/actions, and a top-right gear opening a modal settings panel. Static help paragraphs become focusable exclamation icons with hover/focus/click tooltips. Dynamic readiness and errors remain visible. Google onboarding still moves into the settings panel after setup, with one red reminder above the steps when unlinked. Browser test checks horizontal geometry, tooltip content, settings modal, onboarding movement and reminder snooze/reappearance.
+
+## Fixed canvas 2.7.2
+
+Extension-only UI correction: 780 by 560 action-popup canvas with no vertical document scrolling. Main steps stay in RTL columns, lesson timing fields remain visible, onboarding uses a separate first-entry state, and notes open separately. Settings are grouped into tabs inside the gear dialog instead of a long list. Static help stays behind exclamation icons. Browser geometry checks verify no clipped controls or vertical overflow in the main cards and each settings tab at the target popup size.
