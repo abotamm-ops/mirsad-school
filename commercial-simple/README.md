@@ -33,3 +33,7 @@ Extension-only update, owner script stays 2.7.0. Popup is 780px wide with three 
 ## Fixed canvas 2.7.2
 
 Extension-only UI correction: 780 by 560 action-popup canvas with no vertical document scrolling. Main steps stay in RTL columns, lesson timing fields remain visible, onboarding uses a separate first-entry state, and notes open separately. Settings are grouped into tabs inside the gear dialog instead of a long list. Static help stays behind exclamation icons. Browser geometry checks verify no clipped controls or vertical overflow in the main cards and each settings tab at the target popup size.
+
+## Popup measurement fix 2.7.3
+
+Extension-only correction; owner script remains 2.7.0. Root and body use an absolute 780px width and minimum width, avoiding a circular dependency on Chrome's initial action-popup viewport. Browser regression starts at 24px and verifies both roots remain 780px, alongside the existing layout and interaction checks. Actual action-popup integration test is skipped in this managed environment because Chromium policy blocks sideloaded extensions; it can run on an unrestricted development browser.
