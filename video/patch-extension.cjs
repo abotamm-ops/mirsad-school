@@ -7,3 +7,5 @@ for(const label of ['Teams','Schools']){
  s=fs.readFileSync(root+'background.js','utf8');let target;
  function walk(n){if(!n||typeof n!=='object')return;if(n.type==='FunctionDeclaration'&&n.id?.name==='navigateCurrent')target=n;for(const v of Object.values(n))if(Array.isArray(v))v.forEach(walk);else if(v&&typeof v==='object')walk(v)}walk(acorn.parse(s,{ecmaVersion:'latest'}));if(!target)throw Error('missing navigation');s=s.slice(0,target.body.start+1)+'await MirsadVideo.beforeScan();'+s.slice(target.body.start+1);const advance=/async function advancePeriod\(([^,]+),([^)]*)\)\{/;if(!advance.test(s))throw Error('missing advancePeriod');s=s.replace(advance,(match,run,after)=>match+'await MirsadVideo.completed('+run+','+after+').catch(()=>{});');fs.writeFileSync(root+'background.js',s);
 }
+
+require('./patch-final-gap.cjs');
