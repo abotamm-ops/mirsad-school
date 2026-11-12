@@ -1,2 +1,2 @@
-20add2dc5642f4985523cf0d3b3f5f98b5f7eea2167e66c187cb0907c5774c98  Mirsad-Teams-0.6.100-Video-Trial.zip
-bb64ebf8a852d0593bd383ae69ce1fce69754a7a7da225af027fe41e3590c0f0  Mirsad-Schools-2.6.17-Video-Trial.zip
+0275f942b8fba3a62d6fdb90c3333dea2358444a0903474cfdf981b445366d6c  Mirsad-Teams-0.6.101-Video-Trial.zip
+44256dfe51afd8c76f781b20102fb3594170a9f73c21324f18791077e30a167d  Mirsad-Schools-2.6.18-Video-Trial.zip

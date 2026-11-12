@@ -2,13 +2,15 @@
  const MORNING_ALARM='mirsad-before-first-lesson',MORNING_SLOT='mirsadBeforeFirstLessonSlot';
  async function morningWindow(){
   const run=await getRun();if(!run?.running||run.paused||run.current||run.testMode||run.backtestMode||run.immediateMode||run.calendarTrial)return null;
-  const day=(await chrome.storage.local.get('mirsadDriveDay')).mirsadDriveDay;if(day?.date!==today()||day.snapshot?.sourceType!=='madrasati'||day.snapshot.scheduleRevision!==run.scheduleRevision)return null;
+  const saved=await chrome.storage.local.get(['mirsadDriveDay','mirsadMadrasatiSelectedDate']),day=saved.mirsadDriveDay;if(day?.date!==today()||day.snapshot?.sourceType!=='madrasati'||day.snapshot.scheduleRevision!==run.scheduleRevision)return null;
+  // Never pick or overwrite the user's source date. Morning refresh is today-only.
+  const sourceDate=saved.mirsadMadrasatiSelectedDate||day.snapshot.sourceScheduleDate;if(sourceDate!==today()||day.snapshot.sourceScheduleDate!==sourceDate)return null;
   if(!missing(day.snapshot))return null;
   if(typeof scheduleSettings!=='object'||typeof periodBounds!=='function')return null;
   const clock=/^(\d{1,2}):(\d{2})$/.exec(scheduleSettings.manualStart||'');if(!clock||Number(clock[1])>23||Number(clock[2])>59)return null;
   const first=Number(clock[1])*60+Number(clock[2]),bounds=periodBounds({n:1,startOffset:first,endOffset:first+Number(scheduleSettings.periodDuration||45)},new Date(),'activeOrNext');
   const start=bounds?.start.getTime();if(!Number.isFinite(start)||start<=Date.now())return null;
-  return {run,day,start,opens:start-30*60000};
+  return {run,day,sourceDate,start,opens:start-30*60000};
  }
  async function morningAllowed(pending){const w=await morningWindow();return !!w&&Date.now()>=w.opens&&Date.now()<w.start-1000&&(!pending||pending.morningStart===w.start&&pending.runStartedAt===w.run.startedAt&&pending.epoch===(w.run.controlEpoch||0))}
  async function planMorning(invoke=false){
@@ -30,8 +32,9 @@
    const tabs=await chrome.tabs.query({url:'https://schools.madrasati.sa/SchoolManagment/Teachers*'}),tab=tabs.find(t=>t.windowId===w.run.workspaceWindowId)||tabs[0];if(!tab)throw Error('افتح صفحة معلمي مدرستي وسجّل الدخول');
    await note('بدأ تحميل الجدول قبل الحصة الأولى؛ يتكرر كل خمس دقائق حتى بداية الحصة.');
    await health(tab,w.start-1000,shouldContinue);if(!await shouldContinue())return;
-   const result=await MadrasatiSource.collect(w.day.snapshot.sourceScheduleDate||today(),{collectOnly:true,directoryTabId:tab.id,shouldContinue,mode:'continuous',startPeriod:1});
+   const result=await MadrasatiSource.collect(w.sourceDate,{collectOnly:true,directoryTabId:tab.id,shouldContinue,mode:'continuous',startPeriod:1});
    if(!result?.payload||!await shouldContinue())return;
+   if(result.payload.scheduleDate!==w.sourceDate||result.payload.importedForDate!==today())throw Error('تاريخ الجدول المستلم لا يطابق تاريخ اليوم الذي اخترته؛ لم يُعدّل الجدول');
    await chrome.storage.local.set({[STAGED]:{...pending,gapKey:slot,date:today(),revision:w.day.snapshot.scheduleRevision,scope:fingerprint,payload:result.payload,at:Date.now(),mode:'continuous',startPeriod:1}});
    await beforeCycle(w.run);
   }catch(e){await note('تحميل ما قبل الحصة الأولى: '+e.message+'؛ بقي الجدول الحالي.',e.cancelled?'info':'warning')}finally{gapBusy=false;await planMorning()}
