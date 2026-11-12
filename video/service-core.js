@@ -42,19 +42,21 @@ function createMirsadVideoService(env){
    if(p.phase==='recording'&&!j.recordingStartedAt)j.recordingStartedAt=now();
    if(p.localSaved===true)j.localSaved=true;if(p.diskSaved===true){j.diskSaved=true;j.diskPaths=Array.isArray(p.diskPaths)?p.diskPaths.filter(x=>typeof x==='string').map(x=>x.slice(0,700)).slice(0,3):[]}if(typeof p.diskError==='string')j.diskError=p.diskError.slice(0,500);
    if(Number.isFinite(p.durationMs))j.durationMs=Math.max(0,Math.min(600000,p.durationMs));
-   if(p.error)j.error=String(p.error).slice(0,500);j.updatedAt=now();save(s);return {saved:true,job:publicJob(j)};
+   if(typeof p.error==='string')j.error=p.error.slice(0,500);j.updatedAt=now();save(s);return {saved:true,job:publicJob(j)};
   }
   if(action==='videoUploadBegin'){
    if(!['saving','uploading','saved'].includes(j.phase))throw Error('الفيديو ليس جاهزًا للرفع');
    if(!Number.isInteger(p.size)||p.size<1||p.size>200*1024*1024||!/^video\/webm(?:;.*)?$/.test(p.mime||''))throw Error('ملف فيديو غير صالح');
    if(j.driveSaved)return {complete:true,job:publicJob(j)};
    if(j.size&&j.size!==p.size)throw Error('تغير حجم ملف التسجيل');j.size=p.size;j.mime=p.mime;
+   // Renew only the exact rejected session; keep the same verified destination file.
+   if(p.rejectedSession&&p.rejectedSession===j.uploadSession)delete j.uploadSession;
    try{if(!j.uploadSession)j.uploadSession=env.uploadBegin(j)}catch(e){save(s);throw e}
    j.phase='uploading';save(s);return {uploadSession:j.uploadSession};
   }
   if(action==='videoUploadFinish'){
    if(j.driveSaved)return {saved:true,job:publicJob(j)};
-   const file=env.uploadVerify(j,String(p.fileId||''));if(!file?.url)throw Error('لم يتأكد حفظ الفيديو في Drive');j.driveSaved=true;j.driveUrl=file.url;j.phase=j.localSaved?'completed':'saved';delete j.uploadSession;j.updatedAt=now();save(s);return {saved:true,job:publicJob(j)};
+   const file=env.uploadVerify(j,String(p.fileId||''));if(!file?.url)throw Error('لم يتأكد حفظ الفيديو في Drive');j.driveSaved=true;j.error='';j.driveUrl=file.url;j.phase=j.localSaved?'completed':'saved';delete j.uploadSession;j.updatedAt=now();save(s);return {saved:true,job:publicJob(j)};
   }
   throw Error('طلب تسجيل غير مدعوم');
  }};

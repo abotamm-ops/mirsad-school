@@ -56,20 +56,29 @@ var MirsadVideo=(()=>{
  async function release(){uploadAbort?.abort();await finishMeeting('إيقاف التهيئة');const s=await get();await off('release');await patch({ready:false,active:null,tail:null,resume:null,message:'تهيئة التسجيل متوقفة'});await chrome.alarms.create(ALARM,{periodInMinutes:1});return info()}
  async function canUpload(){const r=await getRun(),s=await get();if(s.active)return false;if(!r?.running||r.paused)return true;if(r.current)return false;if(r.waitingForCycle2)return r.nextCycleAt-Date.now()>35000;if(MirsadVideoCore.gap(r,Date.now(),5000,s.tail))return true;return typeof periodNow==='function'&&!periodNow()}
  async function download(clip){if(clip.localSaved||clip.downloadId)return;const r=await off('url',{id:clip.id});const id=await chrome.downloads.download({url:r.url,filename:'Mirsad-Videos/'+clip.job.date+'/'+MirsadVideoCore.fileName(clip.job),saveAs:false});await MirsadVideoStore.patch(clip.id,{downloadId:id})}
- async function upload(clip){if(clip.driveSaved||!await canUpload()||await isReset(clip))return;const job=clip.job,begin=await api('videoUploadBegin',{date:job.date,id:job.id,lease:job.lease,size:clip.size,mime:clip.mime});if(begin.complete){await MirsadVideoStore.patch(clip.id,{driveSaved:true});return}
-  const url=begin.uploadSession;if(!/^https:\/\/www\.googleapis\.com\/upload\/drive\/v3\/files(?:\/[A-Za-z0-9_-]+)?\?/.test(url||''))throw Error('رابط رفع الفيديو غير صالح');
-  const blob=await MirsadVideoStore.blob(clip.id);let offset=clip.offset||0,fileId=clip.fileId||'';uploadAbort=new AbortController();
-  // Probe the resumable session after interruptions; only Google-confirmed bytes count.
-  const probeTimer=setTimeout(()=>uploadAbort.abort(),20000);let probe;try{probe=await fetch(url,{method:'PUT',headers:{'Content-Range':'bytes */'+blob.size},signal:uploadAbort.signal})}finally{clearTimeout(probeTimer)}
-  if(probe.status===200||probe.status===201)fileId=(await probe.json()).id;
-  else if(probe.status===308)offset=Number(/-(\d+)$/.exec(probe.headers.get('Range')||'')?.[1]||-1)+1;
-  else throw Error('تعذر استئناف رفع الفيديو ('+probe.status+')');
-  while(!fileId&&offset<blob.size){if(!await canUpload()||await isReset(clip))return;const end=Math.min(offset+1024*1024,blob.size),timer=setTimeout(()=>uploadAbort.abort(),20000);let response;try{response=await fetch(url,{method:'PUT',headers:{'Content-Type':'video/webm','Content-Range':'bytes '+offset+'-'+(end-1)+'/'+blob.size},body:blob.slice(offset,end),signal:uploadAbort.signal})}finally{clearTimeout(timer)}
-   if(response.status===200||response.status===201){fileId=(await response.json()).id;offset=blob.size}
-   else if(response.status===308){const next=Number(/-(\d+)$/.exec(response.headers.get('Range')||'')?.[1]||-1)+1;if(next<=offset)throw Error('لم يؤكد Drive استلام بيانات الفيديو');offset=next}
-   else throw Error('تعذر رفع الفيديو ('+response.status+')');await MirsadVideoStore.patch(clip.id,{offset,fileId});
+ async function uploadError(response,label){let detail='';try{const raw=await response.text();try{const data=JSON.parse(raw);detail=data.error?.message||data.error_description||''}catch{detail=raw.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()} }catch{}detail=String(detail).replace(/https?:\/\/[^\s"<>]+/g,'[رابط]').slice(0,350);return Error(label+' ('+response.status+')'+(detail?' — '+detail:''))}
+ async function upload(clip){if(clip.driveSaved||!await canUpload()||await isReset(clip))return;const job=clip.job,blob=await MirsadVideoStore.blob(clip.id);if(blob.size!==clip.size)throw Error('حجم المقطع المحفوظ لا يطابق بيانات التسجيل؛ أُوقف الرفع لحماية الملف');
+  let rejectedSession='';
+  for(let attempt=0;attempt<2;attempt++){
+   const begin=await api('videoUploadBegin',{date:job.date,id:job.id,lease:job.lease,size:clip.size,mime:clip.mime,...rejectedSession?{rejectedSession}:{}});if(begin.complete){await MirsadVideoStore.patch(clip.id,{driveSaved:true});return}
+   const url=begin.uploadSession;if(!/^https:\/\/www\.googleapis\.com\/upload\/drive\/v3\/files(?:\/[A-Za-z0-9_-]+)?\?/.test(url||''))throw Error('رابط رفع الفيديو غير صالح');
+   if(rejectedSession===url)throw Error('جلسة رفع الفيديو مرفوضة؛ حدّث سكربت الفيديو والنشر الحالي لتجديدها');
+   let offset=0,fileId='';uploadAbort=new AbortController();
+   const request=async options=>{const timer=setTimeout(()=>uploadAbort.abort(),20000);try{return await fetch(url,{...options,signal:uploadAbort.signal})}finally{clearTimeout(timer)}};
+   let response=await request({method:'PUT',headers:{'Content-Range':'bytes */'+blob.size},body:new Blob([])});
+   if(response.status===200||response.status===201)fileId=(await response.json()).id;
+   else if(response.status===308)offset=Number(/-(\d+)$/.exec(response.headers.get('Range')||'')?.[1]||-1)+1;
+   else if([400,404,410].includes(response.status)&&attempt===0){rejectedSession=url;continue}
+   else throw await uploadError(response,'تعذر استئناف رفع الفيديو');
+   while(!fileId&&offset<blob.size){if(!await canUpload()||await isReset(clip))return;const end=Math.min(offset+1024*1024,blob.size);response=await request({method:'PUT',headers:{'Content-Type':'video/webm','Content-Range':'bytes '+offset+'-'+(end-1)+'/'+blob.size},body:blob.slice(offset,end)});
+    if(response.status===200||response.status===201){fileId=(await response.json()).id;offset=blob.size}
+    else if(response.status===308){const next=Number(/-(\d+)$/.exec(response.headers.get('Range')||'')?.[1]||-1)+1;if(next<=offset||next>blob.size)throw Error('لم يؤكد Drive استلام بيانات الفيديو');offset=next}
+    else if([400,404,410].includes(response.status)&&attempt===0){rejectedSession=url;break}
+    else throw await uploadError(response,'تعذر رفع الفيديو');
+    await MirsadVideoStore.patch(clip.id,{offset,fileId});
+   }
+   if(fileId){await api('videoUploadFinish',{date:job.date,id:job.id,lease:job.lease,fileId});await MirsadVideoStore.patch(clip.id,{driveSaved:true});await MirsadVideoStore.prune(clip.id);return}
   }
-  if(fileId){await api('videoUploadFinish',{date:job.date,id:job.id,lease:job.lease,fileId});await MirsadVideoStore.patch(clip.id,{driveSaved:true});await MirsadVideoStore.prune(clip.id)}
  }
  async function resetState(){const key='mirsadVideoResets:'+await scope();return {key,value:(await chrome.storage.local.get(key))[key]||{tokens:{},pending:{}}}}
  async function updateReset(key,change){const task=resetMutating.then(async()=>{const value=(await chrome.storage.local.get(key))[key]||{tokens:{},pending:{}};change(value);await chrome.storage.local.set({[key]:value})});resetMutating=task.catch(()=>{});return task}

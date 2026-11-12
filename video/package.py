@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 root=Path(__file__).resolve().parents[1];out=Path('/workspace/downloads');site=root/'schools'
 readme='''تجربة تسجيل الفيديو في مرصاد
 1. استبدل ملفات الإضافة في مجلدك الحالي، ثم أعد تحميلها من chrome://extensions. لا تحذف الإضافة.
-2. إذا كان لديك سكربت الفيديو الشخصي 0.6.95 أو المدارس 2.6.12 فلا تغيّره؛ هذا الإصدار إصلاح للإضافة فقط. أما الترقية من نسخة أقدم فتتطلب سكربت الفيديو المطابق وتحديث النشر الحالي.
+2. حدّث سكربت الفيديو المطابق ثم احفظ وحدّث النشر الحالي إلى إصدار جديد، دون تغيير رابط الخدمة.
 3. على جهاز الرصد ومن صفحة مرصاد: افتح الإضافة واضغط «تهيئة الفيديو» فقط. يجهز التبويب والصوت والصورة تلقائيًا ويحافظ على صفحة مرصاد في تبويب آخر. سجل دخول تيمز إذا طلبه المتصفح. تعاد التهيئة عند إعادة تشغيل كروم أو انقطاع الالتقاط. إذا أغلقت تبويب التسجيل واسترجعته، افتح الإضافة من التبويب المسترجع لتعيد تهيئته تلقائيًا؛ لا يظهر جاهز حتى ينجح الالتقاط. لا يستأنف المقطع القديم المقطوع.
 4. من جدول الموقع أو الجوال: اضغط مربع التسجيل أسفل يسار حصة المعلم، واختر بعد أي دورة، بما فيها الأخيرة، أو اختر الكل، ثم احفظ.
 التسجيل لمعـلم واحد في كل فاصل. لكل فاصل مقطع مستقل، ويتوقف عند المدة المختارة أو قبل الدورة التالية أو نهاية الحصة بـ30 ثانية، أيهما أسبق. لا تُعدّل توقيت الرصد.
@@ -14,7 +14,7 @@ readme='''تجربة تسجيل الفيديو في مرصاد
 اختبر مقطعًا واحدًا بصورة وصوت ووصول النسختين ثم راقب الدورة التالية قبل توزيع نسخة التجربة. لم تُختبر هذه النسخة ميدانيًا على جهاز ويندوز وتيمز حقيقي بعد.
 '''
 checks={}
-for edition,version in [('Teams','0.6.96'),('Schools','2.6.13')]:
+for edition,version in [('Teams','0.6.97'),('Schools','2.6.14')]:
  if '--scripts-only' in sys.argv:break
  p=root/'schools/downloads'/f'Mirsad-{edition}-{version}-Video-Trial.zip'
  with zipfile.ZipFile(p,'w',zipfile.ZIP_DEFLATED) as z:
@@ -32,16 +32,16 @@ for edition,version in [('Teams','0.6.96'),('Schools','2.6.13')]:
   z.writestr(prefix+'تحديث حفظ الفيديو.cmd',command)
 
  checks[p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
-for name,source,edition in [('owner-script-2.6.12','Mirsad-Schools-OWNER-ONLY-2.6.12.gs','schools'),('private-video-script-0.6.95','Mirsad-PRIVATE-VIDEO-0.6.95.gs','private')]:
+for name,source,edition in [('owner-script-2.6.14','Mirsad-Schools-OWNER-ONLY-2.6.14.gs','schools'),('private-video-script-0.6.97','Mirsad-PRIVATE-VIDEO-0.6.97.gs','private')]:
  if '--extensions-only' in sys.argv:break
  data=(out/source).read_bytes();key=secrets.token_bytes(32);nonce=secrets.token_bytes(12);cipher=AESGCM(key).encrypt(nonce,data,None)
  assert AESGCM(key).decrypt(nonce,cipher,None)==data
  (site/(name+'.encrypted.json')).write_text(json.dumps({'nonce':base64.b64encode(nonce).decode(),'data':base64.b64encode(cipher).decode()}))
- html=(site/'owner-script-2.5.0.html').read_text().replace('owner-script-2.5.0',name).replace('2.5.0','2.6.12' if edition=='schools' else '0.6.95')
+ html=(site/'owner-script-2.5.0.html').read_text().replace('owner-script-2.5.0',name).replace('2.5.0','2.6.14' if edition=='schools' else '0.6.97')
  js=(site/'owner-script-2.5.0-preview.js').read_text().replace('owner-script-2.5.0',name).replace('Mirsad-Schools-OWNER-ONLY-2.5.0.txt',source.replace('.gs','.txt'))
  if edition=='private':
   html=html.replace('مرصاد المدارس','مرصاد الشخصي').replace('سكربت قوقل للمدارس','سكربت قوقل الشخصي').replace('مشروع Google Apps Script الحالي للمدارس فقط — لا تستخدم مشروع توثيق مرصاد الخاص','مشروع Google Apps Script الحالي لمرصاد الشخصي فقط — لا تستخدم مشروع المدارس')
-  js=js.replace('SCHOOLS COMPLETE SCRIPT 2\\.\\d+\\.\\d+','PRIVATE VIDEO SCRIPT 0\\.6\\.95').replace('مشروع المدارس الحالي فقط','مشروع مرصاد الشخصي الحالي فقط')
+  js=js.replace('SCHOOLS COMPLETE SCRIPT 2\\.\\d+\\.\\d+','PRIVATE VIDEO SCRIPT 0\\.6\\.97').replace('مشروع المدارس الحالي فقط','مشروع مرصاد الشخصي الحالي فقط')
  (site/(name+'.html')).write_text(html);(site/(name+'-preview.js')).write_text(js)
  (out/(name+'-LINK.txt')).write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
 if checks:(root/'schools/downloads/Mirsad-Video-Trial-CHECKSUMS.txt').write_text(''.join(v+'  '+k+'\n' for k,v in checks.items()))
