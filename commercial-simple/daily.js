@@ -12,7 +12,7 @@ var MirsadSchoolDaily=(()=>{'use strict';const KEY='mirsadSimpleDaily',ALARM='mi
   }
   if(Date.now()<p.start){if(s.mirsadSimpleSettings?.refresh!==false)void MirsadAutoLinks.planMorning(true);return}
   run=await getRun();if(run?.running&&s.mirsadDriveDay?.date===today)return;if(state.startedDate===today)return;
-  const check=await MirsadSimple.preflight();if(!check.ok)throw Error(check.error);await MirsadCommercialAccount.assertActive();await CloudMonitoring.beginDay();await startMonitoring(false);await chrome.storage.local.set({[KEY]:{...((await chrome.storage.local.get(KEY))[KEY]),startedDate:today}});await note('بدأ الرصد اليومي لتاريخ '+today+' حسب التوقيت المحدد.');
+  const check=await MirsadSimple.preflight();if(!check.ok)throw Error(check.error);await MirsadCommercialAccount.assertActive();await MirsadSimple.ensureStartReady(today);await CloudMonitoring.beginDay();await startMonitoring(false);await chrome.storage.local.set({[KEY]:{...((await chrome.storage.local.get(KEY))[KEY]),startedDate:today}});await note('بدأ الرصد اليومي لتاريخ '+today+' حسب التوقيت المحدد.');
  }catch(e){await note('تنبيه الاستعداد اليومي: '+e.message,true)}finally{busy=false}}
  chrome.alarms.onAlarm.addListener(a=>{if(a.name===ALARM)void tick()});chrome.runtime.onStartup?.addListener(()=>void tick());void chrome.storage.local.get(KEY).then(s=>{if(s[KEY]?.armed){void chrome.alarms.create(ALARM,{periodInMinutes:.5});void tick()}});return {plan,arm,disarm,tick};
 })();
