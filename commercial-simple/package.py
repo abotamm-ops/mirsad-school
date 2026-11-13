@@ -1,12 +1,12 @@
 from pathlib import Path
 import zipfile,json,base64,secrets,hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.8.2-Setup.zip'
-readme='''راصد المدارس 2.8.2 — حزمة الإعداد المبسط
+root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.0-Setup.zip'
+readme='''راصد المدارس 2.9.0 — حزمة الإعداد المبسط
 1. استخرج الحزمة كاملة إلى مجلد ثابت على جهاز Windows.
 2. شغّل «تجهيز راصد.vbs» مرة واحدة لتسجيل مكوّن الحفظ المحلي وفتح المساعد، دون نافذة أوامر سوداء. إذا كان VBScript معطلًا في جهاز المؤسسة، استخدم ملف «تحديث حفظ الفيديو.cmd» الموجود داخل مجلد مكوّن الحفظ المحلي. سيظل تثبيت الإضافة نفسه يدويًا حتى نشرها في متجر كروم.
 3. افتح chrome://extensions أو edge://extensions، فعّل وضع المطور، ثم «تحميل إضافة غير محزمة» وحدد مجلد «الإضافة». إذا كانت مثبتة سابقًا استبدل ملفات نفس المجلد وأعد تحميلها؛ لا تحذفها حفاظًا على بياناتها.
-4. من الإضافة: تفعيل الاشتراك، ثم بريدك المسجل باشتراك فعال، ثم رمز الدخول الذي يصلك في البريد. الرمز من ثمانية أرقام ويستخدم مرة واحدة خلال عشر دقائق. بعد ذلك دخولك محفوظ.
+4. من الإضافة: تفعيل الاشتراك، ثم بريدك الإلكتروني، ثم رمز الدخول الذي يصلك في البريد. الرمز من ثمانية أرقام ويستخدم مرة واحدة خلال عشر دقائق. بعد التحقق يُنشأ حساب جديد مجاني تلقائيًا ويظهر للمالك. للمالك إيقاف الرصد والمطالبة باشتراك 100 ريال شهريًا؛ يؤكد المالك استلام المبلغ لتفعيل شهر كامل. بعد ذلك دخولك محفوظ.
 5. عند الدخول الأول اربط Google، أو اختر «لا يوجد لدي حساب Google». جهّز الأرشيف المحلي في الحالتين. تنتقل بطاقة التجهيز للإعدادات المتقدمة عند نجاح الحفظ المحلي وإتمام اختيار Google. إذا لم تربط يبقى زر أحمر بعلامة تعجب فوق الجدول، ويمكن إخفاؤه مؤقتًا لأربع ساعات.
 6. افتح راصد من زر الإضافة، وافتح مدرستي على بيانات المعلمين، واترك التبويبين مفتوحين. افتح تيمز وسجّل الدخول أيضًا. تحقق من أخضر التحميل ثم أخضر حفظ إعدادات الحصص ثم اضغط بدء الرصد.
 7. في وضع «كل صباح»، يحدد تاريخ اليوم تلقائيًا ويحاول تهيئة جدوله قبل الحصة بنصف ساعة ويبدأ الرصد في موعد إعداداتك. يمكنك تفعيله من الليلة السابقة. إذا كان وضع «تاريخ أحدده»، يبقى تاريخ المصدر الذي تختاره ويُوثَّق الرصد بتاريخ اليوم. لا يعمل الجهاز وهو مطفأ؛ اترك كروم والمساعد يعملان ومدرستي وتيمز مسجّلًا دخولهما.
@@ -48,20 +48,20 @@ with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
 (work/'README.ar.txt').write_text(readme)
 import sys
 if '--extensions-only' in sys.argv:
- (root/'schools/downloads/Mirsad-Schools-2.8.2-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+ (root/'schools/downloads/Mirsad-Schools-2.9.0-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
  print('Packaged extension-only layout update; owner script unchanged.')
  raise SystemExit(0)
-linkfile=work/'OWNER-2.7.0-LINK.txt'
+linkfile=work/'OWNER-2.9.0-LINK.txt'
 if linkfile.exists():key=base64.urlsafe_b64decode(linkfile.read_text().strip().split('#')[1]+'=')
 else:key=secrets.token_bytes(32)
-nonce=secrets.token_bytes(12);data=(work/'owner-2.7.0.gs').read_bytes();cipher=AESGCM(key).encrypt(nonce,data,None)
+nonce=secrets.token_bytes(12);data=(work/'owner-2.9.0.gs').read_bytes();cipher=AESGCM(key).encrypt(nonce,data,None)
 assert AESGCM(key).decrypt(nonce,cipher,None)==data
-site=root/'schools';name='owner-script-2.7.0'
+site=root/'schools';name='owner-script-2.9.0'
 (site/(name+'.encrypted.json')).write_text(json.dumps({'nonce':base64.b64encode(nonce).decode(),'data':base64.b64encode(cipher).decode()}))
 for ext in ['html','preview.js']:
  original=site/('owner-script-2.6.20'+('.html' if ext=='html' else '-preview.js'))
  dest=site/(name+('.html' if ext=='html' else '-preview.js'))
- dest.write_text(original.read_text().replace('2.6.20','2.7.0'))
+ dest.write_text(original.read_text().replace('2.6.20','2.9.0').replace('مرصاد','راصد'))
 linkfile.write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
-(root/'schools/downloads/Mirsad-Schools-2.8.2-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+(root/'schools/downloads/Mirsad-Schools-2.9.0-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
 print('Packaged customer bundle and encrypted owner script; owner opening key retained locally.')

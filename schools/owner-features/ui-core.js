@@ -1,7 +1,7 @@
 /* Shared pure presentation rules; never infer historic usage from account age. */
 var MirsadOwnerUI=(()=>{
- const archived=(s,now)=>!!s.deletedAt||Number(s.expiresAt)<=now;
- const state=(s,now)=>s.deletedAt?'محذوف':Number(s.expiresAt)<=now?'منتهي':!s.enabled?'معطل':!s.passwordReady?'بانتظار إعداد الدخول':!s.emailVerified?'بانتظار تأكيد البريد':'مفعّل';
+ const archived=(s,now)=>!!s.deletedAt||(s.accessMode!=='free'&&Number(s.expiresAt)<=now);
+ const state=(s,now)=>s.deletedAt?'محذوف':!s.enabled?'موقوف — مطلوب اشتراك':s.accessMode==='free'?'مجاني':Number(s.expiresAt)<=now?'منتهي':s.simpleSetup||s.emailVerified?'مفعّل':!s.passwordReady?'بانتظار إعداد الدخول':'بانتظار تأكيد البريد';
  const hours=ms=>ms===null||ms===undefined?'لم يبدأ القياس':(ms/3600000).toLocaleString('ar-SA',{maximumFractionDigits:2})+' ساعة';
  function normalizeAccounts(accounts){return accounts.map(v=>({...v,bankName:String(v.bankName||'').trim(),beneficiary:String(v.beneficiary||'').trim(),iban:String(v.iban||'').replace(/\s/g,'').toUpperCase(),accountNumber:String(v.accountNumber||'').replace(/\s/g,'')}))}
  function bankProblem(accounts){
