@@ -47,3 +47,7 @@ Extension-only layout: schedule loading on the right, lesson settings on the lef
 Logout uses an inline confirmation, closes settings on success, clears login inputs, and exposes operation errors inside the modal. Existing server revocation and pending-evidence safeguards are retained. Owner deletion normalizes confirmation email whitespace/case and reports a mismatch instead of silently cancelling. No account data is deleted by these tests; actual reported server rejection requires its error message.
 
 Definitive invalid-session/device-revoked/device-proof responses now disarm monitoring, quarantine pending evidence, and clear cached account identity and derived portal sessions. INFO validates binding at most every 30 seconds while the popup is open; temporary service errors preserve authentication. Tests cover deleted identity cleanup and temporary-error retention. Native archives are retained.
+
+## Rased school branding 2.8.0
+
+School-facing extension and current school website use راصد. Positioning: remote education monitoring for school directors and deputies during school suspension. Existing protocol IDs, manifest key, account and disk identities, endpoint URLs and private/personal releases remain stable. Guardian binary remains the existing version; wrapper folder/launcher labels use the new name. Owner script and outgoing server email branding are unchanged in this extension-only release.

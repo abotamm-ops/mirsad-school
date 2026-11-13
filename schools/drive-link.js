@@ -16,7 +16,7 @@
  function closePrompt(){if(dialog?.open)dialog.close()}
  function showPrompt(){if(!authenticated()||!drive||drive.connected)return;
   if(!dialog){dialog=document.createElement('dialog');dialog.id='schoolDriveWelcome';dialog.setAttribute('aria-labelledby','schoolDriveWelcomeTitle');dialog.dir='rtl';dialog.style.cssText='width:min(520px,calc(100vw - 40px));box-sizing:border-box;border:0;border-radius:16px;padding:24px;color:#102a43;max-height:85dvh;overflow:auto';
-   dialog.innerHTML='<h2 id="schoolDriveWelcomeTitle">فعّل حفظ صور المدرسة وملفاتها</h2><p data-drive-account></p><p style="padding:14px;background:#fff3d2;border-right:4px solid #c28500"><strong>مهم: الحفظ في حساب Google الخاص بمدرستك لم يُفعّل.</strong> اربطه الآن ليكون أرشيف صور الغياب والملفات المهمة في حساب المدرسة، وتستطيع الوصول إليه من أي مكان.</p><p>الاشتراك في مرصاد وحده لا يربط Drive. اختر حساب المدرسة وأكمل موافقة Google مرة واحدة. لا تدخل كلمة مرور Gmail في مرصاد.</p><p data-drive-error role="status"></p><div style="display:flex;flex-wrap:wrap;gap:10px"><button type="button" data-drive-same></button><button type="button" data-drive-other class="secondary"></button><button type="button" data-drive-later class="secondary">لاحقًا — الحفظ في حساب المدرسة غير مفعّل</button></div>';
+   dialog.innerHTML='<h2 id="schoolDriveWelcomeTitle">فعّل حفظ صور المدرسة وملفاتها</h2><p data-drive-account></p><p style="padding:14px;background:#fff3d2;border-right:4px solid #c28500"><strong>مهم: الحفظ في حساب Google الخاص بمدرستك لم يُفعّل.</strong> اربطه الآن ليكون أرشيف صور الغياب والملفات المهمة في حساب المدرسة، وتستطيع الوصول إليه من أي مكان.</p><p>الاشتراك في راصد وحده لا يربط Drive. اختر حساب المدرسة وأكمل موافقة Google مرة واحدة. لا تدخل كلمة مرور Gmail في راصد.</p><p data-drive-error role="status"></p><div style="display:flex;flex-wrap:wrap;gap:10px"><button type="button" data-drive-same></button><button type="button" data-drive-other class="secondary"></button><button type="button" data-drive-later class="secondary">لاحقًا — الحفظ في حساب المدرسة غير مفعّل</button></div>';
    dialog.querySelector('[data-drive-same]').onclick=()=>begin(school.email);
    dialog.querySelector('[data-drive-other]').onclick=()=>begin();
    dialog.querySelector('[data-drive-later]').onclick=closePrompt;
@@ -25,7 +25,7 @@
   const email=school?.email||'',isGmail=gmail(email),same=dialog.querySelector('[data-drive-same]'),other=dialog.querySelector('[data-drive-other]');
   dialog.querySelector('[data-drive-account]').textContent=isGmail?'بريد اشتراكك '+email+'. هل تريد ربط هذا البريد بـ Google Drive أو استخدام حساب Google آخر؟':'بريد اشتراكك '+email+'. اختر حساب Google تملكه المدرسة لحفظ صورها وملفاتها.';
   same.hidden=!isGmail;same.textContent='اربط هذا البريد بـ Google Drive';other.textContent=isGmail?'استخدم حساب Google آخر':'اربط حساب Google الآن';same.disabled=other.disabled=!drive.configured||linking;
-  dialog.querySelector('[data-drive-error]').textContent=drive.configured?'':'الربط غير جاهز لدى مالك مرصاد؛ تواصل معه لتفعيله.';
+  dialog.querySelector('[data-drive-error]').textContent=drive.configured?'':'الربط غير جاهز لدى مالك راصد؛ تواصل معه لتفعيله.';
   if(!dialog.open)dialog.showModal();
  }
  function render(v){drive=v;
@@ -35,7 +35,7 @@
   const n=notice();n.style.borderColor=v.connected?'#0b897a':'#d49a22';n.style.background=v.connected?'#e7f6f0':'#fff7df';n.querySelector('[data-drive-help]').hidden=v.connected;
   const open=n.querySelector('button');open.hidden=v.connected;open.disabled=!v.configured||linking;
   if(v.connected)flowMessage='';
-  message(flowMessage|| (v.connected?'حساب Google مرتبط: '+v.email+' — الحفظ الجديد بدءًا من '+v.fromDate+'. الأرشيف السابق محفوظ في مكانه.':!v.configured?'الحفظ في حساب Google الخاص بالمدرسة غير مفعّل؛ تواصل مع مالك مرصاد لتجهيز الربط.':'اربط حساب Google الآن لحفظ صور المدرسة وملفاتها في حسابها وعرضها من أي مكان.'));
+  message(flowMessage|| (v.connected?'حساب Google مرتبط: '+v.email+' — الحفظ الجديد بدءًا من '+v.fromDate+'. الأرشيف السابق محفوظ في مكانه.':!v.configured?'الحفظ في حساب Google الخاص بالمدرسة غير مفعّل؛ تواصل مع مالك راصد لتجهيز الربط.':'اربط حساب Google الآن لحفظ صور المدرسة وملفاتها في حسابها وعرضها من أي مكان.'));
   if(dialog)for(const b of dialog.querySelectorAll('[data-drive-same],[data-drive-other]'))b.disabled=!v.configured||linking;
   if(v.connected){closePrompt();stopPoll();return}
   const key=session()+'|'+school.id;if(prompted!==key){prompted=key;showPrompt()}
