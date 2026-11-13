@@ -41,3 +41,9 @@ Extension-only correction; owner script remains 2.7.0. Root and body use an abso
 ## Centered monitoring 2.7.4
 
 Extension-only layout: schedule loading on the right, lesson settings on the left, and monitoring controls centered in a full-width row beneath both. Existing handlers and script 2.7.0 are unchanged. Browser geometry regression verifies the two upper columns, lower monitoring row, and no clipped controls.
+
+## Account interface correction 2.7.7
+
+Logout uses an inline confirmation, closes settings on success, clears login inputs, and exposes operation errors inside the modal. Existing server revocation and pending-evidence safeguards are retained. Owner deletion normalizes confirmation email whitespace/case and reports a mismatch instead of silently cancelling. No account data is deleted by these tests; actual reported server rejection requires its error message.
+
+Definitive invalid-session/device-revoked/device-proof responses now disarm monitoring, quarantine pending evidence, and clear cached account identity and derived portal sessions. INFO validates binding at most every 30 seconds while the popup is open; temporary service errors preserve authentication. Tests cover deleted identity cleanup and temporary-error retention. Native archives are retained.
