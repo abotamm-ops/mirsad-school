@@ -51,3 +51,7 @@ Definitive invalid-session/device-revoked/device-proof responses now disarm moni
 ## Rased school branding 2.8.0
 
 School-facing extension and current school website use راصد. Positioning: remote education monitoring for school directors and deputies during school suspension. Existing protocol IDs, manifest key, account and disk identities, endpoint URLs and private/personal releases remain stable. Guardian binary remains the existing version; wrapper folder/launcher labels use the new name. Owner script and outgoing server email branding are unchanged in this extension-only release.
+
+## Persistent activation 2.8.2
+
+Background stores email and request stage before requesting delivery, and persists response/error without depending on the action popup lifetime. Reopening restores code-only entry, resend and email-change controls; the OTP itself is never stored. A stale sending stage unlocks after 70 seconds. Delivery eligibility remains server-side: only an existing enabled unexpired subscription receives mail. No live email delivery was verified in this environment. Owner script remains 2.7.0.
