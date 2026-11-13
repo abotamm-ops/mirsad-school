@@ -10,3 +10,7 @@ html{width:780px;min-width:780px;max-width:780px;min-height:560px}body{width:780
 
 /* Setup above, monitoring centered below. */
 #steps{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) 70px;gap:8px}#step1{grid-column:1;grid-row:1}#step2{grid-column:2;grid-row:1}#step3{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:1fr 1fr;align-content:center;align-items:center;column-gap:12px;padding:4px 18px!important}#step3 h2{grid-column:1/-1;justify-content:center;margin:0 0 3px}#step3 #start{grid-column:1/-1;width:270px;justify-self:center;margin:2px 0;padding:7px}#step3:has(#runButtons:not([hidden])) #start{grid-column:1;width:100%}#runButtons{grid-column:2;margin:0;gap:6px}#runButtons button{margin:2px 0;padding:7px}#timing>.grid{grid-template-columns:1fr 1fr}#timing label:first-child{grid-column:1/-1}#step1 label{margin:3px 0}#step1 #preflight{margin:3px 0}#step1 #loadState{margin:3px 0}#step1 .check{margin-top:3px}
+
+header #openDirectory{flex:none;width:auto;margin:0;padding:7px 10px;font-size:11px;background:#ffffff16;color:white;border:1px solid #ffffff35}.directory-notice{margin:5px 0;padding:5px 7px;border:1px solid #e6c77f;border-radius:6px;background:#fff7df;color:#76520c;font-size:10px;font-weight:bold}
+
+#step1 .directory-notice{margin:3px 0;padding:3px 6px;font-size:9px}
