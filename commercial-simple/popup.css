@@ -16,3 +16,5 @@ header #openDirectory{flex:none;width:auto;margin:0;padding:7px 10px;font-size:1
 #step1 .directory-notice{margin:3px 0;padding:3px 6px;font-size:9px}
 
 #siteShortcuts{margin-inline-start:auto;display:flex;align-items:center;gap:6px}header #siteShortcuts button{width:auto;flex:none;margin:0;padding:5px 8px;font-size:10px;border:1px solid #ffffff50;background:#ffffff16;color:white}#siteShortcuts button span{display:block;font-size:16px;line-height:18px}header #siteShortcuts #shortcutArrow{border:0;background:transparent;color:#ffe08a;font-size:30px;padding:0 5px;line-height:30px}#step1 .directory-notice{color:#84430b;background:#fff2d2;border-color:#e7b94f}
+
+#brandTagline{display:block;font-size:8px;line-height:12px;opacity:1}header h1{line-height:18px}header #schoolName{display:block;font-size:8px;line-height:10px}
