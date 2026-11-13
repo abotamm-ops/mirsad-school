@@ -15,7 +15,7 @@ for f in src.glob('*.js'):
  shutil.copy2(f,ext/'simple'/f.name)
 for name in ['popup.html','popup.css']:shutil.copy2(src/name,ext/name)
 p=ext/'background.js';p.write_text(p.read_text()+"\nimportScripts('simple/controller.js','simple/daily.js');\n")
-p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.7.3';m['description']='ثلاث خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
+p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.7.4';m['description']='ثلاث خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
 base=work/'owner-base.gs'
 if not base.exists():raise SystemExit('Provide /tmp/mirsad-commercial/owner-base.gs privately before building; never commit the full owner script or its decryption key.')
 s=base.read_text();anchor='  extensionLogin(input){';assert anchor in s;s=s.replace(anchor,(src/'registry-methods.inc').read_text()+anchor)

@@ -37,3 +37,7 @@ Extension-only UI correction: 780 by 560 action-popup canvas with no vertical do
 ## Popup measurement fix 2.7.3
 
 Extension-only correction; owner script remains 2.7.0. Root and body use an absolute 780px width and minimum width, avoiding a circular dependency on Chrome's initial action-popup viewport. Browser regression starts at 24px and verifies both roots remain 780px, alongside the existing layout and interaction checks. Actual action-popup integration test is skipped in this managed environment because Chromium policy blocks sideloaded extensions; it can run on an unrestricted development browser.
+
+## Centered monitoring 2.7.4
+
+Extension-only layout: schedule loading on the right, lesson settings on the left, and monitoring controls centered in a full-width row beneath both. Existing handlers and script 2.7.0 are unchanged. Browser geometry regression verifies the two upper columns, lower monitoring row, and no clipped controls.
