@@ -26,3 +26,7 @@ header #openDirectory{flex:none;width:auto;margin:0;padding:7px 10px;font-size:1
 
 /* Workflow readiness: red until confirmed, green only after successful completion. */
 #steps>section{background:#fff7f8;border-color:#dba1ab;box-shadow:inset 0 3px #b52e43}#steps>section h2{color:#9f283c}#steps>section .step-number{background:#b52e43}#load,#timing button[type=submit],#saveCycles,#start{background:#b52e43;color:#fff}#steps>section.done{background:#f3fbf6;border-color:#55ab84;box-shadow:inset 0 3px #178562}#steps>section.done h2{color:#087c57}#steps>section.done .step-number,#step1.done #load,#step2.done #timing button[type=submit],#step3.done #saveCycles,#step4.done #start{background:#087c57;color:#fff}
+
+header #siteShortcuts button.page-needed{background:#b52e43;border-color:#d06c7d;color:#fff}header #siteShortcuts button.page-ready{background:#087c57;border-color:#64bb95;color:#fff}#step1>label{margin:2px 0;font-size:9px}#step1>label input,#step1>label select{min-height:22px;padding:2px 6px}#step1 #preflight{padding:2px 6px;font-size:8px}
+
+#step1 .directory-notice{margin:2px 0;padding:2px 6px}
