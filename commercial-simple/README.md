@@ -107,3 +107,11 @@ After a successful start/arming response, an informational dialog asks the user 
 ## WhatsApp site sharing 2.9.11
 
 A compact upper-right button next to settings opens a WhatsApp draft containing the public school dashboard URL and a short follow-up message. It contains no session key, password, or school-specific credentials and never sends a message automatically. Existing start notice retains the revised keep-device/page-open and WhatsApp follow-up text from 2.9.10. Controller/browser tests verify draft URL construction, button wiring and unchanged popup geometry. Script/helper unchanged.
+
+## Video selection restored to the school grid 2.9.12
+
+School customers select recording from the existing small per-lesson video squares in the website, including the personal edition's after-cycle choices and duration controls. The simplified website policy no longer hides these icons. The server grants its derived school website session only the additional videoConfigure action; attendance/link/reset settings remain denied, and the existing actor/school/active-subscription/revision/video constraints still apply.
+
+Extension video settings contain only preparation/status and the Teams-tab reminder. A checkbox beside monitoring on the main interface prepares capture from an explicit local user gesture; it reflects the actual helper ready state, with preparation failure kept unchecked. Unchecking releases preparation. Configuration teacher/cycle/minute dropdowns are removed from the extension. The reminder states that the Teams tab will open and must remain open because recording uses it. The start-here (1) guide is retained before the page-opening arrow.
+
+Both the complete school owner script and extension must be updated to 2.9.12. Update the current Apps Script deployment rather than its URL; existing account data is retained. The helper executable and personal edition are unchanged. Tests cover preparation checkbox commands, visible 12px website icons and their three-cycle dialog, school-scoped video configuration permissions with unrelated writes denied, and the unchanged video timing/capture safety rules. Live Chrome capture permissions/Teams/Drive require field verification.

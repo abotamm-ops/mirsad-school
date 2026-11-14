@@ -1,8 +1,8 @@
 from pathlib import Path
 import zipfile,json,base64,secrets,hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.11-Setup.zip'
-readme='''راصد المدارس 2.9.11 — حزمة الإعداد المبسط
+root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.12-Setup.zip'
+readme='''راصد المدارس 2.9.12 — حزمة الإعداد المبسط
 1. استخرج الحزمة كاملة إلى مجلد ثابت على جهاز Windows.
 2. شغّل «تجهيز راصد.vbs» مرة واحدة لتسجيل مكوّن الحفظ المحلي وفتح المساعد، دون نافذة أوامر سوداء. إذا كان VBScript معطلًا في جهاز المؤسسة، استخدم ملف «تحديث حفظ الفيديو.cmd» الموجود داخل مجلد مكوّن الحفظ المحلي. سيظل تثبيت الإضافة نفسه يدويًا حتى نشرها في متجر كروم.
 3. افتح chrome://extensions أو edge://extensions، فعّل وضع المطور، ثم «تحميل إضافة غير محزمة» وحدد مجلد «الإضافة». إذا كانت مثبتة سابقًا استبدل ملفات نفس المجلد وأعد تحميلها؛ لا تحذفها حفاظًا على بياناتها.
@@ -48,20 +48,20 @@ with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
 (work/'README.ar.txt').write_text(readme)
 import sys
 if '--extensions-only' in sys.argv:
- (root/'schools/downloads/Mirsad-Schools-2.9.11-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+ (root/'schools/downloads/Mirsad-Schools-2.9.12-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
  print('Packaged extension-only layout update; owner script unchanged.')
  raise SystemExit(0)
-linkfile=work/'OWNER-2.9.0-LINK.txt'
+linkfile=work/'OWNER-2.9.12-LINK.txt'
 if linkfile.exists():key=base64.urlsafe_b64decode(linkfile.read_text().strip().split('#')[1]+'=')
 else:key=secrets.token_bytes(32)
-nonce=secrets.token_bytes(12);data=(work/'owner-2.9.0.gs').read_bytes();cipher=AESGCM(key).encrypt(nonce,data,None)
+nonce=secrets.token_bytes(12);data=(work/'owner-2.9.12.gs').read_bytes();cipher=AESGCM(key).encrypt(nonce,data,None)
 assert AESGCM(key).decrypt(nonce,cipher,None)==data
-site=root/'schools';name='owner-script-2.9.0'
+site=root/'schools';name='owner-script-2.9.12'
 (site/(name+'.encrypted.json')).write_text(json.dumps({'nonce':base64.b64encode(nonce).decode(),'data':base64.b64encode(cipher).decode()}))
 for ext in ['html','preview.js']:
  original=site/('owner-script-2.6.20'+('.html' if ext=='html' else '-preview.js'))
  dest=site/(name+('.html' if ext=='html' else '-preview.js'))
- dest.write_text(original.read_text().replace('2.6.20','2.9.0').replace('مرصاد','راصد'))
+ dest.write_text(original.read_text().replace('2.6.20','2.9.12').replace('مرصاد','راصد'))
 linkfile.write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
-(root/'schools/downloads/Mirsad-Schools-2.9.11-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+(root/'schools/downloads/Mirsad-Schools-2.9.12-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
 print('Packaged customer bundle and encrypted owner script; owner opening key retained locally.')
