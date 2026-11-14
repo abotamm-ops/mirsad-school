@@ -1,8 +1,8 @@
 from pathlib import Path
 import zipfile,json,base64,secrets,hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.17-Setup.zip'
-readme='''راصد المدارس 2.9.17 — حزمة الإعداد المبسط
+root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.18-Setup.zip'
+readme='''راصد المدارس 2.9.18 — حزمة الإعداد المبسط
 1. استخرج الحزمة كاملة إلى مجلد ثابت على جهاز Windows.
 2. شغّل «تجهيز راصد.vbs» مرة واحدة لتسجيل مكوّن الحفظ المحلي وفتح المساعد، دون نافذة أوامر سوداء. إذا كان VBScript معطلًا في جهاز المؤسسة، استخدم ملف «تحديث حفظ الفيديو.cmd» الموجود داخل مجلد مكوّن الحفظ المحلي. سيظل تثبيت الإضافة نفسه يدويًا حتى نشرها في متجر كروم.
 3. افتح chrome://extensions أو edge://extensions، فعّل وضع المطور، ثم «تحميل إضافة غير محزمة» وحدد مجلد «الإضافة». إذا كانت مثبتة سابقًا استبدل ملفات نفس المجلد وأعد تحميلها؛ لا تحذفها حفاظًا على بياناتها.
@@ -49,7 +49,7 @@ with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
 (work/'README.ar.txt').write_text(readme)
 import sys
 if '--extensions-only' in sys.argv:
- (root/'schools/downloads/Mirsad-Schools-2.9.17-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+ (root/'schools/downloads/Mirsad-Schools-2.9.18-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
  print('Packaged extension-only layout update; owner script unchanged.')
  raise SystemExit(0)
 linkfile=work/'OWNER-2.9.14-LINK.txt'
@@ -64,5 +64,5 @@ for ext in ['html','preview.js']:
  dest=site/(name+('.html' if ext=='html' else '-preview.js'))
  dest.write_text(original.read_text().replace('2.6.20','2.9.14').replace('مرصاد','راصد'))
 linkfile.write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
-(root/'schools/downloads/Mirsad-Schools-2.9.17-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+(root/'schools/downloads/Mirsad-Schools-2.9.18-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
 print('Packaged customer bundle and encrypted owner script; owner opening key retained locally.')
