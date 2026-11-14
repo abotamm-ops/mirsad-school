@@ -3,3 +3,5 @@
 .video-archive{border:1px solid #b7cdd4;border-radius:12px;padding:12px;margin:12px 0;background:#fff}.video-archive summary{cursor:pointer;font-weight:bold;color:#075665}.video-archive-item{border-top:1px solid #dce7eb;padding:12px 0}.video-archive-item p{margin:5px 0;overflow-wrap:anywhere}
 
 .video-player{width:min(920px,94vw);max-height:94vh;box-sizing:border-box;border:1px solid #bbd1dc;border-radius:14px;padding:16px;direction:rtl;overflow:auto}.video-player::backdrop{background:rgba(12,35,48,.65)}.video-player h3{margin:0 0 12px}.video-player iframe{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#111;margin:12px 0}.video-player p{font-size:13px}.video-player button{min-height:36px}
+
+.video-button.video-label{width:auto!important;min-width:84px!important;max-width:none!important;height:24px!important;min-height:24px!important;max-height:24px!important;aspect-ratio:auto;padding:0 7px!important;border-radius:5px!important;font-size:10px!important;line-height:22px!important;white-space:nowrap}

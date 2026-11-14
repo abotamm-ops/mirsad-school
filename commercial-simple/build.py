@@ -15,7 +15,7 @@ for f in src.glob('*.js'):
  shutil.copy2(f,ext/'simple'/f.name)
 for name in ['popup.html','popup.css']:shutil.copy2(src/name,ext/name)
 p=ext/'background.js';p.write_text(p.read_text()+"\nimportScripts('simple/controller.js','simple/daily.js');\n")
-p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.13';m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
+p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.14';m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
 # Rebrand displayed Arabic text only; protocol IDs, keys and storage paths remain stable.
 for asset in ext.rglob('*'):
  if asset.is_file() and asset.suffix in {'.js','.html','.json'}:
@@ -36,7 +36,8 @@ anchor='var registry=commercialRegistry_();';assert anchor in s
 s=s.replace(anchor,anchor+"if(/^a\\./.test(p.key||'')){var va=registry.authorize(p.key),vs=va.school.sessions.find(function(x){return x.hash===commercialHash_(p.key)});if(vs?.readOnly&&!['adminLogin','dates','day','getTimetableSource','previewTimetable','resetState','scheduleVersions','teacherLink','teachersLive','getAutoLinksControl','videoStatus','videoConfigure','commercialWebsiteActivity','commercialDriveStatus','commercialDriveBegin','commercialDriveComplete','commercialEvidence','commercialCustomerPortal'].includes(p.action))throw new Error('الموقع للعرض فقط؛ افتح الإضافة لتغيير الإعدادات')}" )
 s=s.replace(" if(p.action==='commercialServiceVersion')", " if(['commercialExtensionCodeRequest','commercialExtensionCodeLogin','commercialRecorderPortal','commercialRecorderStatus','commercialManageAccess','commercialRecorderSignout'].includes(p.action))result=commercialSimpleRequest_(registry,p);\n else if(p.action==='commercialServiceVersion')")
 s=s.replace("result=commercialSendCredentials_(registry.manage(p.key,p));","{result=commercialSendCredentials_(registry.manage(p.key,p));if(p.operation==='disable')result=commercialAccessNotice_(result);}")
-s=s.replace("version:'2.6.20',videoRecording:true", "version:'2.9.12',simpleSetup:true,selfRegistration:true,monthlySubscription:100,videoRecording:true")
-s=s.replace('// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.6.20','')+'\n'+(src/'backend-adapter.gs').read_text()+'\n// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.9.12\n'
-(work/'owner-2.9.12.gs').write_text(s)
+s=s.replace('monitorPrivate_(DriveApp.getFolderById(MONITOR_ROOT)),writer,siteReader)', 'monitorPrivate_(commercialSchoolDrive_().getFolderById(MONITOR_ROOT)),writer,siteReader)')
+s=s.replace("version:'2.6.20',videoRecording:true", "version:'2.9.14',simpleSetup:true,selfRegistration:true,monthlySubscription:100,videoRecording:true")
+s=s.replace('// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.6.20','')+'\n'+(src/'backend-adapter.gs').read_text()+'\n// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.9.14\n'
+(work/'owner-2.9.14.gs').write_text(s)
 print('Built commercial extension and owner script locally')
