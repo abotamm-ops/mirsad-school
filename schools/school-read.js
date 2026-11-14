@@ -40,7 +40,8 @@
         const complete = new Response(bytes, {status: response.status, statusText: response.statusText, headers: response.headers});
         if (complete.ok) {
           const value = await complete.clone().json();
-          if (value.ok && (generations.get(url) || 0) === generation) recent.set(key, {url, at: Date.now(), response: complete});
+          if (!value.ok && ['invalid-session','device-revoked'].includes(value.code) && body.key === globalThis.MirsadCommercialConfig?.session?.()) window.dispatchEvent(new Event('mirsad-website-auth-expired'));
+        if (value.ok && (generations.get(url) || 0) === generation) recent.set(key, {url, at: Date.now(), response: complete});
         }
         return complete;
       })();
