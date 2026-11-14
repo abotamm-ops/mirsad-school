@@ -58,3 +58,5 @@ header #siteShortcuts #shortcutArrow{width:72px;padding:0;line-height:16px}#site
 #step4 .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}#step4 label{font-size:8px;white-space:nowrap}#step4 .cycle-recommendation{font-size:8px;line-height:12px}
 
 #step2 #archives{display:block;font-size:8px;padding:2px 5px;margin:0;background:#1767ae;color:white}#feedbackDialog>details{border:0;padding:4px}
+
+#step4 .cycle-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}#step4 .cycle-fields label{display:flex;flex-direction:column;gap:1px;white-space:normal;margin:0}#step4 .cycle-fields strong{font-size:10px;line-height:13px}#step4 .cycle-fields span{font-size:8px;line-height:12px;white-space:nowrap}#step4 .cycle-count{margin:0;margin-inline-start:auto;display:flex;align-items:center;gap:4px;font-size:8px;font-weight:normal}#step4 .cycle-count select{width:40px;min-height:19px;padding:0 3px}#step4 .cycle-recommendation{margin:2px 0;font-size:7px;line-height:10px}#step4 #saveCycles{padding:3px;margin:2px 0;font-size:9px;line-height:13px}
