@@ -103,3 +103,7 @@ Popup state refresh continues during long load actions, displaying completed tea
 ## Monitoring notice 2.9.9
 
 After a successful start/arming response, an informational dialog asks the user to keep the recorder device/page open and follow results from mobile, with the requested daily-report explanation. Closing the notice does not pause or change monitoring. Browser regression verifies the text appears after start and can be dismissed before pausing normally. Extension-only update; owner script and helper unchanged.
+
+## WhatsApp site sharing 2.9.11
+
+A compact upper-right button next to settings opens a WhatsApp draft containing the public school dashboard URL and a short follow-up message. It contains no session key, password, or school-specific credentials and never sends a message automatically. Existing start notice retains the revised keep-device/page-open and WhatsApp follow-up text from 2.9.10. Controller/browser tests verify draft URL construction, button wiring and unchanged popup geometry. Script/helper unchanged.
