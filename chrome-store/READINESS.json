@@ -1,5 +1,5 @@
 {
-  "version": "2.9.27",
+  "version": "2.9.28",
   "submissionReady": false,
   "submitted": false,
   "permissions": [
@@ -25,42 +25,19 @@
     "https://mirsad-school.onrender.com/schools/*",
     "https://teams.cloud.microsoft/*"
   ],
-  "obfuscatedFilesToReview": [
-    "visible-schedule.js",
-    "schedule.js",
-    "schedule-core.js",
-    "scan-activity.js",
-    "restore-official.js",
-    "report-bridge.js",
-    "popup.js",
-    "monitor-model.js",
-    "monitor-bridge.js",
-    "madrasati-ui.js",
-    "madrasati-source.js",
-    "madrasati-reader.js",
-    "local-backup-ui.js",
-    "link-completion.js",
-    "guardian-tabs.js",
-    "drive-sync.js",
-    "device-state.js",
-    "content.js",
-    "commercial-popup.js",
-    "commercial-listener.js",
-    "commercial-enroll-bridge.js",
-    "commercial-auth.js",
-    "commercial-account.js",
-    "classic-restore.js",
-    "browser-recovery.js",
-    "background.js",
-    "action-status.js"
-  ],
+  "obfuscatedFilesToReview": [],
   "remaining": [
-    "developer_registration",
-    "readable_source",
-    "permission_minimization",
+    "store_item_id_native_host_validation",
+    "permission_justification",
     "full_privacy_policy",
     "support_email",
     "store_images",
     "reviewer_instructions"
-  ]
+  ],
+  "developerRegistration": "user_confirmed_paid",
+  "readableSource": {
+    "convertedFiles": 27,
+    "runtimeTestsPassed": 6
+  },
+  "draftUploadPackage": "schools/downloads/Rased-Schools-2.9.28-Chrome-Store.zip"
 }
