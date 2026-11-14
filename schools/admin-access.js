@@ -6,10 +6,10 @@
  const box=document.createElement('div');box.className='school-access-card';const heading=document.createElement('h2');heading.textContent='جارٍ فتح حسابك في راصد…';
  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='نتحقق من الجلسة؛ لا تحتاج إعادة الاشتراك.';
  const retry=document.createElement('button');retry.type='button';retry.textContent='إعادة المحاولة';retry.hidden=true;
- box.append(heading,status,retry);panel.append(box);document.body.append(panel);
+ box.append(heading,status,retry);panel.append(box);panel.hidden=simple;if(simple&&document.querySelector('main'))document.querySelector('main').prepend(panel);else document.body.append(panel);
  function fail(message){document.documentElement.classList.remove('mirsad-admin-ready');panel.hidden=false;heading.textContent='تعذر فتح حساب المدرسة الآن';status.textContent=message;retry.hidden=false}
  function deadline(promise){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('تأخر رد الخدمة. حسابك محفوظ؛ أعد المحاولة.')),25000)})]).finally(()=>clearTimeout(timer))}
- async function authenticate(){const request=++generation,key=localStorage.getItem(C.sessionKey);retry.hidden=true;heading.textContent='جارٍ فتح حسابك في راصد…';status.textContent='نتحقق من الجلسة؛ لا تحتاج إعادة الاشتراك.';panel.hidden=false;
+ async function authenticate(){const request=++generation,key=localStorage.getItem(C.sessionKey);retry.hidden=true;heading.textContent='جارٍ فتح حسابك في راصد…';status.textContent='نتحقق من الجلسة؛ لا تحتاج إعادة الاشتراك.';panel.hidden=simple;
   if(!key){if(!simple){location.replace('school-settings.html');return}fail('افتح موقع راصد من زر «راصد» داخل الإضافة لاستعادة دخولك. لا تحتاج إنشاء حساب جديد.');return}
   try{const value=await deadline(C.api('adminLogin'));if(request!==generation||localStorage.getItem(C.sessionKey)!==key)return;
    C.saveSchool(value.school);if(!value.school?.profile?.school&&!simple){location.replace('school-settings.html');return}
