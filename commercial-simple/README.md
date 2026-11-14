@@ -99,3 +99,7 @@ The manual source date and daily/manual mode are saved immediately per school, s
 The replacement dialog offers save-and-replace, discard-and-replace, or cancel. Discard requires a second in-dialog confirmation and forwards the existing backend keepPrevious:false transaction, retaining its revision guards and protection of older archived copies. The existing backend discard semantics apply; this is not a purge of other dates or independently stored native files.
 
 Popup state refresh continues during long load actions, displaying completed teacher count/total and then the save phase. The school site shows its normal shell immediately for extension customers and validates the session in the background; failures appear inline, with no registration overlay or skipped server authorization. Tests cover pinned selection across reopen, progressive counts during an unresolved load, explicit discard/cancel, direct site opening and existing transaction rollback/archive behavior. Script remains 2.9.0; helper unchanged.
+
+## Monitoring notice 2.9.9
+
+After a successful start/arming response, an informational dialog asks the user to keep the recorder device/page open and follow results from mobile, with the requested daily-report explanation. Closing the notice does not pause or change monitoring. Browser regression verifies the text appears after start and can be dismissed before pausing normally. Extension-only update; owner script and helper unchanged.

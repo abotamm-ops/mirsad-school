@@ -30,3 +30,5 @@ header #openDirectory{flex:none;width:auto;margin:0;padding:7px 10px;font-size:1
 header #siteShortcuts button.page-needed{background:#b52e43;border-color:#d06c7d;color:#fff}header #siteShortcuts button.page-ready{background:#087c57;border-color:#64bb95;color:#fff}#step1>label{margin:2px 0;font-size:9px}#step1>label input,#step1>label select{min-height:22px;padding:2px 6px}#step1 #preflight{padding:2px 6px;font-size:8px}
 
 #step1 .directory-notice{margin:2px 0;padding:2px 6px}
+
+#startNotice p{font-size:13px;line-height:1.9}
