@@ -141,7 +141,7 @@
       "spaceBefore": _options2.lineHeight * 2,
       "spaceAfter": _options2.lineHeight,
       "keepNext": true
-    }), _value38("التوقيع", false, "center", {
+    }), _value38("", false, "center", {
       "spaceAfter": _options2.lineHeight,
       "directorSignature": true,
       "keepNext": true
