@@ -4,7 +4,8 @@ The opening key is deliberately absent from the public archive.
 from pathlib import Path
 import json, zipfile
 root=Path(__file__).resolve().parents[1]
-version='2.9.21'
+import sys
+version=sys.argv[1] if len(sys.argv)>1 else '2.9.21'
 value=json.loads((root/f'schools/owner-script-{version}.encrypted.json').read_text())
 html='''<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>سكربت راصد — خاص بالمالك</title><style>body{max-width:960px;margin:25px auto;padding:16px;background:#edf4f7;color:#173c4b;font:15px/1.8 Tahoma,Arial}section{background:white;padding:20px;border-radius:14px}input,button,textarea{box-sizing:border-box;font:inherit;padding:10px;border:1px solid #b8ced8;border-radius:7px}input,textarea{width:100%}button{background:#1767ae;color:white;cursor:pointer;margin:10px 0}textarea{height:55vh;direction:ltr;text-align:left;font:12px monospace}[hidden]{display:none!important}</style><h1>سكربت راصد المدارس — VERSION</h1><p>خاص بمالك راصد. هذا الملف يعمل من جهازك دون الاتصال بموقع راصد.</p><section><form id="unlock"><label>الصق مفتاح الفتح الموجود في المحادثة<input id="key" type="password" autocomplete="off" spellcheck="false" dir="ltr" required></label><button type="submit">فتح السكربت</button></form><p id="state" role="status">الملف مشفر؛ يلزم مفتاح الفتح الخاص به.</p><div id="actions" hidden><button id="copy" type="button">نسخ السكربت كاملًا</button><p>استبدل السكربت في مشروع المدارس الحالي، ثم احفظه وحدّث النشر الحالي بإصدار جديد. أبقِ رابط النشر وخصائص المشروع كما هي.</p><textarea id="code" readonly aria-label="السكريبت كاملًا"></textarea></div></section><script id="encrypted" type="application/json">CIPHER</script><script>
 const form=document.getElementById('unlock'),status=document.getElementById('state'),area=document.getElementById('code');

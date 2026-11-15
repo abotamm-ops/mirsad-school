@@ -43,5 +43,7 @@ s=s.replace('return monitorVideoRequest_(p,props,monitorPrivate_(DriveApp.getFol
 s=s.replace('snapshot:function(){var f=monitorScheduleFolder_(attendanceRoot,date,false)', 'snapshot:function(){var selectedRoot=typeof attendanceRoot==="function"?attendanceRoot():attendanceRoot;var f=monitorScheduleFolder_(selectedRoot,date,false)')
 s=s.replace("version:'2.6.20',videoRecording:true", "version:'2.9.21',simpleSetup:true,selfRegistration:true,monthlySubscription:100,videoRecording:true")
 s=s.replace('// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.6.20','')+'\n'+(src/'backend-adapter.gs').read_text()+'\n// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.9.21\n'
-(work/'owner-2.9.21.gs').write_text(s)
+import runpy
+s=runpy.run_path(str(src/'build-access-control.py'))['transform'](s)
+(work/'owner-2.9.32.gs').write_text(s)
 print('Built commercial extension and owner script locally')
