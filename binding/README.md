@@ -1,0 +1,13 @@
+# School binding update (extension 2.9.41, service 2.9.40)
+
+The school recorder reads SchoolId from the currently open Madrasati teacher directory. A mismatch is persisted per account and writer session and displayed above Load until the customer explicitly selects Yes. There is no owner approval workflow. The service checks the recorder token, device proof, subscription, expected old ID, and directory URL before recording the new binding. The old ID is no longer accepted for new imports.
+
+Changing the binding leaves the subscription, email, website PIN and archive intact. A fresh complete timetable import is required; old scanning/video/record mutations are refused until it commits. When replacing today's timetable after a change, the service forces preservation of the previous version regardless of the older client choice. Existing source/history files are not rewritten by the update itself. Older archived dates remain readable.
+
+The owner account table has “إعادة ضبط اسم مستخدم”. This resets binding and revokes the recorder and site sessions. It does not rename the email, erase the PIN, renew the subscription, delete the account, or delete its files. The same customer can activate the same email again, then import the current school's timetable. This does not fix upstream Teams/Madrasati/network failures.
+
+Build with `python3 binding/build.py`, then `python3 commercial-simple/build.py --extensions-only` and `python3 commercial-simple/package.py --extensions-only`. Package the private service with `python3 binding/package.py` and `python3 commercial-simple/package-owner-offline.py 2.9.40`. The service and owner opening key must remain private; only encrypted artifacts are committed. The extension ZIP is the public customer artifact.
+
+Deployment: the owner must replace the school Apps Script source and update the EXISTING deployment to a new version, retaining the URL/properties. The extension requires this service for the binding workflow. Updating the Git repository does not deploy Apps Script. Store submission remains 2.9.31 until separately uploaded; no review was cancelled.
+
+Tests: `node binding/service.test.cjs` uses the actual generated service with a fake Drive registry, including real timetable replacement/history, authorization, compare-and-set/idempotent updates, and session revocation. `node binding/client.test.cjs` verifies persistent/scoped state and retry behavior. `node commercial-simple/browser.test.cjs` verifies the Yes button/progress/repeated notice; `node commerce/browser.test.cjs` verifies the owner reset action against the actual service fixture. These are local tests, not a field test on Windows or a live Google deployment.

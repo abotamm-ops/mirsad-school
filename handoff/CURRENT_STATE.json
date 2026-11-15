@@ -1,12 +1,12 @@
 {
   "snapshotDateRiyadh": "2026-11-15",
   "personalExtension": "0.6.104",
-  "schoolManualExtension": "2.9.37",
+  "schoolManualExtension": "2.9.41",
   "schoolStoreSubmittedVersion": "2.9.31",
   "schoolStoreReviewStatus": "submitted; decision not reported",
   "schoolStoreId": "ihdfpkkkagcaknbjljmbffpbblpcplpa",
   "legacySchoolExtensionId": "ologpgneejnippbdhboiaaijpgkejcck",
-  "ownerServicePrepared": "2.9.38",
+  "ownerServicePrepared": "2.9.40",
   "ownerServiceLiveDeployment": "not verified; owner supplied matching 2.9.32 source as current reference",
   "nativeSchoolSupport": "3.4.7",
   "nativeSupportLocalProbe": "owner confirmed success on Windows from installed legacy school extension",
@@ -27,7 +27,10 @@
     "private receipt upload and immediate provisional activation",
     "receipt approval, rejection and prevention of repeated activation",
     "explicit terms consent with versioned acceptance record",
-    "server-bound 15-minute price quote"
+    "server-bound 15-minute price quote",
+    "Teams entry skips fixed landing waits when Join is ready (2.9.39+)",
+    "customer confirms current Madrasati SchoolId change directly; persistent notice, preserved history and fresh import required",
+    "owner reset username resets binding and revokes sessions while preserving email/PIN/subscription/archive"
   ],
   "deferred": [
     "offer deadline not chosen; keep offer disabled",
@@ -49,6 +52,8 @@
     "storeRuntimeEquivalenceTests": 6,
     "commerceBrowser": "passed desktop and 390px mobile; fixture backend",
     "liveBankVerification": "not implemented; intentionally provisional activation",
-    "liveGoogleScriptDeployment": "not performed from this workspace"
+    "liveGoogleScriptDeployment": "not performed from this workspace",
+    "schoolBindingServiceTests": 5,
+    "schoolBindingClientTests": 2
   }
 }
