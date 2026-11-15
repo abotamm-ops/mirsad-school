@@ -1,5 +1,5 @@
 {
-  "version": "2.9.28",
+  "version": "2.9.29",
   "submissionReady": false,
   "submitted": false,
   "permissions": [
@@ -39,5 +39,6 @@
     "convertedFiles": 27,
     "runtimeTestsPassed": 6
   },
-  "draftUploadPackage": "schools/downloads/Rased-Schools-2.9.28-Chrome-Store.zip"
+  "draftUploadPackage": "schools/downloads/Rased-Schools-2.9.29-Chrome-Store.zip",
+  "demo": "Public synthetic-data simulation, no credentials or network. Not an end-to-end test of Madrasati/Teams."
 }
