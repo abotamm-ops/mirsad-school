@@ -1,1 +1,257 @@
-function m0e4bb079_0x6720(_0x53ed33,_0x2d7e76){const _0x2ed464=m0e4bb079_0x2ed4();return m0e4bb079_0x6720=function(_0x672047,_0x331a5a){_0x672047=_0x672047-0x9f;let _0x5d98e6=_0x2ed464[_0x672047];if(m0e4bb079_0x6720['QQtSqO']===undefined){var _0x4334a7=function(_0xc13d0a){const _0x4047b4='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=';let _0x4b4395='',_0x43c531='';for(let _0x16bd93=0x0,_0x5d3721,_0x74e6cb,_0x415eea=0x0;_0x74e6cb=_0xc13d0a['charAt'](_0x415eea++);~_0x74e6cb&&(_0x5d3721=_0x16bd93%0x4?_0x5d3721*0x40+_0x74e6cb:_0x74e6cb,_0x16bd93++%0x4)?_0x4b4395+=String['fromCharCode'](0xff&_0x5d3721>>(-0x2*_0x16bd93&0x6)):0x0){_0x74e6cb=_0x4047b4['indexOf'](_0x74e6cb);}for(let _0x406d50=0x0,_0x5521c8=_0x4b4395['length'];_0x406d50<_0x5521c8;_0x406d50++){_0x43c531+='%'+('00'+_0x4b4395['charCodeAt'](_0x406d50)['toString'](0x10))['slice'](-0x2);}return decodeURIComponent(_0x43c531);};m0e4bb079_0x6720['AYWfGA']=_0x4334a7,_0x53ed33=arguments,m0e4bb079_0x6720['QQtSqO']=!![];}const _0x428d65=_0x2ed464[0x0],_0x47d37a=_0x672047+_0x428d65,_0x152f01=_0x53ed33[_0x47d37a];return!_0x152f01?(_0x5d98e6=m0e4bb079_0x6720['AYWfGA'](_0x5d98e6),_0x53ed33[_0x47d37a]=_0x5d98e6):_0x5d98e6=_0x152f01,_0x5d98e6;},m0e4bb079_0x6720(_0x53ed33,_0x2d7e76);}(function(_0x50e4af,_0x3f3f99){const _0x244376=m0e4bb079_0x6720,_0x19f6dd=_0x50e4af();while(!![]){try{const _0x564551=parseInt(_0x244376(0xfb))/0x1+-parseInt(_0x244376(0x105))/0x2*(-parseInt(_0x244376(0x11c))/0x3)+parseInt(_0x244376(0x10d))/0x4*(parseInt(_0x244376(0xb5))/0x5)+parseInt(_0x244376(0xa2))/0x6*(-parseInt(_0x244376(0xfd))/0x7)+-parseInt(_0x244376(0xbe))/0x8*(parseInt(_0x244376(0x104))/0x9)+-parseInt(_0x244376(0x113))/0xa+parseInt(_0x244376(0x11a))/0xb;if(_0x564551===_0x3f3f99)break;else _0x19f6dd['push'](_0x19f6dd['shift']());}catch(_0x8bd4da){_0x19f6dd['push'](_0x19f6dd['shift']());}}}(m0e4bb079_0x2ed4,0xcfee2),function(_0xc13d0a){'use strict';const _0x323bc6=m0e4bb079_0x6720;const _0x4047b4=_0x5aa9a6=>String(_0x5aa9a6??'')['replace'](/[.:…]+/g,'')['replace'](/ {2,}/g,'\x20')[_0x323bc6(0xf0)](),_0x4b4395=_0x360880=>String(_0x360880??'')['replace'](/[&<>"']/g,_0x4db5d3=>({'&':_0x323bc6(0xd6),'<':_0x323bc6(0xeb),'>':'&gt;','\x22':'&quot;','\x27':_0x323bc6(0xaf)}[_0x4db5d3])),_0x43c531={'daily':_0x323bc6(0x111),'lessons':_0x323bc6(0x112),'partial':_0x323bc6(0xc3),'late':_0x323bc6(0xba),'partial-absence':'غياب\x20جزئي\x20عن\x20الحصص','day':_0x323bc6(0xfc)};function _0x16bd93(_0x4f787e,_0x1ae122,_0x4738d9=new Date(),_0x5ea4f6={}){const _0x37d8d2=_0x323bc6,_0x4815ce=_0x1ae122['cells'](_0x4f787e,{'now':_0x4738d9})[_0x37d8d2(0xe4)](_0x3533cb=>{const _0x132e8b=_0x37d8d2;if(!_0x5ea4f6['includeProvisional']||_0x3533cb['override']||_0x3533cb['reset']||[_0x132e8b(0xc8),_0x132e8b(0xee),'partial',_0x132e8b(0xaa)][_0x132e8b(0xdf)](_0x3533cb['state']))return _0x3533cb;const _0x344745=_0x3533cb['rounds']['filter'](_0x209523=>!_0x209523['pending']&&['present','absent']['includes'](_0x209523['status']));if(!_0x344745[_0x132e8b(0xc2)](_0x90e3f0=>_0x90e3f0[_0x132e8b(0xbc)]==='absent'))return _0x3533cb;return{..._0x3533cb,'state':_0x344745['some'](_0x5d8a63=>_0x5d8a63['status']===_0x132e8b(0xc8))?'partial':_0x132e8b(0xee),'provisional':!![]};}),_0x5bb3e4=[];for(const _0x326ae3 of _0x4f787e?.[_0x37d8d2(0x100)]?.['teachers']||[]){const _0x3730b6=_0x4815ce['filter'](_0x1067db=>_0x1067db['teacherId']===_0x326ae3['id']),_0x2113ab=_0x3730b6[_0x37d8d2(0xca)](_0x1c0c65=>_0x1c0c65['state']==='absent'),_0x56d63d=_0x3730b6['filter'](_0x5f1d12=>_0x5f1d12['state']==='partial'),_0x36ffc0=_0x3730b6['filter'](_0x1aa271=>_0x1aa271['state']==='partial-absence'),_0x53e7f4=_0x3730b6[_0x37d8d2(0xad)]>0x0&&_0x3730b6[_0x37d8d2(0x108)](_0x3ea161=>_0x3ea161[_0x37d8d2(0xec)]===_0x37d8d2(0xee)&&_0x3ea161['ended']&&!_0x3ea161[_0x37d8d2(0xea)]),_0x5b0222=(_0x5ba56a,_0x2018fb)=>_0x5bb3e4['push']({'id':_0x326ae3['id'],'name':_0x326ae3['name'],'date':_0x4f787e['snapshot']['date'],'type':_0x5ba56a,'lessons':_0x2018fb,'absent':[_0x37d8d2(0xcb),'late',_0x37d8d2(0xaa)]['includes'](_0x5ba56a)?[]:_0x2018fb,'fullDay':_0x5ba56a===_0x37d8d2(0xf9)});if(_0x53e7f4)_0x5b0222(_0x37d8d2(0xf9),_0x2113ab);else{if(_0x2113ab['length'])_0x5b0222(_0x37d8d2(0xdd),_0x2113ab);if(_0x56d63d[_0x37d8d2(0xad)])_0x5b0222('partial',_0x56d63d);if(_0x36ffc0['length'])_0x5b0222('partial-absence',_0x36ffc0);}}return _0x5bb3e4;}function _0x5d3721(_0x398ce7,_0x4f20e2,_0x2d9c85=new Date()){const _0x219928=_0x323bc6,_0x2ef048=new Map();for(const _0x3ba366 of _0x16bd93(_0x398ce7,_0x4f20e2,_0x2d9c85,{'includeProvisional':!![]})){let _0x32d7af=_0x2ef048[_0x219928(0x116)](_0x3ba366['id']);!_0x32d7af&&(_0x32d7af={'id':_0x3ba366['id'],'name':_0x3ba366['name'],'date':_0x3ba366['date'],'type':_0x219928(0x102),'reports':[],'lessons':[]},_0x2ef048['set'](_0x3ba366['id'],_0x32d7af)),_0x32d7af['reports']['push'](_0x3ba366),_0x32d7af['lessons']['push'](..._0x3ba366[_0x219928(0xdd)]),_0x32d7af['provisional']=_0x32d7af['lessons'][_0x219928(0xc2)](_0x3be802=>_0x3be802['provisional']);}return[..._0x2ef048[_0x219928(0xe5)]()];}function _0x74e6cb(_0x1a0999){const _0x581a62=_0x323bc6,_0x3b123f=new TextEncoder(),_0x4ce1a1=[],_0x3b274c=[];let _0x66caab=0x0;const _0x2a03f6=(_0x36804b,_0x5e0812,_0x5c709d)=>_0x36804b['setUint16'](_0x5e0812,_0x5c709d,!![]),_0x5e77a0=(_0x159f3b,_0x2bdab9,_0x3d7ae2)=>_0x159f3b['setUint32'](_0x2bdab9,_0x3d7ae2>>>0x0,!![]);for(const [_0x3fdfd9,_0x5a5589]of Object[_0x581a62(0xd7)](_0x1a0999)){const _0xa0dff0=_0x3b123f[_0x581a62(0x115)](_0x3fdfd9),_0x2951b2=_0x5a5589 instanceof Uint8Array?_0x5a5589:_0x3b123f[_0x581a62(0x115)](_0x5a5589);let _0x246bdc=0xffffffff;for(const _0x92e5bc of _0x2951b2){_0x246bdc^=_0x92e5bc;for(let _0x263832=0x0;_0x263832<0x8;_0x263832++)_0x246bdc=_0x246bdc>>>0x1^(_0x246bdc&0x1?0xedb88320:0x0);}_0x246bdc=(_0x246bdc^0xffffffff)>>>0x0;const _0x3c1635=new Uint8Array(0x1e+_0xa0dff0['length']),_0x5d9178=new DataView(_0x3c1635[_0x581a62(0xc0)]);_0x5e77a0(_0x5d9178,0x0,0x4034b50),_0x2a03f6(_0x5d9178,0x4,0x14),_0x2a03f6(_0x5d9178,0x6,0x800),_0x5e77a0(_0x5d9178,0xe,_0x246bdc),_0x5e77a0(_0x5d9178,0x12,_0x2951b2['length']),_0x5e77a0(_0x5d9178,0x16,_0x2951b2['length']),_0x2a03f6(_0x5d9178,0x1a,_0xa0dff0['length']),_0x3c1635['set'](_0xa0dff0,0x1e),_0x4ce1a1['push'](_0x3c1635,_0x2951b2);const _0x3b833c=new Uint8Array(0x2e+_0xa0dff0[_0x581a62(0xad)]),_0x540e98=new DataView(_0x3b833c['buffer']);_0x5e77a0(_0x540e98,0x0,0x2014b50),_0x2a03f6(_0x540e98,0x4,0x14),_0x2a03f6(_0x540e98,0x6,0x14),_0x2a03f6(_0x540e98,0x8,0x800),_0x5e77a0(_0x540e98,0x10,_0x246bdc),_0x5e77a0(_0x540e98,0x14,_0x2951b2['length']),_0x5e77a0(_0x540e98,0x18,_0x2951b2[_0x581a62(0xad)]),_0x2a03f6(_0x540e98,0x1c,_0xa0dff0[_0x581a62(0xad)]),_0x5e77a0(_0x540e98,0x2a,_0x66caab),_0x3b833c['set'](_0xa0dff0,0x2e),_0x3b274c['push'](_0x3b833c),_0x66caab+=_0x3c1635['length']+_0x2951b2['length'];}const _0x16f282=_0x3b274c[_0x581a62(0xab)]((_0x27fcc4,_0x44023b)=>_0x27fcc4+_0x44023b[_0x581a62(0xad)],0x0),_0x236a52=new Uint8Array(0x16),_0x3fa10c=new DataView(_0x236a52['buffer']);_0x5e77a0(_0x3fa10c,0x0,0x6054b50),_0x2a03f6(_0x3fa10c,0x8,_0x3b274c['length']),_0x2a03f6(_0x3fa10c,0xa,_0x3b274c['length']),_0x5e77a0(_0x3fa10c,0xc,_0x16f282),_0x5e77a0(_0x3fa10c,0x10,_0x66caab);const _0x2a4c35=_0x66caab+_0x16f282+0x16,_0x278d77=new Uint8Array(_0x2a4c35);let _0x4beb8e=0x0;for(const _0x51246c of[..._0x4ce1a1,..._0x3b274c,_0x236a52]){_0x278d77['set'](_0x51246c,_0x4beb8e),_0x4beb8e+=_0x51246c['length'];}return _0x278d77;}function _0x415eea(_0x2ac47a){const _0x4abb5c=_0x323bc6,_0xf47f16=_0x2ac47a[_0x4abb5c(0xdd)]||_0x2ac47a['absent']||[];if(!_0xf47f16['length'])throw new Error('لا\x20توجد\x20حالات\x20معتمدة\x20لهذا\x20النموذج');const _0x3c3ce5=_0x2ac47a['type']||(_0x2ac47a[_0x4abb5c(0xb6)]?'day':_0x4abb5c(0xdd)),_0x2df752=_0x43c531[_0x3c3ce5];if(!_0x2df752)throw new Error(_0x4abb5c(0xb4));const _0x47700b=(_0x4c2981,_0x1cc634=![],_0x476740=_0x4abb5c(0x10f),_0x53ff94={})=>({'value':_0x4047b4(_0x4c2981),'bold':_0x1cc634,'align':_0x476740,..._0x53ff94}),_0xd58fd4=new Intl['DateTimeFormat']('ar-SA',{'timeZone':'Asia/Riyadh','weekday':'long'})['format'](new Date(_0x2ac47a[_0x4abb5c(0xd2)]+'T12:00:00+03:00')),_0x1f4a98=_0x3c3ce5===_0x4abb5c(0x102)?_0x2ac47a[_0x4abb5c(0xe1)]:[_0x2ac47a];if(!_0x1f4a98?.['length']||_0x1f4a98['some'](_0x512dc3=>_0x512dc3['date']!==_0x2ac47a['date']||_0x512dc3['id']!==_0x2ac47a['id']))throw new Error(_0x4abb5c(0x114));const _0x2bc700=[_0x47700b('طلب\x20إفادة',!![],'center'),_0x47700b(_0x4abb5c(0xb1)+_0xd58fd4+'\x20\x20\x20\x20التاريخ:\x20'+_0x2ac47a['date'],![],'left'),_0x47700b('السلام\x20عليكم\x20ورحمة\x20الله\x20وبركاته،'),_0x47700b('الأستاذ\x20/\x20'+_0x2ac47a[_0x4abb5c(0xf2)],!![])];if(_0x2ac47a['provisional'])_0x2bc700[_0x4abb5c(0xb7)](_0x47700b('أُعد\x20هذا\x20الخطاب\x20وفق\x20حالات\x20الرصد\x20المتاحة\x20حتى\x20وقت\x20إصداره'));for(const _0x1d3d12 of _0x1f4a98){const _0xa29a59=_0x1d3d12['type']||_0x3c3ce5,_0x4fe179=_0x1d3d12['lessons']||_0x1d3d12['absent']||[];if(_0x1f4a98[_0x4abb5c(0xad)]>0x1)_0x2bc700[_0x4abb5c(0xb7)](_0x47700b(_0x43c531[_0xa29a59],!![],'center'));_0x2bc700[_0x4abb5c(0xb7)](_0x47700b(_0xa29a59===_0x4abb5c(0xaa)?'لوحظ\x20قلة\x20تواجدكم\x20في\x20الحصة،\x20نرجو\x20الإفادة.\x20وذلك\x20بشأن\x20الحصص\x20الآتية:':_0xa29a59===_0x4abb5c(0xf9)?'لوحظ\x20تغيبكم\x20عن\x20اليوم\x20الدراسي\x20الموضح\x20أعلاه،\x20نرجو\x20الإفادة.':_0xa29a59==='partial'||_0xa29a59==='late'?_0x4abb5c(0xf6):'لوحظ\x20تغيبكم\x20عن\x20الحصص\x20الآتية\x20في\x20اليوم\x20الموضح\x20أعلاه،\x20نرجو\x20الإفادة.'));if(_0xa29a59!=='day'){for(const _0x37cbd8 of _0x4fe179)_0x2bc700['push'](_0x47700b('الحصة\x20'+_0x37cbd8['period']+(_0x37cbd8[_0x4abb5c(0xc9)]?_0x4abb5c(0xa0)+_0x37cbd8['subject']:'')+(_0x37cbd8['className']?'\x20—\x20الفصل:\x20'+_0x37cbd8['className']:'')));}}return _0x2bc700[_0x4abb5c(0xb7)](_0x47700b(_0x4abb5c(0x117)),_0x47700b('مدير\x20المدرسة',!![],'center',{'spaceBefore':_0x406d50['lineHeight']*0x2,'spaceAfter':_0x406d50['lineHeight']}),_0x47700b(_0xc13d0a['MirsadSchoolProfile']?.['director']||'',!![],'center',{'spaceAfter':_0x406d50[_0x4abb5c(0xde)]}),_0x47700b('التوقيع',![],_0x4abb5c(0xc4),{'spaceAfter':_0x406d50[_0x4abb5c(0xde)],'directorSignature':!![]}),_0x47700b('إفادة\x20المعلم',!![],'center'),_0x47700b(_0x1f4a98[_0x4abb5c(0xad)]>0x1?'الإفادة\x20عن\x20الحالات\x20الموضحة\x20أعلاه:\x20........................................................':_0x1f4a98[0x0][_0x4abb5c(0xe6)]==='partial-absence'?'سبب\x20التغيب\x20الجزئي:\x20................................................................................':_0x1f4a98[0x0]['type']==='partial'||_0x1f4a98[0x0]['type']==='late'?'سبب\x20عدم\x20الالتزام\x20بزمن\x20الحصة:\x20........................................................':_0x4abb5c(0xe8)),_0x47700b('................................................................................................'),_0x47700b(_0x4abb5c(0xa8)),_0x47700b('المرفقات\x20إن\x20وجدت',![],'right',{'spaceAfter':_0x406d50['lineHeight'],'keepNext':!![]}),_0x47700b(_0x4abb5c(0xe3)+_0x2ac47a[_0x4abb5c(0xf2)],![],_0x4abb5c(0x10f),{'spaceAfter':_0x406d50[_0x4abb5c(0xde)],'keepNext':!![]}),_0x47700b('التوقيع',![],'right',{'keepNext':!![]}),_0x47700b('التاريخ')),_0x2bc700;}const _0x406d50={'font':'IBM\x20Plex\x20Sans\x20Arabic','bodyFont':11.5,'titleFont':0xd,'lineHeight':5.8,'paragraphGap':1.8,'boldGap':2.4,'margin':0xf,'top':0x34,'bottom':0x12,'headerTop':0xa,'footer':0x7};let _0x5521c8;async function _0x45b4c6(){const _0x485b45=_0x323bc6;if(!_0x5521c8)_0x5521c8=fetch('assets/fonts/IBMPlexSansArabic-Regular.ttf')[_0x485b45(0xbd)](async _0x207159=>{const _0x23d88e=_0x485b45;if(!_0x207159['ok'])throw new Error(_0x23d88e(0x106));return new Uint8Array(await _0x207159['arrayBuffer']());})[_0x485b45(0x103)](_0x1aec24=>{_0x5521c8=null;throw _0x1aec24;});return _0x5521c8;}const _0x23bc49=_0x5374a5=>Math['round'](_0x5374a5*0x5a0/25.4);function _0x3792d1(_0x44abf7,_0x544760=_0x406d50[_0x323bc6(0xe9)],_0x3441a8=![]){const _0x31a3bf=_0x323bc6;return'<w:r><w:rPr><w:rtl/><w:rFonts\x20w:ascii=\x22'+_0x406d50['font']+_0x31a3bf(0xda)+_0x406d50['font']+'\x22\x20w:cs=\x22'+_0x406d50['font']+'\x22/><w:sz\x20w:val=\x22'+_0x544760*0x2+_0x31a3bf(0xce)+_0x544760*0x2+_0x31a3bf(0xa4)+(_0x3441a8?'<w:b/><w:bCs/>':'')+_0x31a3bf(0x9f)+_0x4b4395(_0x44abf7)+'</w:t></w:r>';}function _0x33fb13(_0x60ccc5,_0x53a192){const _0x359495=_0x323bc6,_0x1ec44b=(_0x328555,_0x296bde=![])=>_0x359495(0x10e)+(_0x296bde?'<w:jc\x20w:val=\x22center\x22/>':'')+'<w:spacing\x20w:after=\x220\x22\x20w:line=\x22'+_0x23bc49(4.5)+_0x359495(0xff)+_0x3792d1(_0x4047b4(_0x328555),0xa)+_0x359495(0xc6),_0x1d40fd=(_0x30f0a9,_0x1234bd)=>'<w:tc><w:tcPr><w:tcW\x20w:w=\x22'+_0x23bc49(_0x1234bd)+_0x359495(0xe7)+_0x30f0a9+'</w:tc>',_0x2e5682=_0x359495(0xef);return'<?xml\x20version=\x221.0\x22\x20encoding=\x22UTF-8\x22?><w:hdr\x20xmlns:w=\x22http://schemas.openxmlformats.org/wordprocessingml/2006/main\x22\x20xmlns:r=\x22http://schemas.openxmlformats.org/officeDocument/2006/relationships\x22\x20xmlns:wp=\x22http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\x22\x20xmlns:a=\x22http://schemas.openxmlformats.org/drawingml/2006/main\x22\x20xmlns:pic=\x22http://schemas.openxmlformats.org/drawingml/2006/picture\x22><w:tbl><w:tblPr><w:bidiVisual/><w:tblW\x20w:w=\x22'+_0x23bc49(0xb4)+_0x359495(0xfa)+[0x40,0x34,0x40][_0x359495(0xe4)](_0x26113a=>_0x359495(0xf8)+_0x23bc49(_0x26113a)+_0x359495(0xa4))[_0x359495(0xf1)]('')+_0x359495(0xd5)+_0x1d40fd(['المملكة\x20العربية\x20السعودية','وزارة\x20التعليم',globalThis['MirsadSchoolProfile']?.[_0x359495(0xf7)]||'الإدارة\x20العامة\x20للتعليم',_0x60ccc5||''][_0x359495(0xe4)](_0x30056f=>_0x1ec44b(_0x30056f))[_0x359495(0xf1)](''),0x40)+_0x1d40fd(_0x2e5682,0x34)+_0x1d40fd(_0x1ec44b('التاريخ\x20'+_0x53a192)+_0x1ec44b('الرقم'),0x40)+'</w:tr></w:tbl><w:p><w:pPr><w:spacing\x20w:after=\x220\x22\x20w:line=\x22'+_0x23bc49(0x8)+'\x22\x20w:lineRule=\x22exact\x22/><w:pBdr><w:bottom\x20w:val=\x22single\x22\x20w:sz=\x222\x22\x20w:color=\x22A5B6BE\x22/></w:pBdr></w:pPr></w:p></w:hdr>';}function _0x307ce6(){return'<w:p><w:pPr><w:jc\x20w:val=\x22center\x22/><w:spacing\x20w:after=\x22'+_0x23bc49(0x2)+'\x22/></w:pPr><w:r><w:drawing><wp:inline\x20xmlns:wp=\x22http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\x22\x20distT=\x220\x22\x20distB=\x220\x22\x20distL=\x220\x22\x20distR=\x220\x22><wp:extent\x20cx=\x221728000\x22\x20cy=\x22518400\x22/><wp:docPr\x20id=\x22700\x22\x20name=\x22توقيع\x20مدير\x20المدرسة\x22/><a:graphic\x20xmlns:a=\x22http://schemas.openxmlformats.org/drawingml/2006/main\x22><a:graphicData\x20uri=\x22http://schemas.openxmlformats.org/drawingml/2006/picture\x22><pic:pic\x20xmlns:pic=\x22http://schemas.openxmlformats.org/drawingml/2006/picture\x22><pic:nvPicPr><pic:cNvPr\x20id=\x22700\x22\x20name=\x22توقيع\x20المدير\x22/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip\x20r:embed=\x22rIdMirsadDirectorSignature\x22/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off\x20x=\x220\x22\x20y=\x220\x22/><a:ext\x20cx=\x221728000\x22\x20cy=\x22518400\x22/></a:xfrm><a:prstGeom\x20prst=\x22rect\x22><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';}function _0x187a03(_0x523f44,_0x438898='',_0x5d63b6,_0xd3b290=_0xc13d0a[_0x323bc6(0xf5)]?.[_0x323bc6(0x116)]()||''){const _0x203b49=_0x323bc6;if(!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/[_0x203b49(0xa7)](_0xd3b290)||_0xd3b290[_0x203b49(0xad)]>=0xf4240)_0xd3b290='';const _0x40919a=({value:_0x54780d,bold:_0x2a906e,align:_0x293bd0,spaceBefore:spaceBefore=0x0,spaceAfter:_0x3c567e,keepNext:keepNext=![],directorSignature:directorSignature=![]})=>_0x203b49(0xd3)+(_0x293bd0===_0x203b49(0xd0)?_0x203b49(0xdb):'<w:bidi/>')+(_0x293bd0==='center'?'<w:jc\x20w:val=\x22center\x22/>':_0x293bd0==='left'?_0x203b49(0xd8):'')+(_0x2a906e||keepNext||_0xd3b290&&directorSignature?'<w:keepNext/>':'')+_0x203b49(0xa5)+_0x23bc49(spaceBefore)+'\x22\x20w:after=\x22'+_0x23bc49(_0x3c567e??(_0x2a906e?_0x406d50[_0x203b49(0xa6)]:_0x406d50['paragraphGap']))+_0x203b49(0xb0)+_0x23bc49(_0x406d50[_0x203b49(0xde)])+'\x22\x20w:lineRule=\x22exact\x22/></w:pPr>'+_0x3792d1(_0x54780d,_0x2a906e?_0x406d50[_0x203b49(0xbb)]:_0x406d50[_0x203b49(0xe9)],_0x2a906e)+_0x203b49(0xc6),_0x5b61d2=_0x415eea(_0x523f44)[_0x203b49(0xb3)](_0x2c304a=>[_0x40919a(_0x2c304a),..._0xd3b290&&_0x2c304a[_0x203b49(0xac)]?[_0x307ce6()]:[]]),_0x43c256=typeof module!=='undefined'?require(_0x203b49(0xa1)):_0xc13d0a[_0x203b49(0xb8)],_0x4c28a1={};for(const [_0x168e1d,_0x1f44bf]of Object['entries'](_0x43c256)){if(typeof _0x1f44bf===_0x203b49(0xd1))_0x4c28a1[_0x168e1d]=_0x1f44bf['replaceAll']('{اسم_المدرسة}',_0x4b4395(_0x438898||''))[_0x203b49(0xa3)]('{تاريخ_المعاملة}',_0x4b4395(_0x523f44[_0x203b49(0xd2)]))['replaceAll'](_0x203b49(0x11d),'')['replaceAll']('{الإدارة_العامة_للتعليم}',_0x4b4395(globalThis[_0x203b49(0xbf)]?.['educationAdministration']||''));else{const _0x16c185=atob(_0x1f44bf['base64']);_0x4c28a1[_0x168e1d]=Uint8Array['from'](_0x16c185,_0x49dfa8=>_0x49dfa8[_0x203b49(0x109)](0x0));}}for(const _0x6109a4 of Object[_0x203b49(0xb9)](_0x4c28a1)){if(_0x6109a4['startsWith']('word/header')&&_0x6109a4[_0x203b49(0x10a)]('.xml'))_0x4c28a1[_0x6109a4]=_0x4c28a1[_0x6109a4]['replace'](/(<w:t(?:\s[^>]*)?>)([\s\S]*?)(<\/w:t>)/g,(_0x106f2f,_0x1de8a3,_0x55d951,_0x2e92f3)=>_0x1de8a3+_0x4047b4(_0x55d951)+_0x2e92f3);}_0xd3b290&&(_0x4c28a1['word/media/director-signature.png']=Uint8Array['from'](atob(_0xd3b290['split'](',')[0x1]),_0x1f93f5=>_0x1f93f5[_0x203b49(0x109)](0x0)),_0x4c28a1['word/_rels/document.xml.rels']=_0x4c28a1['word/_rels/document.xml.rels']['replace'](_0x203b49(0x101),'<Relationship\x20Id=\x22rIdMirsadDirectorSignature\x22\x20Type=\x22http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\x22\x20Target=\x22media/director-signature.png\x22/></Relationships>'));_0x4c28a1['word/header2.xml']=_0x33fb13(_0x438898,_0x523f44[_0x203b49(0xd2)]),_0x4c28a1[_0x203b49(0x118)]='<?xml\x20version=\x221.0\x22\x20encoding=\x22UTF-8\x22?><w:ftr\x20xmlns:w=\x22http://schemas.openxmlformats.org/wordprocessingml/2006/main\x22><w:p><w:pPr><w:bidi/><w:jc\x20w:val=\x22center\x22/></w:pPr>'+_0x3792d1(_0x203b49(0xdc),0x9)+'</w:p></w:ftr>';if(_0x5d63b6){const _0x461cf6=new Uint8Array(_0x5d63b6),_0x4bbec3=_0x203b49(0x119)['match'](/../g)[_0x203b49(0xe4)](_0x14e9f6=>parseInt(_0x14e9f6,0x10));for(let _0x2ae87b=0x0;_0x2ae87b<0x20;_0x2ae87b++)_0x461cf6[_0x2ae87b]^=_0x4bbec3[_0x2ae87b%0x10];_0x4c28a1['word/fonts/MirsadArabic.odttf']=_0x461cf6,_0x4c28a1[_0x203b49(0xc5)]=_0x4c28a1['word/fontTable.xml']['replace']('</w:fonts>',_0x203b49(0xb2)+_0x406d50[_0x203b49(0xa9)]+'\x22><w:family\x20w:val=\x22swiss\x22/><w:embedRegular\x20r:id=\x22rIdMirsadFont\x22\x20w:fontKey=\x22{00112233-4455-6677-8899-AABBCCDDEEFF}\x22/></w:font></w:fonts>'),_0x4c28a1[_0x203b49(0xe0)]='<?xml\x20version=\x221.0\x22?><Relationships\x20xmlns=\x22http://schemas.openxmlformats.org/package/2006/relationships\x22><Relationship\x20Id=\x22rIdMirsadFont\x22\x20Type=\x22http://schemas.openxmlformats.org/officeDocument/2006/relationships/font\x22\x20Target=\x22fonts/MirsadArabic.odttf\x22/></Relationships>',_0x4c28a1[_0x203b49(0x10b)]=_0x4c28a1[_0x203b49(0x10b)][_0x203b49(0x10c)](_0x203b49(0x11b),'<Default\x20Extension=\x22odttf\x22\x20ContentType=\x22application/vnd.openxmlformats-officedocument.obfuscatedFont\x22/></Types>');}const _0x1dd100=_0x4c28a1['word/document.xml'],_0xecff24='<w:sectPr><w:headerReference\x20w:type=\x22default\x22\x20r:id=\x22rId8\x22/><w:footerReference\x20w:type=\x22default\x22\x20r:id=\x22rId10\x22/><w:pgSz\x20w:w=\x2211906\x22\x20w:h=\x2216838\x22/><w:pgMar\x20w:top=\x22'+_0x23bc49(_0x406d50[_0x203b49(0xd9)])+_0x203b49(0xc7)+_0x23bc49(_0x406d50['margin'])+'\x22\x20w:bottom=\x22'+_0x23bc49(_0x406d50['bottom'])+'\x22\x20w:left=\x22'+_0x23bc49(_0x406d50['margin'])+'\x22\x20w:header=\x22'+_0x23bc49(_0x406d50[_0x203b49(0xe2)])+_0x203b49(0x107)+_0x23bc49(_0x406d50[_0x203b49(0xfe)])+'\x22/><w:bidi/></w:sectPr>';return _0x4c28a1['word/settings.xml']=_0x4c28a1[_0x203b49(0xd4)][_0x203b49(0x10c)](/<w:evenAndOddHeaders[^>]*\/>/g,''),_0x4c28a1['word/document.xml']=_0x1dd100['replace'](/<w:body>[\s\S]*<\/w:body>/,'<w:body>'+_0x5b61d2[_0x203b49(0xf1)]('')+_0xecff24+'</w:body>'),_0x74e6cb(_0x4c28a1);}async function _0x1e43af(_0x55595e,_0x5e6308){const _0xbe65c8=_0x323bc6,_0x83d442=_0x187a03(_0x55595e,_0x5e6308,await _0x45b4c6()),_0x1228d8=URL['createObjectURL'](new Blob([_0x83d442],{'type':_0xbe65c8(0xc1)})),_0x23542a=document['createElement']('a');_0x23542a[_0xbe65c8(0x110)]=_0x1228d8,_0x23542a[_0xbe65c8(0xcf)]='طلب\x20إفادة\x20-\x20'+_0x43c531[_0x55595e[_0xbe65c8(0xe6)]||(_0x55595e['fullDay']?'day':_0xbe65c8(0xdd))]+'\x20-\x20'+_0x55595e[_0xbe65c8(0xf2)][_0xbe65c8(0x10c)](/[\\/:*?"<>|]/g,'')+'\x20-\x20'+_0x55595e['date']+'.docx',document[_0xbe65c8(0xcc)][_0xbe65c8(0xed)](_0x23542a),_0x23542a['click'](),_0x23542a['remove'](),setTimeout(()=>URL['revokeObjectURL'](_0x1228d8),0xea60);}function _0x44bc4d(_0x18646f,_0x2ddd6f,_0x56cbaa=new Date()){const _0xa462f5=_0x323bc6,_0x3a42f6=(_0x18646f?.['snapshot']?.['lessons']||[])['filter'](_0x1ad5d6=>!_0x2ddd6f['isExcludedPeriod'](_0x18646f[_0xa462f5(0x100)]['date'],_0x1ad5d6[_0xa462f5(0xcd)],_0x18646f[_0xa462f5(0x100)]));return _0x3a42f6[_0xa462f5(0xad)]>0x0&&_0x2ddd6f[_0xa462f5(0xf4)](_0x18646f,Math['max'](..._0x3a42f6['map'](_0x36d569=>Number(_0x36d569[_0xa462f5(0xcd)]))),_0x56cbaa);}const _0x589fc1={'ready':_0x44bc4d,'zip':_0x74e6cb,'daily':_0x16bd93,'teacherDaily':_0x5d3721,'documentBytes':_0x187a03,'download':_0x1e43af,'paragraphs':_0x415eea,'layout':_0x406d50,'fontBytes':_0x45b4c6,'typeLabel':_0x43c531};if(typeof module!==_0x323bc6(0xae))module['exports']=_0x589fc1;else _0xc13d0a[_0x323bc6(0xf3)]=_0x589fc1;}(globalThis));function m0e4bb079_0x2ed4(){const _0xd8e883=['twLYC2fKvgvHy2HLCLjLCg9YDfrLBxbSyxrL','A2v5CW','2kRyO9IU2leG2lNzHIdyP9Me2k3yTDI1','DgL0BgvgB250','C3rHDhvZ','DgHLBG','mZyYndH3B1rODLu','twLYC2fKu2nOB29SuhjVzMLSzq','yNvMzMvY','yxbWBgLJyxrPB24VDM5KlM9Wzw54BwXMB3jTyxrZlw9MzMLJzwrVy3vTzw50lNDVCMrWCM9JzxnZAw5NBwWUzg9JDw1LBNq','C29Tzq','2kRyO9IU2leGlYdyRDI22yJySsdyRnIY2kBzIG','y2vUDgvY','D29Yzc9MB250vgfIBguUEg1S','pc93oNa+','iIb3oNjPz2H0psi','ChjLC2vUDa','C3vIAMvJDa','zMLSDgvY','CgfYDgLHBa','yM9KEq','CgvYAw9K','iI8+phC6C3PdCYb3oNzHBd0I','zg93BMXVywq','BgvMDa','C3rYAw5N','zgf0zq','phC6Cd48DZPWuhi+','D29Yzc9Zzxr0Aw5NCY54BwW','pc93oNrIBeDYAwq+phC6Dhi+','jMfTCdS','zw50CMLLCW','phC6AMmGDZP2ywW9iMXLzNqIlZ4','Dg9W','iIb3oMHbBNnPpsi','phC6yMLKAsb3oNzHBd0ImciVpG','2yxySDI12kFyRW','BgvZC29UCW','BgLUzuHLAwDODa','Aw5JBhvKzxm','D29Yzc9FCMvSCY9MB250vgfIBguUEg1SlNjLBhm','CMvWB3j0CW','AgvHzgvYvg9W','2kFyS9MfinIN2ytzHDI52ytzHsa','BwfW','DMfSDwvZ','DhLWzq','iIb3oNr5Cgu9iMr4ysiVpJX3oNzbBgLNBIb3oNzHBd0IDg9WiI8+pc93oNrJuhi+','2lpyQnIOinIN2ytyQTI62yRyQdOGlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4','yM9KEuzVBNq','ChjVDMLZAw9UywW','jMX0oW','C3rHDgu','yxbWzw5K','ywjZzw50','phC6Cd48DZPWuhi+phC6AMmGDZP2ywW9iMnLBNrLCIiVpJX3oNnWywnPBMCGDZPHzNrLCJ0ImciVpJWVDZPWuhi+phC6CJ48DZPKCMf3Aw5NpJX3CdPPBMXPBMuGzgLZDfq9iJaIigrPC3rcpsiWiIbKAxn0td0ImciGzgLZDfi9iJaIpJX3CdPLEhrLBNqGy3G9iJeXntiWmdaIign5psi5mdaWmdaIlZ48D3a6zg9JuhiGAwq9iJeIig5HBwu9iTI02lNyP9IXinMi2llyP9IX2kKG2kFzHnIQ2lNzHnMk2yuIlZ48ytPNCMfWAgLJpJXHoMDYyxbOAwneyxrHihvYAt0IAhr0CdOVl3nJAgvTyxmUB3bLBNHTBgzVCM1HDhmUB3jNl2rYyxDPBMDTBc8Ymda2l3bPy3r1CMuIpJXWAwm6CgLJpJXWAwm6BNzqAwnqCJ48CgLJoMnoDLbYigLKpsiXiIbUyw1LpslyTnI52kFySsdzInIY2kFySDIPinIN2ytyQTI52ytzITMfiI8+phbPyZPJtNzqAwnqCI8+pc9WAwm6BNzqAwnqCJ48CgLJoMjSAxbgAwXSpJXHoMjSAxaGCJPLBwjLzd0ICKLKmsiVpJXHoNn0CMv0y2G+pge6zMLSBfjLy3qVpJWVytPZDhjLDgnOpJWVCgLJoMjSAxbgAwXSpJXWAwm6C3bqCJ48ytP4zNjTpJXHoM9MzIb4psiWiIb5psiWiI8+pge6zxH0ign4psiXmtuYmdaWiIbJEt0IotaWmdaWiI8+pc9HoNHMCM0+pge6ChjZDeDLB20GChjZDd0ICMvJDci+pge6yxzmC3qVpJWVytPWCNn0r2vVBt48l3bPyZPZCfbYpJWVCgLJoNbPyZ48l2e6z3jHCgHPy0rHDge+pc9HoMDYyxbOAwm+pc93CdPPBMXPBMu+pc93oMrYyxDPBMC+pc93oNi+pc93oNa+','DhjPBq','AM9PBG','BMfTzq','twLYC2fKvgvHy2HLCLjLCg9YDa','BgvZC29Urw5Kzwq','twLYC2fKrgLYzwn0B3jtAwDUyxr1CMu','2ytzInIT2lGG2lNyR9MfinIN2ytyQTIY2kFzHDMd2yuG2kJySTMf2yyG2kFzHnIT2lxyQsdyP9Me2yxyS9IQ2k3zGTIminMg2lhyRnMiinIN2ytyPDMb2kFyR9IPlIdzInIW2ytzGYdyQnI02kpzHIdyP9Me2k3yTDI1inIN2ytyOTIQ2yRyQtO','zwr1y2f0Aw9UqwrTAw5PC3rYyxrPB24','phC6z3jPzenVBcb3oNC9iG','zgf5','iIb3oNr5Cgu9iMr4ysiVpJX3oNrIBeXHEw91Dcb3oNr5Cgu9iMzPEgvKiI8+phC6DgjSq2vSBe1HCJ48DZP0B3aGDZP3psiWiIb3oNr5Cgu9iMr4ysiVpJX3oMXLzNqGDZP3psiWiIb3oNr5Cgu9iMr4ysiVpJX3oMjVDhrVBsb3oNC9iJaIihC6DhLWzt0IzhHHiI8+phC6CMLNAhqGDZP3psiWiIb3oNr5Cgu9iMr4ysiVpJWVDZP0yMXdzwXStwfYpJWVDZP0yMXqCJ48DZP0yMXhCMLKpG','mtyXndy0mLnfwwfMsW','2lRzITIN2kGG2yRzInMfinMd2kFzHDMe','n1DxBeDdEG','zM9VDgvY','iIb3oMXPBMvsDwXLpsjLEgfJDciVpJWVDZPWuhi+','C25HChnOB3q','pc9szwXHDgLVBNnOAxbZpG','zgfPBhK','y2f0y2G','mJu0n2LnBxzRua','mNfiwwnhrq','2kRyUDIW2leG2kRyRDMf2yRzHcdyRTI3inIN2ytyRTI32kFyQnIBinIJ2lNyRYdyP9Me2yxyRDIN2yJzHnIP','iIb3oMzVB3rLCJ0I','zxzLCNK','y2HHCKnVzgvbDa','zw5KC1DPDgG','w0nVBNrLBNrFvhLWzxnDlNHTBa','CMvWBgfJzq','odyYnZzguxnKr0y','phC6Cd48DZPWuhi+phC6yMLKAs8+','CMLNAhq','AhjLzG','2yxyQTIN2kJyUDIPinIN2ytyRDI22yJySsdyP9Me2yRzInMf2yRyQq','2lRzITIN2kGG2k3yTDI1','mZK0ntm3me9KseDOvW','2yRyRnIOinIJ2yyG2kRyRTI1inIS2yxzITI5inIN2ytyRDIN2ytyP9IQinIN2ytzHDI52ytzHsdzInIN2ytzITMi2yuG2yBzGDIZ2yRzH9Mf2kC','zw5JB2rL','z2v0','2yRySDIS2yKG2kRzInI22yRyRsdyP9Me2kpyS9IO2kFyQcdyP9Me2yxyQTI52ytzGTIPinIO2yxyPYdzInIX2k8G2kpyUDMe2kFzH9IminMi2kxySDMb2kFzGIdzHDINinMk2ktzITIVinIN2ytyPDMb2kFyR9IPinIL2yyG2yJyRnIVlG','D29Yzc9MB290zxiYlNHTBa','rKzfrureq0ncqKfbotK4odC3nJy1ntq0mZmYmJeXmda','nJqXoduXmxDdufzUwG','pc9uExbLCZ4','ndiZndq3m1nlqwnMuW','E9IX2ylzHv/yP9Me2yxyUDIN2yxzHnIPFq','pc93oNjqCJ48DZP0ihHTBdPZCgfJzt0IChjLC2vYDMuIpG','iokaLca','lI90zwfJAgvYlxjLCg9YDc10zw1WBgf0zs5QCW','otq2mZm3ngXWBwTeyq','CMvWBgfJzufSBa','iI8+','phC6C3bHy2LUzYb3oMjLzM9Yzt0I','yM9SzeDHCa','DgvZDa','lI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4UlI4U','zM9UDa','CgfYDgLHBc1HyNnLBMnL','CMvKDwnL','zgLYzwn0B3jtAwDUyxr1CMu','BgvUz3rO','Dw5KzwzPBMvK','jMfWB3m7','iIb3oMXPBMu9iG','2kFzHnMk2yJzHtOG','phC6zM9UDcb3oM5HBwu9iG','zMXHDe1HCa','2yBzInI5inIN2ytzHTMf2yJySnISinI62yRySsdyTDIT2yRyRq','mte1vNfvuuTR','zNvSBerHEq','ChvZAa'];m0e4bb079_0x2ed4=function(){return _0xd8e883;};return m0e4bb079_0x2ed4();}
+"use strict";
+
+(function (_argument) {
+  'use strict';
+
+  const _value = _argument2 => String(_argument2 ?? "").replace(/[.:…]+/g, "").replace(/ {2,}/g, " ").trim(),
+    _value2 = _argument3 => String(_argument3 ?? "").replace(/[&<>"']/g, _argument4 => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&apos;"
+    })[_argument4]),
+    _options = {
+      "daily": "متابعة الحضور اليومية",
+      "lessons": "غياب حصص",
+      "partial": "تأخر / حضور جزئي",
+      "late": "تأخر عن الحصص",
+      "partial-absence": "غياب جزئي عن الحصص",
+      "day": "غياب يوم كامل"
+    };
+  function _value3(_argument5, _argument6, _argument7 = new Date(), _argument8 = {}) {
+    const _value4 = _argument6.cells(_argument5, {
+        "now": _argument7
+      }).map(_argument9 => {
+        if (!_argument8.includeProvisional || _argument9.override || _argument9.reset || ["present", "absent", "partial", "partial-absence"].includes(_argument9.state)) return _argument9;
+        const _value5 = _argument9.rounds.filter(_argument0 => !_argument0.pending && ["present", "absent"].includes(_argument0.status));
+        if (!_value5.some(_argument1 => _argument1.status === "absent")) return _argument9;
+        return {
+          ..._argument9,
+          "state": _value5.some(_argument10 => _argument10.status === "present") ? "partial" : "absent",
+          "provisional": true
+        };
+      }),
+      _items = [];
+    for (const _value6 of _argument5?.["snapshot"]?.["teachers"] || []) {
+      const _value7 = _value4.filter(_argument11 => _argument11.teacherId === _value6.id),
+        _value8 = _value7.filter(_argument12 => _argument12.state === "absent"),
+        _value9 = _value7.filter(_argument13 => _argument13.state === "partial"),
+        _value0 = _value7.filter(_argument14 => _argument14.state === "partial-absence"),
+        _value1 = _value7.length > 0 && _value7.every(_argument15 => _argument15.state === "absent" && _argument15.ended && !_argument15.provisional),
+        _value10 = (_argument16, _argument17) => _items.push({
+          "id": _value6.id,
+          "name": _value6.name,
+          "date": _argument5.snapshot.date,
+          "type": _argument16,
+          "lessons": _argument17,
+          "absent": ["partial", "late", "partial-absence"].includes(_argument16) ? [] : _argument17,
+          "fullDay": _argument16 === "day"
+        });
+      if (_value1) _value10("day", _value8);else {
+        if (_value8.length) _value10("lessons", _value8);
+        if (_value9.length) _value10("partial", _value9);
+        if (_value0.length) _value10("partial-absence", _value0);
+      }
+    }
+    return _items;
+  }
+  function _value11(_argument18, _argument19, _argument20 = new Date()) {
+    const _value12 = new Map();
+    for (const _value13 of _value3(_argument18, _argument19, _argument20, {
+      "includeProvisional": true
+    })) {
+      let _value14 = _value12.get(_value13.id);
+      !_value14 && (_value14 = {
+        "id": _value13.id,
+        "name": _value13.name,
+        "date": _value13.date,
+        "type": "daily",
+        "reports": [],
+        "lessons": []
+      }, _value12.set(_value13.id, _value14)), _value14.reports.push(_value13), _value14.lessons.push(..._value13.lessons), _value14.provisional = _value14.lessons.some(_argument21 => _argument21.provisional);
+    }
+    return [..._value12.values()];
+  }
+  function _value15(_argument22) {
+    const _value16 = new TextEncoder(),
+      _items2 = [],
+      _items3 = [];
+    let _number = 0;
+    const _value17 = (_argument23, _argument24, _argument25) => _argument23.setUint16(_argument24, _argument25, true),
+      _value18 = (_argument26, _argument27, _argument28) => _argument26.setUint32(_argument27, _argument28 >>> 0, true);
+    for (const [_value19, _value20] of Object.entries(_argument22)) {
+      const _value21 = _value16.encode(_value19),
+        _value22 = _value20 instanceof Uint8Array ? _value20 : _value16.encode(_value20);
+      let _number2 = 4294967295;
+      for (const _value23 of _value22) {
+        _number2 ^= _value23;
+        for (let _number3 = 0; _number3 < 8; _number3++) _number2 = _number2 >>> 1 ^ (_number2 & 1 ? 3988292384 : 0);
+      }
+      _number2 = (_number2 ^ 4294967295) >>> 0;
+      const _value24 = new Uint8Array(30 + _value21.length),
+        _value25 = new DataView(_value24.buffer);
+      _value18(_value25, 0, 67324752), _value17(_value25, 4, 20), _value17(_value25, 6, 2048), _value18(_value25, 14, _number2), _value18(_value25, 18, _value22.length), _value18(_value25, 22, _value22.length), _value17(_value25, 26, _value21.length), _value24.set(_value21, 30), _items2.push(_value24, _value22);
+      const _value26 = new Uint8Array(46 + _value21.length),
+        _value27 = new DataView(_value26.buffer);
+      _value18(_value27, 0, 33639248), _value17(_value27, 4, 20), _value17(_value27, 6, 20), _value17(_value27, 8, 2048), _value18(_value27, 16, _number2), _value18(_value27, 20, _value22.length), _value18(_value27, 24, _value22.length), _value17(_value27, 28, _value21.length), _value18(_value27, 42, _number), _value26.set(_value21, 46), _items3.push(_value26), _number += _value24.length + _value22.length;
+    }
+    const _value28 = _items3.reduce((_argument29, _argument30) => _argument29 + _argument30.length, 0),
+      _value29 = new Uint8Array(22),
+      _value30 = new DataView(_value29.buffer);
+    _value18(_value30, 0, 101010256), _value17(_value30, 8, _items3.length), _value17(_value30, 10, _items3.length), _value18(_value30, 12, _value28), _value18(_value30, 16, _number);
+    const _value31 = _number + _value28 + 22,
+      _value32 = new Uint8Array(_value31);
+    let _number4 = 0;
+    for (const _value33 of [..._items2, ..._items3, _value29]) {
+      _value32.set(_value33, _number4), _number4 += _value33.length;
+    }
+    return _value32;
+  }
+  function _value34(_argument31) {
+    const _value35 = _argument31.lessons || _argument31.absent || [];
+    if (!_value35.length) throw new Error("لا توجد حالات معتمدة لهذا النموذج");
+    const _value36 = _argument31.type || (_argument31.fullDay ? "day" : "lessons"),
+      _value37 = _options[_value36];
+    if (!_value37) throw new Error("نوع النموذج غير صحيح");
+    const _value38 = (_argument32, _argument33 = false, _argument34 = "right", _argument35 = {}) => ({
+        "value": _value(_argument32),
+        "bold": _argument33,
+        "align": _argument34,
+        ..._argument35
+      }),
+      _value39 = new Intl.DateTimeFormat("ar-SA", {
+        "timeZone": "Asia/Riyadh",
+        "weekday": "long"
+      }).format(new Date(_argument31.date + "T12:00:00+03:00")),
+      _value40 = _value36 === "daily" ? _argument31.reports : [_argument31];
+    if (!_value40?.["length"] || _value40.some(_argument36 => _argument36.date !== _argument31.date || _argument36.id !== _argument31.id)) throw new Error("يجب أن تخص جميع الحالات المعلم واليوم نفسيهما");
+    const _items4 = [_value38("طلب إفادة", true, "center"), _value38("اليوم: " + _value39 + "    التاريخ: " + _argument31.date, false, "left"), _value38("السلام عليكم ورحمة الله وبركاته،"), _value38("الأستاذ / " + _argument31.name, true)];
+    if (_argument31.provisional) _items4.push(_value38("أُعد هذا الخطاب وفق حالات الرصد المتاحة حتى وقت إصداره"));
+    for (const _value41 of _value40) {
+      const _value42 = _value41.type || _value36,
+        _value43 = _value41.lessons || _value41.absent || [];
+      if (_value40.length > 1) _items4.push(_value38(_options[_value42], true, "center"));
+      _items4.push(_value38(_value42 === "partial-absence" ? "لوحظ قلة تواجدكم في الحصة، نرجو الإفادة. وذلك بشأن الحصص الآتية:" : _value42 === "day" ? "لوحظ تغيبكم عن اليوم الدراسي الموضح أعلاه، نرجو الإفادة." : _value42 === "partial" || _value42 === "late" ? "لوحظ عدم التزامكم بزمن الحصة المستحق، نرجو الإفادة. وذلك بشأن الحصص الآتية:" : "لوحظ تغيبكم عن الحصص الآتية في اليوم الموضح أعلاه، نرجو الإفادة."));
+      if (_value42 !== "day") {
+        for (const _value44 of _value43) _items4.push(_value38("الحصة " + _value44.period + (_value44.subject ? " \u2014 " + _value44.subject : "") + (_value44.className ? " \u2014 الفصل: " + _value44.className : "")));
+      }
+    }
+    return _items4.push(_value38("يرجى توضيح الأسباب المتعلقة بما ورد أعلاه، وإرفاق ما يؤيد الإفادة إن وجد."), _value38("مدير المتوسطة", true, "center", {
+      "spaceBefore": _options2.lineHeight * 2,
+      "spaceAfter": _options2.lineHeight,
+      "keepNext": true
+    }), _value38("التوقيع", false, "center", {
+      "spaceAfter": _options2.lineHeight,
+      "directorSignature": true,
+      "keepNext": true
+    }), _value38(_argument.MirsadSchoolProfile?.["director"] || "", true, "center", {
+      "spaceAfter": _options2.lineHeight
+    }), _value38("إفادة المعلم", true, "center"), _value38(_value40.length > 1 ? "الإفادة عن الحالات الموضحة أعلاه: ........................................................" : _value40[0].type === "partial-absence" ? "سبب التغيب الجزئي: ................................................................................" : _value40[0].type === "partial" || _value40[0].type === "late" ? "سبب عدم الالتزام بزمن الحصة: ........................................................" : "سبب التغيب: ................................................................................"), _value38("................................................................................................"), _value38("................................................................................................"), _value38("المرفقات إن وجدت", false, "right", {
+      "spaceAfter": _options2.lineHeight,
+      "keepNext": true
+    }), _value38("اسم المعلم " + _argument31.name, false, "right", {
+      "spaceAfter": _options2.lineHeight,
+      "keepNext": true
+    }), _value38("التوقيع", false, "right", {
+      "keepNext": true
+    }), _value38("التاريخ")), _items4;
+  }
+  const _options2 = {
+    "font": "IBM Plex Sans Arabic",
+    "bodyFont": 11.5,
+    "titleFont": 13,
+    "lineHeight": 5.8,
+    "paragraphGap": 1.8,
+    "boldGap": 2.4,
+    "margin": 15,
+    "top": 52,
+    "bottom": 18,
+    "headerTop": 10,
+    "footer": 7
+  };
+  let _value45;
+  async function _value46() {
+    if (!_value45) _value45 = fetch("assets/fonts/IBMPlexSansArabic-Regular.ttf").then(async _argument37 => {
+      if (!_argument37.ok) throw new Error("تعذر تحميل خط الخطاب؛ أعد المحاولة");
+      return new Uint8Array(await _argument37.arrayBuffer());
+    })["catch"](_argument38 => {
+      _value45 = null;
+      throw _argument38;
+    });
+    return _value45;
+  }
+  const _value47 = _argument39 => Math.round(_argument39 * 1440 / 25.4);
+  function _value48(_argument40, _argument41 = _options2.bodyFont, _argument42 = false) {
+    return "<w:r><w:rPr><w:rtl/><w:rFonts w:ascii=\"" + _options2.font + "\" w:hAnsi=\"" + _options2.font + "\" w:cs=\"" + _options2.font + "\"/><w:sz w:val=\"" + _argument41 * 2 + "\"/><w:szCs w:val=\"" + _argument41 * 2 + "\"/>" + (_argument42 ? "<w:b/><w:bCs/>" : "") + "</w:rPr><w:t xml:space=\"preserve\">" + _value2(_argument40) + "</w:t></w:r>";
+  }
+  function _value49(_argument43, _argument44) {
+    const _value50 = (_argument45, _argument46 = false) => "<w:p><w:pPr><w:bidi/>" + (_argument46 ? "<w:jc w:val=\"center\"/>" : "") + "<w:spacing w:after=\"0\" w:line=\"" + _value47(4.5) + "\" w:lineRule=\"exact\"/></w:pPr>" + _value48(_value(_argument45), 10) + "</w:p>",
+      _value51 = (_argument47, _argument48) => "<w:tc><w:tcPr><w:tcW w:w=\"" + _value47(_argument48) + "\" w:type=\"dxa\"/><w:vAlign w:val=\"top\"/></w:tcPr>" + _argument47 + "</w:tc>",
+      _text = "<w:p><w:pPr><w:jc w:val=\"center\"/><w:spacing w:after=\"0\"/></w:pPr><w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"1152000\" cy=\"900000\"/><wp:docPr id=\"1\" name=\"شعار وزارة التعليم\"/><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic><pic:nvPicPr><pic:cNvPr id=\"1\" name=\"شعار وزارة التعليم\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"rId1\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"1152000\" cy=\"900000\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>";
+    return "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:hdr xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:tbl><w:tblPr><w:bidiVisual/><w:tblW w:w=\"" + _value47(180) + "\" w:type=\"dxa\"/><w:tblLayout w:type=\"fixed\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tblCellMar></w:tblPr><w:tblGrid>" + [64, 52, 64].map(_argument49 => "<w:gridCol w:w=\"" + _value47(_argument49) + "\"/>").join("") + "</w:tblGrid><w:tr>" + _value51(["المملكة العربية السعودية", "وزارة التعليم", globalThis.MirsadSchoolProfile?.["educationAdministration"] || "الإدارة العامة للتعليم", _argument43 || ""].map(_argument50 => _value50(_argument50)).join(""), 64) + _value51(_text, 52) + _value51(_value50("التاريخ " + _argument44) + _value50("الرقم"), 64) + "</w:tr></w:tbl><w:p><w:pPr><w:spacing w:after=\"0\" w:line=\"" + _value47(8) + "\" w:lineRule=\"exact\"/><w:pBdr><w:bottom w:val=\"single\" w:sz=\"2\" w:color=\"A5B6BE\"/></w:pBdr></w:pPr></w:p></w:hdr>";
+  }
+  function _value52() {
+    return "<w:p><w:pPr><w:jc w:val=\"center\"/><w:spacing w:after=\"" + _value47(2) + "\"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"1728000\" cy=\"518400\"/><wp:docPr id=\"700\" name=\"توقيع مدير المدرسة\"/><a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:nvPicPr><pic:cNvPr id=\"700\" name=\"توقيع المدير\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"rIdMirsadDirectorSignature\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"1728000\" cy=\"518400\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>";
+  }
+  function _value53(_argument51, _argument52 = "", _argument53, _argument54 = _argument.MirsadDirectorSignature?.["get"]() || "") {
+    if (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(_argument54) || _argument54.length >= 1000000) _argument54 = "";
+    const _value54 = ({
+        value: _argument55,
+        bold: _argument56,
+        align: _argument57,
+        spaceBefore = 0,
+        spaceAfter: _argument58,
+        keepNext = false,
+        directorSignature = false
+      }) => "<w:p><w:pPr>" + (_argument57 === "left" ? "<w:bidi w:val=\"0\"/>" : "<w:bidi/>") + (_argument57 === "center" ? "<w:jc w:val=\"center\"/>" : _argument57 === "left" ? "<w:jc w:val=\"left\"/>" : "") + (_argument56 || keepNext || _argument54 && directorSignature ? "<w:keepNext/>" : "") + "<w:spacing w:before=\"" + _value47(spaceBefore) + "\" w:after=\"" + _value47(_argument58 ?? (_argument56 ? _options2.boldGap : _options2.paragraphGap)) + "\" w:line=\"" + _value47(_options2.lineHeight) + "\" w:lineRule=\"exact\"/></w:pPr>" + _value48(_argument55, _argument56 ? _options2.titleFont : _options2.bodyFont, _argument56) + "</w:p>",
+      _value55 = _value34(_argument51).flatMap(_argument59 => [_value54(_argument59), ...(_argument54 && _argument59.directorSignature ? [_value52()] : [])]),
+      _value56 = typeof module !== "undefined" ? require("./teacher-report-template.js") : _argument.MirsadTeacherReportTemplate,
+      _options3 = {};
+    for (const [_value57, _value58] of Object.entries(_value56)) {
+      if (typeof _value58 === "string") _options3[_value57] = _value58.replaceAll("{اسم_المدرسة}", _value2(_argument52 || "")).replaceAll("{تاريخ_المعاملة}", _value2(_argument51.date)).replaceAll("{رقم_المعاملة}", "").replaceAll("{الإدارة_العامة_للتعليم}", _value2(globalThis.MirsadSchoolProfile?.["educationAdministration"] || ""));else {
+        const _value59 = atob(_value58.base64);
+        _options3[_value57] = Uint8Array.from(_value59, _argument60 => _argument60.charCodeAt(0));
+      }
+    }
+    for (const _value60 of Object.keys(_options3)) {
+      if (_value60.startsWith("word/header") && _value60.endsWith(".xml")) _options3[_value60] = _options3[_value60].replace(/(<w:t(?:\s[^>]*)?>)([\s\S]*?)(<\/w:t>)/g, (_argument61, _argument62, _argument63, _argument64) => _argument62 + _value(_argument63) + _argument64);
+    }
+    _argument54 && (_options3["word/media/director-signature.png"] = Uint8Array.from(atob(_argument54.split(",")[1]), _argument65 => _argument65.charCodeAt(0)), _options3["word/_rels/document.xml.rels"] = _options3["word/_rels/document.xml.rels"].replace("</Relationships>", "<Relationship Id=\"rIdMirsadDirectorSignature\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/director-signature.png\"/></Relationships>"));
+    _options3["word/header2.xml"] = _value49(_argument52, _argument51.date), _options3["word/footer2.xml"] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:ftr xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p><w:pPr><w:bidi/><w:jc w:val=\"center\"/></w:pPr>" + _value48("مرصاد", 9) + "</w:p></w:ftr>";
+    if (_argument53) {
+      const _value61 = new Uint8Array(_argument53),
+        _value62 = "FFEEDDCCBBAA99887766554433221100".match(/../g).map(_argument66 => parseInt(_argument66, 16));
+      for (let _number5 = 0; _number5 < 32; _number5++) _value61[_number5] ^= _value62[_number5 % 16];
+      _options3["word/fonts/MirsadArabic.odttf"] = _value61, _options3["word/fontTable.xml"] = _options3["word/fontTable.xml"].replace("</w:fonts>", "<w:font w:name=\"" + _options2.font + "\"><w:family w:val=\"swiss\"/><w:embedRegular r:id=\"rIdMirsadFont\" w:fontKey=\"{00112233-4455-6677-8899-AABBCCDDEEFF}\"/></w:font></w:fonts>"), _options3["word/_rels/fontTable.xml.rels"] = "<?xml version=\"1.0\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rIdMirsadFont\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/font\" Target=\"fonts/MirsadArabic.odttf\"/></Relationships>", _options3["[Content_Types].xml"] = _options3["[Content_Types].xml"].replace("</Types>", "<Default Extension=\"odttf\" ContentType=\"application/vnd.openxmlformats-officedocument.obfuscatedFont\"/></Types>");
+    }
+    const _value63 = _options3["word/document.xml"],
+      _value64 = "<w:sectPr><w:headerReference w:type=\"default\" r:id=\"rId8\"/><w:footerReference w:type=\"default\" r:id=\"rId10\"/><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"" + _value47(_options2.top) + "\" w:right=\"" + _value47(_options2.margin) + "\" w:bottom=\"" + _value47(_options2.bottom) + "\" w:left=\"" + _value47(_options2.margin) + "\" w:header=\"" + _value47(_options2.headerTop) + "\" w:footer=\"" + _value47(_options2.footer) + "\"/><w:bidi/></w:sectPr>";
+    return _options3["word/settings.xml"] = _options3["word/settings.xml"].replace(/<w:evenAndOddHeaders[^>]*\/>/g, ""), _options3["word/document.xml"] = _value63.replace(/<w:body>[\s\S]*<\/w:body>/, "<w:body>" + _value55.join("") + _value64 + "</w:body>"), _value15(_options3);
+  }
+  async function _value65(_argument67, _argument68) {
+    const _value66 = _value53(_argument67, _argument68, await _value46()),
+      _value67 = URL.createObjectURL(new Blob([_value66], {
+        "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      })),
+      _value68 = document.createElement("a");
+    _value68.href = _value67, _value68.download = "طلب إفادة - " + _options[_argument67.type || (_argument67.fullDay ? "day" : "lessons")] + " - " + _argument67.name.replace(/[\\/:*?"<>|]/g, "") + " - " + _argument67.date + ".docx", document.body.append(_value68), _value68.click(), _value68.remove(), setTimeout(() => URL.revokeObjectURL(_value67), 60000);
+  }
+  function _value69(_argument69, _argument70, _argument71 = new Date()) {
+    const _value70 = (_argument69?.["snapshot"]?.["lessons"] || []).filter(_argument72 => !_argument70.isExcludedPeriod(_argument69.snapshot.date, _argument72.period, _argument69.snapshot));
+    return _value70.length > 0 && _argument70.lessonEnded(_argument69, Math.max(..._value70.map(_argument73 => Number(_argument73.period))), _argument71);
+  }
+  const _options4 = {
+    "ready": _value69,
+    "zip": _value15,
+    "daily": _value3,
+    "teacherDaily": _value11,
+    "documentBytes": _value53,
+    "download": _value65,
+    "paragraphs": _value34,
+    "layout": _options2,
+    "fontBytes": _value46,
+    "typeLabel": _options
+  };
+  if (typeof module !== "undefined") module.exports = _options4;else _argument.MirsadTeacherReport = _options4;
+})(globalThis);
