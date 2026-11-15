@@ -1,5 +1,5 @@
 {
-  "version": "2.9.31",
+  "version": "2.9.37",
   "submissionReady": false,
   "submitted": false,
   "permissions": [
@@ -39,7 +39,7 @@
     "convertedFiles": 27,
     "runtimeTestsPassed": 6
   },
-  "draftUploadPackage": "schools/downloads/Rased-Schools-2.9.31-Chrome-Store.zip",
+  "draftUploadPackage": "schools/downloads/Rased-Schools-2.9.37-Chrome-Store.zip",
   "demo": "Public synthetic-data simulation, no credentials or network. Not an end-to-end test of Madrasati/Teams.",
   "storeItemId": "ihdfpkkkagcaknbjljmbffpbblpcplpa",
   "nativeSupport": {
@@ -49,5 +49,7 @@
     "goTests": "passed in both native source modules",
     "windowsGuiBuild": "passed amd64",
     "liveWindowsInstallation": "pending"
-  }
+  },
+  "lastUserReportedSubmittedVersion": "2.9.31",
+  "commerceDeployment": "prepared owner 2.9.38; not live-verified"
 }

@@ -14,7 +14,7 @@
 | SOURCE/chrome-store/ | فك تشويش مصدر المتجر، اختبارات وملاحظات تجهيز النشر |
 | SOURCE/tests/ | اختبارات منطق الخدمة والمتصفح والفيديو والخطابات |
 | EXTENSIONS/personal-0.6.104/ | ملفات الإضافة الشخصية الحالية، منفصلة عن تجربة التقويم القديمة |
-| EXTENSIONS/schools-2.9.33/ | ملفات إضافة المدارس الحالية للتثبيت اليدوي |
+| EXTENSIONS/schools-2.9.37/ | ملفات إضافة المدارس الحالية للتثبيت اليدوي |
 | RELEASES/ | الحزم الحالية المثبتة الإصدارات |
 | BACKEND/ | كود خدمة المالك الكامل؛ خاص بالمالك، لا ينشر علنًا |
 | FILES.sha256 | بصمات للتحقق من ملفات التسليم |
@@ -23,3 +23,5 @@
 الموقع الشخصي: https://mirsad-school.onrender.com/automatic-monitoring.html
 موقع المدارس: https://mirsad-school.onrender.com/schools/automatic-monitoring.html
 لوحة المالك: https://mirsad-school.onrender.com/schools/owner-schools.html
+
+واجهة الاشتراك: SOURCE/schools/subscription.*. واجهة المالك: SOURCE/schools/owner-commerce.js. بناء الخدمة الجديدة واختباراتها: SOURCE/commerce/. عرض رسائل العميل: SOURCE/commercial-simple/announcements.js.

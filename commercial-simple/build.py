@@ -15,7 +15,7 @@ for f in src.glob('*.js'):
  shutil.copy2(f,ext/'simple'/f.name)
 for name in ['popup.html','popup.css','demo.html']:shutil.copy2(src/name,ext/name)
 p=ext/'background.js';p.write_text(p.read_text()+"\nimportScripts('commercial-auth.js','simple/cycle-runtime.js','simple/controller.js','simple/daily.js');\n")
-p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.33';m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
+p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.37';m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
 # Rebrand displayed Arabic text only; protocol IDs, keys and storage paths remain stable.
 for asset in ext.rglob('*'):
  if asset.is_file() and asset.suffix in {'.js','.html','.json'}:
@@ -44,6 +44,6 @@ s=s.replace('snapshot:function(){var f=monitorScheduleFolder_(attendanceRoot,dat
 s=s.replace("version:'2.6.20',videoRecording:true", "version:'2.9.21',simpleSetup:true,selfRegistration:true,monthlySubscription:100,videoRecording:true")
 s=s.replace('// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.6.20','')+'\n'+(src/'backend-adapter.gs').read_text()+'\n// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.9.21\n'
 import runpy
-s=runpy.run_path(str(src/'build-access-control.py'))['transform'](s)
-(work/'owner-2.9.34.gs').write_text(s)
+s=runpy.run_path(str(root/'commerce/build.py'))['transform'](s)
+(work/'owner-2.9.38.gs').write_text(s)
 print('Built commercial extension and owner script locally')

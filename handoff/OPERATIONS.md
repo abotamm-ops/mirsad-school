@@ -11,17 +11,18 @@ python3 commercial-simple/package.py --extensions-only
 ## خدمة المالك
 انسخ BACKEND/owner-2.9.21.gs إلى /tmp/mirsad-commercial/owner-2.9.21.gs، ثم شغّل:
 ```
-python3 commercial-simple/build-access-control.py
-node commercial-simple/access-control.test.cjs
-MIRSAD_OWNER_TEST_SOURCE=/tmp/mirsad-commercial/owner-2.9.34.gs node commercial-simple/backend.test.cjs
+python3 commerce/build.py
+node commerce/service.test.cjs
+node commerce/browser.test.cjs
+MIRSAD_OWNER_TEST_SOURCE=/tmp/mirsad-commercial/owner-2.9.38.gs node commercial-simple/backend.test.cjs
 ```
-هذا يبني خدمة 2.9.34 الخاصة بالتحكم في الاشتراكات. لا تشغل البناء الكامل commercial-simple/build.py دون أساسه القديم الخاص؛ فرع --extensions-only لا يحتاجه. للاطلاع أو التطوير المباشر يوجد الكود الحالي كاملًا في BACKEND/owner-2.9.34.gs.
+هذا يبني خدمة 2.9.38 للرسائل والاشتراكات والفواتير. لا تشغل البناء الكامل commercial-simple/build.py دون أساسه القديم الخاص؛ فرع --extensions-only لا يحتاجه. للاطلاع أو التطوير المباشر يوجد الكود الحالي كاملًا في BACKEND/owner-2.9.38.gs.
 
 تحديث الخدمة: استبدال الكود في مشروع المدارس الموجود، حفظ، نشر ← إدارة عمليات النشر ← تعديل النشر الحالي ← إصدار جديد ← نشر. لا تنشئ مشروعًا بديلًا ولا تغير رابط الخدمة أو خصائصه. احتفظ بنسخة من الكود الحالي وخصائص المشروع قبل التعديل. لا تنشر رمز المالك للمدارس.
 
 ## المتجر
 المعرّف: ihdfpkkkagcaknbjljmbffpbblpcplpa
-النسخة المرسلة للمراجعة بحسب آخر تأكيد للمالك: 2.9.31. لا يعني تجهيز 2.9.33 يدويًا أنها رُفعت للمتجر.
+النسخة المرسلة للمراجعة بحسب آخر تأكيد للمالك: 2.9.31. لا يعني تجهيز 2.9.37 يدويًا أنها رُفعت للمتجر.
 حزمة المتجر ZIP تتضمن manifest.json في الجذر، دون حقل key ودون EXE/سكريبت المالك. التعليمات التجريبية تصف المحاكاة بصدق. موافقة المتجر غير مؤكدة في هذا التسليم.
 
 ## اختبارات مهمة
@@ -42,3 +43,5 @@ Git remote مرجعي فقط؛ ملفات .git وكلمات المرور ليس�
 
 ## أسرار لا تُصدّر من هذا المجلد
 لم يُضمّن تصدير خصائص Apps Script الحية، أو كلمات مرور المالك، أو رموز حسابات العملاء، أو مفاتيح فتح الحزم المشفرة، أو بيانات اعتماد حساب Google/GitHub/Render. هذه تبقى لدى المالك. لا تعوّضها بقيم مخترعة.
+
+قبل فتح الدفع، اقرأ SOURCE/commerce/README.md. الفواتير لا تتحقق من وصول التحويل؛ التفعيل المبدئي مقصود، والمالك يراجع ويقرر. العرض والدفع مغلقان افتراضيًا.

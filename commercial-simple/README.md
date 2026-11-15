@@ -1,4 +1,6 @@
-# Schools simplified setup 2.7.0
+> Current owner commerce workflow: see ../commerce/README.md. Service 2.9.38 is prepared; live deployment requires the owner to update the current Apps Script deployment.
+
+# Schools simplified setup 2.9.37
 
 Commercial-only pilot, built from released Schools 2.6.21 (fixed identity preserved). Personal extension, personal script, pre-video backups and Guardian 3.4.6 are unchanged.
 
