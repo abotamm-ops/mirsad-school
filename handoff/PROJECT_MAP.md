@@ -25,3 +25,5 @@
 لوحة المالك: https://mirsad-school.onrender.com/schools/owner-schools.html
 
 واجهة الاشتراك: SOURCE/schools/subscription.*. واجهة المالك: SOURCE/schools/owner-commerce.js. بناء الخدمة الجديدة واختباراتها: SOURCE/commerce/. عرض رسائل العميل: SOURCE/commercial-simple/announcements.js.
+
+صفحة المالك المباشرة للرسائل والفواتير: https://mirsad-school.onrender.com/schools/owner-commerce.html
