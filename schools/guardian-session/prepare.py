@@ -3,6 +3,14 @@ import shutil
 root=Path(__file__).resolve().parents[2];here=Path(__file__).parent
 for edition in ['Shared','Schools']:
  s=(root/'schools/guardian-panel'/f'{edition}.ps1').read_text(encoding='utf-8-sig')
+ # Keep store and sideload profile detection when regenerating the helper scripts.
+ lines=s.splitlines();expanded=[]
+ for line in lines:
+  expanded.append(line)
+  if "ExtensionId='ologpgneejnippbdhboiaaijpgkejcck'" in line:
+   if not line.rstrip().endswith(','): expanded[-1]=line+','
+   expanded.append(line.replace('ologpgneejnippbdhboiaaijpgkejcck','ihdfpkkkagcaknbjljmbffpbblpcplpa').replace("Label='مرصاد المدارس'","Label='راصد المدارس — المتجر'"))
+ s='\n'.join(expanded)+'\n'
  s=s.replace('public static void FocusForOpen', (here/'restore.cs').read_text()+'\npublic static void FocusForOpen',1)
  s=s.replace('$script:launch = $null', '''$script:launch = $null
 $script:hadWorkspace=$false

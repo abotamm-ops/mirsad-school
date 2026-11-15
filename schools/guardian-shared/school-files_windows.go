@@ -45,7 +45,7 @@ func installSchoolNative() error {
 			}
 		}
 	}
-	manifest := map[string]interface{}{"name": "com.mirsad.school_files", "description": "School local evidence backup", "path": target, "type": "stdio", "allowed_origins": []string{schoolOrigin}}
+	manifest := map[string]interface{}{"name": "com.mirsad.school_files", "description": "School local evidence backup", "path": target, "type": "stdio", "allowed_origins": schoolAllowedOrigins()}
 	b, _ := json.Marshal(manifest)
 	file := filepath.Join(dir, "host.json")
 	if e = localAtomic(file, b); e != nil {

@@ -177,7 +177,8 @@ public void Dispose() { if(!registered)return; registered=false; UnregisterHotKe
 function Get-MirsadProducts {
 @(
 [PSCustomObject]@{ Edition='Private'; Label='مرصاد الخاص'; ExtensionId='mdkhgdcnfibnemhiklpejojajjajhcbg'; Url='https://mirsad-school.onrender.com/automatic-monitoring.html?guardian=1'; Prefix='مرصاد | الرصد الآلي' },
-[PSCustomObject]@{ Edition='Schools'; Label='مرصاد المدارس'; ExtensionId='ologpgneejnippbdhboiaaijpgkejcck'; Url='https://mirsad-school.onrender.com/schools/automatic-monitoring.html?guardian=1'; Prefix='مرصاد المدارس | الرصد الآلي' }
+[PSCustomObject]@{ Edition='Schools'; Label='مرصاد المدارس'; ExtensionId='ologpgneejnippbdhboiaaijpgkejcck'; Url='https://mirsad-school.onrender.com/schools/automatic-monitoring.html?guardian=1'; Prefix='مرصاد المدارس | الرصد الآلي' },
+[PSCustomObject]@{ Edition='Schools'; Label='راصد المدارس — المتجر'; ExtensionId='ihdfpkkkagcaknbjljmbffpbblpcplpa'; Url='https://mirsad-school.onrender.com/schools/automatic-monitoring.html?guardian=1'; Prefix='مرصاد المدارس | الرصد الآلي' }
 )
 }
 function Get-MirsadChoices {

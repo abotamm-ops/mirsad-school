@@ -78,3 +78,14 @@ func TestRejectSymlink(t *testing.T) {
 		t.Fatal("followed redirected school folder")
 	}
 }
+
+func TestStoreSchoolOrigin(t *testing.T) {
+ for _, origin := range schoolAllowedOrigins() {
+  root := t.TempDir()
+  result := handleLocal(root, origin, localRequest{Action:"save",School:testSchool,Date:"2026-11-15",Record:json.RawMessage(`{"scanId":"store-test","status":"present"}`)}, func(string)error{return nil})
+  if !result.OK { t.Fatalf("allowed origin %s: %+v", origin, result) }
+ }
+ for _, origin := range []string{"chrome-extension://other/",storeSchoolOrigin+"extra",strings.TrimSuffix(storeSchoolOrigin,"/")} {
+  if allowedSchoolOrigin(origin) {t.Fatalf("unexpected origin accepted: %s",origin)}
+ }
+}

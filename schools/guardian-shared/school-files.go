@@ -18,6 +18,9 @@ import (
 )
 
 const schoolOrigin = "chrome-extension://ologpgneejnippbdhboiaaijpgkejcck/"
+const storeSchoolOrigin = "chrome-extension://ihdfpkkkagcaknbjljmbffpbblpcplpa/"
+func allowedSchoolOrigin(origin string) bool { return origin == schoolOrigin || origin == storeSchoolOrigin }
+func schoolAllowedOrigins() []string { return []string{schoolOrigin, storeSchoolOrigin} }
 
 type localRequest struct {
 	VideoIDs []string          `json:"videoIds"`
@@ -176,7 +179,7 @@ func localIndex(dir string) error {
 	return localAtomic(filepath.Join(dir, "index.html"), out.Bytes())
 }
 func handleLocal(root, origin string, r localRequest, open func(string) error) localResponse {
-	if origin != schoolOrigin {
+	if !allowedSchoolOrigin(origin) {
 		return localResponse{Error: "origin denied"}
 	}
 	if e := secureDirs(root, root); e != nil {
