@@ -72,3 +72,5 @@ header #siteCredentials{width:185px;max-width:185px}#siteCredentials>div{display
 button:active:not(:disabled){transform:translateY(1px);filter:brightness(.9)}button:disabled{cursor:wait}
 
 .click-feedback{animation:click-feedback .5s ease-out}@keyframes click-feedback{0%,35%{outline:2px solid #248fe5;outline-offset:2px;filter:brightness(.86)}100%{outline-color:transparent;filter:brightness(1)}}@media(prefers-reduced-motion:reduce){.click-feedback{animation:none;outline:2px solid #248fe5;outline-offset:2px}}
+
+#accountSettings #onboarding.compact #checkLocal{display:block}
