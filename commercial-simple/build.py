@@ -1,5 +1,5 @@
 from pathlib import Path
-import json,zipfile,shutil,base64,secrets,hashlib,sys
+import json,zipfile,shutil,base64,secrets,hashlib,sys,subprocess
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 root=Path(__file__).resolve().parents[1];src=root/'commercial-simple';work=Path('/tmp/mirsad-commercial');ext=work/'extension'
 # Always start from the released stable school build; no personal or calendar pilot files.
@@ -9,13 +9,14 @@ with zipfile.ZipFile(root/'schools/downloads/Mirsad-Schools-2.6.21-Video-Trial.z
   if n.startswith('الإضافة/') and not n.endswith('/'):
    p=ext/n.removeprefix('الإضافة/');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(z.read(n))
 p=ext/'auto-links.js';t=p.read_text().replace("async function morningWindow(){","async function morningWindow(){const preference=(await chrome.storage.local.get('mirsadSimpleSettings')).mirsadSimpleSettings;if(preference?.refresh===false)return morningStop('تحميل الصباح متوقف حسب اختيارك في الإضافة.');");p.write_text(t)
+subprocess.run(['node',str(src/'patch-entry-delay.cjs'),str(ext/'content.js')],check=True)
 (ext/'simple').mkdir()
 for f in src.glob('*.js'):
  if f.name.endswith('.test.js'):continue
  shutil.copy2(f,ext/'simple'/f.name)
 for name in ['popup.html','popup.css','demo.html']:shutil.copy2(src/name,ext/name)
 p=ext/'background.js';p.write_text(p.read_text()+"\nimportScripts('commercial-auth.js','simple/cycle-runtime.js','simple/controller.js','simple/daily.js');\n")
-p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.37';m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
+p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.39';m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
 # Rebrand displayed Arabic text only; protocol IDs, keys and storage paths remain stable.
 for asset in ext.rglob('*'):
  if asset.is_file() and asset.suffix in {'.js','.html','.json'}:
