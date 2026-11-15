@@ -52,17 +52,17 @@ if '--extensions-only' in sys.argv:
  (root/'schools/downloads/Mirsad-Schools-2.9.33-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
  print('Packaged extension-only layout update; owner script unchanged.')
  raise SystemExit(0)
-linkfile=work/'OWNER-2.9.32-LINK.txt'
+linkfile=work/'OWNER-2.9.34-LINK.txt'
 if linkfile.exists():key=base64.urlsafe_b64decode(linkfile.read_text().strip().split('#')[1]+'=')
 else:key=secrets.token_bytes(32)
-nonce=secrets.token_bytes(12);data=(work/'owner-2.9.32.gs').read_bytes();cipher=AESGCM(key).encrypt(nonce,data,None)
+nonce=secrets.token_bytes(12);data=(work/'owner-2.9.34.gs').read_bytes();cipher=AESGCM(key).encrypt(nonce,data,None)
 assert AESGCM(key).decrypt(nonce,cipher,None)==data
-site=root/'schools';name='owner-script-2.9.32'
+site=root/'schools';name='owner-script-2.9.34'
 (site/(name+'.encrypted.json')).write_text(json.dumps({'nonce':base64.b64encode(nonce).decode(),'data':base64.b64encode(cipher).decode()}))
 for ext in ['html','preview.js']:
  original=site/('owner-script-2.6.20'+('.html' if ext=='html' else '-preview.js'))
  dest=site/(name+('.html' if ext=='html' else '-preview.js'))
- dest.write_text(original.read_text().replace('2.6.20','2.9.32').replace('مرصاد','راصد'))
+ dest.write_text(original.read_text().replace('2.6.20','2.9.34').replace('مرصاد','راصد'))
 linkfile.write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
 (root/'schools/downloads/Mirsad-Schools-2.9.33-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
 print('Packaged customer bundle and encrypted owner script; owner opening key retained locally.')
