@@ -1,0 +1,34 @@
+{
+  "snapshotDateRiyadh": "2026-11-15",
+  "personalExtension": "0.6.104",
+  "schoolManualExtension": "2.9.33",
+  "schoolStoreSubmittedVersion": "2.9.31",
+  "schoolStoreReviewStatus": "submitted; decision not reported",
+  "schoolStoreId": "ihdfpkkkagcaknbjljmbffpbblpcplpa",
+  "legacySchoolExtensionId": "ologpgneejnippbdhboiaaijpgkejcck",
+  "ownerServicePrepared": "2.9.34",
+  "ownerServiceLiveDeployment": "not confirmed by owner",
+  "nativeSchoolSupport": "3.4.7",
+  "nativeSupportLocalProbe": "owner confirmed success on Windows from installed legacy school extension",
+  "nativeStoreOriginEndToEnd": "not field-tested from store-installed extension",
+  "googleOAuthAudience": "owner confirmed In production and successful new-account linking",
+  "googleOAuthVerification": "not independently confirmed",
+  "implemented": [
+    "school five-step compact UI and progress feedback",
+    "PIN website access and per-account subscription controls",
+    "owner mass block and independent registration close",
+    "bulk unblock for bulk-blocked accounts; explicit individual decisions retained",
+    "editable payment-demand notice; manual paid monthly renewal",
+    "public synthetic-data demo",
+    "refresh Madrasati/Rased notice and Google retry note in school 2.9.33",
+    "personal and school Word/PDF principal signature between title and name, without printed director signature label"
+  ],
+  "deferred": [
+    "owner broadcast announcement boards",
+    "invoice upload with automatic provisional activation and owner review",
+    "weekly/monthly/two-month plans and real offer countdown",
+    "legal terms acceptance before payment",
+    "attendance heuristic changes based on Teams section positions"
+  ],
+  "activationOfDeferredWork": "owner wants payment/notice flow ready before applying blocks, after schools try Rased"
+}
