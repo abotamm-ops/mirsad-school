@@ -74,3 +74,7 @@ button:active:not(:disabled){transform:translateY(1px);filter:brightness(.9)}but
 .click-feedback{animation:click-feedback .5s ease-out}@keyframes click-feedback{0%,35%{outline:2px solid #248fe5;outline-offset:2px;filter:brightness(.86)}100%{outline-color:transparent;filter:brightness(1)}}@media(prefers-reduced-motion:reduce){.click-feedback{animation:none;outline:2px solid #248fe5;outline-offset:2px}}
 
 #accountSettings #onboarding.compact #checkLocal{display:block}
+
+#step2 .before-load-notice{font-size:11px;font-weight:bold;line-height:1.5;margin:4px 0;padding:4px 6px;color:#744400;background:#fff2ca;border:1px solid #e5b455;border-radius:5px}
+
+#step2 .before-load-notice{line-height:14px;margin:1px 0;padding:0 4px}#step2 #load{margin:1px 0}.drive-retry-note{font-size:10px;color:#744400;margin:3px 0;font-weight:bold}#googleReminder .drive-retry-note{flex:1;line-height:13px;margin:0}
