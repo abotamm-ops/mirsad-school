@@ -139,10 +139,10 @@
     }
     return _items4.push(_value38("يرجى توضيح الأسباب المتعلقة بما ورد أعلاه، وإرفاق ما يؤيد الإفادة إن وجد."), _value38("مدير المتوسطة", true, "center", {
       "spaceBefore": _options2.lineHeight * 2,
-      "spaceAfter": _options2.lineHeight,
+      "spaceAfter": 0,
       "keepNext": true
     }), _value38("", false, "center", {
-      "spaceAfter": _options2.lineHeight,
+      "spaceAfter": 0,
       "directorSignature": true,
       "keepNext": true
     }), _value38(_argument.MirsadSchoolProfile?.["director"] || "", true, "center", {
@@ -192,7 +192,7 @@
     return "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:hdr xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:tbl><w:tblPr><w:bidiVisual/><w:tblW w:w=\"" + _value47(180) + "\" w:type=\"dxa\"/><w:tblLayout w:type=\"fixed\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tblCellMar></w:tblPr><w:tblGrid>" + [64, 52, 64].map(_argument49 => "<w:gridCol w:w=\"" + _value47(_argument49) + "\"/>").join("") + "</w:tblGrid><w:tr>" + _value51(["المملكة العربية السعودية", "وزارة التعليم", globalThis.MirsadSchoolProfile?.["educationAdministration"] || "الإدارة العامة للتعليم", _argument43 || ""].map(_argument50 => _value50(_argument50)).join(""), 64) + _value51(_text, 52) + _value51(_value50("التاريخ " + _argument44) + _value50("الرقم"), 64) + "</w:tr></w:tbl><w:p><w:pPr><w:spacing w:after=\"0\" w:line=\"" + _value47(8) + "\" w:lineRule=\"exact\"/><w:pBdr><w:bottom w:val=\"single\" w:sz=\"2\" w:color=\"A5B6BE\"/></w:pBdr></w:pPr></w:p></w:hdr>";
   }
   function _value52() {
-    return "<w:p><w:pPr><w:jc w:val=\"center\"/><w:spacing w:after=\"" + _value47(2) + "\"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"1728000\" cy=\"518400\"/><wp:docPr id=\"700\" name=\"توقيع مدير المدرسة\"/><a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:nvPicPr><pic:cNvPr id=\"700\" name=\"توقيع المدير\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"rIdMirsadDirectorSignature\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"1728000\" cy=\"518400\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>";
+    return "<w:p><w:pPr><w:jc w:val=\"center\"/><w:keepNext/><w:spacing w:after=\"0\"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"1728000\" cy=\"518400\"/><wp:docPr id=\"700\" name=\"توقيع مدير المدرسة\"/><a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:nvPicPr><pic:cNvPr id=\"700\" name=\"توقيع المدير\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"rIdMirsadDirectorSignature\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"1728000\" cy=\"518400\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>";
   }
   function _value53(_argument51, _argument52 = "", _argument53, _argument54 = _argument.MirsadDirectorSignature?.["get"]() || "") {
     if (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(_argument54) || _argument54.length >= 1000000) _argument54 = "";
@@ -205,7 +205,7 @@
         keepNext = false,
         directorSignature = false
       }) => "<w:p><w:pPr>" + (_argument57 === "left" ? "<w:bidi w:val=\"0\"/>" : "<w:bidi/>") + (_argument57 === "center" ? "<w:jc w:val=\"center\"/>" : _argument57 === "left" ? "<w:jc w:val=\"left\"/>" : "") + (_argument56 || keepNext || _argument54 && directorSignature ? "<w:keepNext/>" : "") + "<w:spacing w:before=\"" + _value47(spaceBefore) + "\" w:after=\"" + _value47(_argument58 ?? (_argument56 ? _options2.boldGap : _options2.paragraphGap)) + "\" w:line=\"" + _value47(_options2.lineHeight) + "\" w:lineRule=\"exact\"/></w:pPr>" + _value48(_argument55, _argument56 ? _options2.titleFont : _options2.bodyFont, _argument56) + "</w:p>",
-      _value55 = _value34(_argument51).flatMap(_argument59 => [_value54(_argument59), ...(_argument54 && _argument59.directorSignature ? [_value52()] : [])]),
+      _value55 = _value34(_argument51).flatMap(_argument59 => _argument54 && _argument59.directorSignature ? [_value52()] : [_value54(_argument59)]),
       _value56 = typeof module !== "undefined" ? require("./teacher-report-template.js") : _argument.MirsadTeacherReportTemplate,
       _options3 = {};
     for (const [_value57, _value58] of Object.entries(_value56)) {

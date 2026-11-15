@@ -1,1 +1,114 @@
-function mc7b90c4b_0x3d8d(){const _0x46d612=['ue5h','ywrKrMLSzvrVvKzt','2lFzHnIOinIL2yhyP9IV2kKG2yRzInMf2yO','CMvWBgfJzq','z2v0','Dg9W','Cg9YDhjHAxq','2yxyS9IN2khzHnIPinMk2yJzHsaTia','C2v0uJjm','ndqZmdC2uw5Zrvbz','ou15sMLozW','ANnWzgy','y3jLyxrLrwXLBwvUDa','ANnqrey','mti0ote4nefYtLnkqW','Bgf5B3v0','C2v0rM9UDfnPEMu','2kFzHnIL2k/yP9IX2kKG2kFzHnI52kFzHDIPinMe2ytyQTI52ytzITMf','C2v0ugfNzq','Dgv4Da','zMLSBa','ywrKsw1Hz2u','yM9Sza','2kRyUDIW2leG2kRyRDMf2yRzHcdyO9IV2kFyQsbqreByMYdyRDIV2zhyQYdyP9Me2lxzGDIT2kKG2yJyO9I52k8G2kFzHnMf2k3yP9Mi2ytyQq','y2XPy2S','twLYC2fKu2nOB29SuhjVzMLSzq','yM9KEuzVBNq','yxbWBgLJyxrPB24VCgrM','CgfYywDYyxbOr2fW','DgL0BgvgB250','BgvUz3rO','twLYC2fKvgvHy2HLCLjLCg9YDfbKzG','zM9UDej5DgvZ','C2v0uhjVCgvYDgLLCW','C2v0rhjHD0nVBg9Y','yM9SzeDHCa','mJmYnZm3m3jyzunkCW','twLYC2fKqxjHyMLJlNr0zG','nZy0CLP3vLfV','twLYC2fKqxjHyMLJ','z2v0tNvTyMvYt2zqywDLCW','zMLSBfrOzw5tDhjVA2u','ywXPz24','BM9YBwfS','ywrKrM9UDa','2kFzHnIX2ylzHq','y2vUDgvY','C3bHy2vbzNrLCG','yM9KEq','CMLNAhq','mtGXodC0mezUrxrtyG','BgvMDa','C3vIyxjYyxK','C3bHy2vczwzVCMu','mJKXmdG0qMf4zvfg','y2f0y2G','BgLUzuHLAwDODa','zgf0zq','mtaYmZGZnw1iAg5nzq','nti2t3LUvLLt','AhjLzG','A2vLCe5LEhq','lNbKzG'];mc7b90c4b_0x3d8d=function(){return _0x46d612;};return mc7b90c4b_0x3d8d();}function mc7b90c4b_0xc1e8(_0x734325,_0x552c22){const _0x3d8d9b=mc7b90c4b_0x3d8d();return mc7b90c4b_0xc1e8=function(_0xc1e84c,_0x1a26e0){_0xc1e84c=_0xc1e84c-0xa8;let _0x1a48ea=_0x3d8d9b[_0xc1e84c];if(mc7b90c4b_0xc1e8['oGPhQp']===undefined){var _0x2bb28e=function(_0x2672ed){const _0x3cdd36='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=';let _0x194948='',_0x2d9809='';for(let _0x1e7eab=0x0,_0x2b8a39,_0x571392,_0x501a03=0x0;_0x571392=_0x2672ed['charAt'](_0x501a03++);~_0x571392&&(_0x2b8a39=_0x1e7eab%0x4?_0x2b8a39*0x40+_0x571392:_0x571392,_0x1e7eab++%0x4)?_0x194948+=String['fromCharCode'](0xff&_0x2b8a39>>(-0x2*_0x1e7eab&0x6)):0x0){_0x571392=_0x3cdd36['indexOf'](_0x571392);}for(let _0x2387c4=0x0,_0xbc99c6=_0x194948['length'];_0x2387c4<_0xbc99c6;_0x2387c4++){_0x2d9809+='%'+('00'+_0x194948['charCodeAt'](_0x2387c4)['toString'](0x10))['slice'](-0x2);}return decodeURIComponent(_0x2d9809);};mc7b90c4b_0xc1e8['KCosGy']=_0x2bb28e,_0x734325=arguments,mc7b90c4b_0xc1e8['oGPhQp']=!![];}const _0x22db2a=_0x3d8d9b[0x0],_0x205233=_0xc1e84c+_0x22db2a,_0x58b8c0=_0x734325[_0x205233];return!_0x58b8c0?(_0x1a48ea=mc7b90c4b_0xc1e8['KCosGy'](_0x1a48ea),_0x734325[_0x205233]=_0x1a48ea):_0x1a48ea=_0x58b8c0,_0x1a48ea;},mc7b90c4b_0xc1e8(_0x734325,_0x552c22);}(function(_0x2284f6,_0x4e262b){const _0x1cb8cf=mc7b90c4b_0xc1e8,_0xff4c09=_0x2284f6();while(!![]){try{const _0x4b97e0=-parseInt(_0x1cb8cf(0xab))/0x1*(-parseInt(_0x1cb8cf(0xc0))/0x2)+-parseInt(_0x1cb8cf(0xce))/0x3*(-parseInt(_0x1cb8cf(0xbb))/0x4)+-parseInt(_0x1cb8cf(0xbf))/0x5+parseInt(_0x1cb8cf(0xcd))/0x6+-parseInt(_0x1cb8cf(0xb7))/0x7+-parseInt(_0x1cb8cf(0xd2))/0x8+parseInt(_0x1cb8cf(0xa9))/0x9;if(_0x4b97e0===_0x4e262b)break;else _0xff4c09['push'](_0xff4c09['shift']());}catch(_0x4a47a0){_0xff4c09['push'](_0xff4c09['shift']());}}}(mc7b90c4b_0x3d8d,0x1ff89),((()=>{'use strict';const _0x2198ee=mc7b90c4b_0xc1e8;let _0x2672ed;async function _0x3cdd36(){const _0x421d74=mc7b90c4b_0xc1e8;if(!_0x2672ed)_0x2672ed=(async()=>{const _0x14e3e4=mc7b90c4b_0xc1e8,_0x1e7eab=await MirsadTeacherReport[_0x14e3e4(0xe4)]();let _0x2b8a39='';for(let _0x571392=0x0;_0x571392<_0x1e7eab['length'];_0x571392+=0x2000)_0x2b8a39+=String['fromCharCode'](..._0x1e7eab[_0x14e3e4(0xb9)](_0x571392,_0x571392+0x2000));return btoa(_0x2b8a39);})()[_0x421d74(0xbc)](_0x501a03=>{_0x2672ed=null;throw _0x501a03;});return _0x2672ed;}async function _0x194948(_0x2387c4,_0xbc99c6=''){const _0x19e356=mc7b90c4b_0xc1e8,_0x362c3f=MirsadTeacherReport[_0x19e356(0xd3)],_0x3821a4=MirsadTeacherReport['paragraphs'](_0x2387c4),_0x383c1c=globalThis['MirsadDirectorSignature']?.[_0x19e356(0xc8)]()||'',_0x977892=await _0x3cdd36();if(!globalThis[_0x19e356(0xcf)]?.[_0x19e356(0xd1)])throw new Error(_0x19e356(0xdb));const _0x176961=new jspdf['jsPDF']({'orientation':_0x19e356(0xca),'unit':'mm','format':'a4','compress':!![]});_0x176961[_0x19e356(0xc5)](_0x19e356(0xaa),_0x977892),_0x176961[_0x19e356(0xb1)]('MirsadArabic.ttf','MirsadArabic',_0x19e356(0xb0)),_0x176961['setFont'](_0x19e356(0xac)),_0x176961['setLanguage']('ar-SA'),_0x176961[_0x19e356(0xcc)](![]),_0x176961[_0x19e356(0xe5)]({'title':'طلب\x20إفادة','author':'','subject':_0x19e356(0xc6),'creator':'راصد'});const _0x13affd=MirsadTeacherReportTemplate['word/media/image1.png']['base64'];let _0x2a8a3e=_0x362c3f[_0x19e356(0xc9)]+0x4;function _0x493ad6(){const _0x53f7e6=_0x19e356;_0x176961['setTextColor'](0x19,0x2d,0x37),_0x176961[_0x53f7e6(0xd4)](0xa);const _0x2c2045=['المملكة\x20العربية\x20السعودية','وزارة\x20التعليم',globalThis[_0x53f7e6(0xdd)]?.['educationAdministration']||_0x53f7e6(0xd5),(_0xbc99c6||'')['replace'](/[.:…]+/g,'')];let _0x2045ba=0xd;for(const _0xa07dc3 of _0x2c2045){const _0x906a94=_0x176961['splitTextToSize'](_0xa07dc3,0x40);_0x176961['text'](_0x906a94,0xc3,_0x2045ba,{'align':'right'}),_0x2045ba+=_0x906a94[_0x53f7e6(0xe2)]*4.5;}_0x176961[_0x53f7e6(0xd9)]('data:image/png;base64,'+_0x13affd,_0x53f7e6(0xc4),0x59,0xa,0x20,0x19),_0x176961[_0x53f7e6(0xd4)](0xa),_0x176961[_0x53f7e6(0xd7)]('التاريخ\x20'+_0x2387c4['date'],0x4f,0xd,{'align':'right'}),_0x176961[_0x53f7e6(0xd7)](_0x53f7e6(0xb2),0x4f,17.5,{'align':_0x53f7e6(0xb6)}),_0x176961[_0x53f7e6(0xe6)](0xa5,0xb6,0xbe),_0x176961['setLineWidth'](0.25),_0x176961['line'](0xf,0x2b,0xc3,0x2b);}function _0x412cfc(_0x5b3d00){const _0x2ff556=_0x19e356;_0x176961['setFontSize'](_0x5b3d00['bold']?_0x362c3f[_0x2ff556(0xe1)]:_0x362c3f[_0x2ff556(0xde)]);const _0xc5440=_0x176961['splitTextToSize'](_0x5b3d00['value'],0xb4);return _0xc5440[_0x2ff556(0xe2)]?_0xc5440:[''];}function _0x69658f(_0x5d46ba){const _0x10651e=_0x19e356;return(_0x5d46ba[_0x10651e(0xba)]||0x0)+_0x412cfc(_0x5d46ba)[_0x10651e(0xe2)]*_0x362c3f[_0x10651e(0xbd)]+(_0x5d46ba['spaceAfter']??(_0x5d46ba[_0x10651e(0xda)]?_0x362c3f['boldGap']:_0x362c3f[_0x10651e(0xe0)]))+(_0x383c1c&&_0x5d46ba['directorSignature']?16.4:0x0);}function _0x1ae3cd(){const _0x1b0de8=_0x19e356;_0x176961['addPage'](),_0x493ad6(),_0x2a8a3e=_0x362c3f[_0x1b0de8(0xc9)]+0x4;}_0x493ad6();for(let _0x13697b=0x0;_0x13697b<_0x3821a4['length'];_0x13697b++){const _0x5ee723=_0x3821a4[_0x13697b];if(_0x5ee723['bold']||_0x5ee723['keepNext']){let _0x2a2f3e=0x0;for(let _0x6406ec=_0x13697b;_0x6406ec<_0x3821a4['length'];_0x6406ec++){_0x2a2f3e+=_0x69658f(_0x3821a4[_0x6406ec]);if(!_0x3821a4[_0x6406ec]['bold']&&!_0x3821a4[_0x6406ec][_0x19e356(0xc2)])break;}if(_0x2a2f3e<=0x117-(_0x362c3f[_0x19e356(0xc9)]+0x4)&&_0x2a8a3e+_0x2a2f3e>0x117)_0x1ae3cd();}if(_0x2a8a3e+(_0x5ee723['spaceBefore']||0x0)+_0x362c3f['lineHeight']>0x117)_0x1ae3cd();_0x2a8a3e+=_0x5ee723[_0x19e356(0xba)]||0x0;const _0x11b612=_0x412cfc(_0x5ee723);for(const _0xbd29dc of _0x11b612){if(_0x2a8a3e>0x117)_0x1ae3cd();_0x176961['setTextColor'](0x14,0x19,0x1e),_0x176961['setLineWidth'](0.06),_0x176961['text'](_0xbd29dc,_0x5ee723['align']==='center'?0x69:_0x5ee723[_0x19e356(0xaf)]==='left'?0xf:0xc3,_0x2a8a3e,{'align':_0x5ee723['align']===_0x19e356(0xb3)?'center':_0x5ee723[_0x19e356(0xaf)]===_0x19e356(0xb8)?_0x19e356(0xb8):'right','renderingMode':_0x5ee723[_0x19e356(0xda)]?_0x19e356(0xae):_0x19e356(0xd8)}),_0x2a8a3e+=_0x362c3f[_0x19e356(0xbd)];}if(_0x383c1c&&_0x5ee723['directorSignature']){if(_0x2a8a3e+16.4>0x117)_0x1ae3cd();_0x176961['addImage'](_0x383c1c,'PNG',0x51,_0x2a8a3e-0x2,0x30,14.4),_0x2a8a3e+=16.4;}_0x2a8a3e+=_0x5ee723[_0x19e356(0xb4)]??(_0x5ee723[_0x19e356(0xda)]?_0x362c3f[_0x19e356(0xa8)]:_0x362c3f['paragraphGap']);}const _0x47a20f=_0x176961[_0x19e356(0xad)]();for(let _0x4f2a97=0x1;_0x4f2a97<=_0x47a20f;_0x4f2a97++){_0x176961[_0x19e356(0xd6)](_0x4f2a97),_0x176961['setFontSize'](0x9),_0x176961['setTextColor'](0x5f,0x6e,0x78),_0x176961[_0x19e356(0xd7)]('راصد',0x69,0x122,{'align':_0x19e356(0xb3)});}return new Uint8Array(_0x176961['output']('arraybuffer'));}async function _0x2d9809(_0x24e78e,_0x4d1e8e){const _0x336c35=mc7b90c4b_0xc1e8,_0x9bfb7c=await _0x194948(_0x24e78e,_0x4d1e8e),_0x2d7b32=URL['createObjectURL'](new Blob([_0x9bfb7c],{'type':_0x336c35(0xdf)})),_0x24ecd7=document[_0x336c35(0xd0)]('a');_0x24ecd7[_0x336c35(0xc1)]=_0x2d7b32,_0x24ecd7['download']=_0x336c35(0xcb)+_0x24e78e['name'][_0x336c35(0xc7)](/[\\/:*?"<>|]/g,'')+'\x20-\x20'+_0x24e78e[_0x336c35(0xbe)]+_0x336c35(0xc3),document[_0x336c35(0xb5)]['append'](_0x24ecd7),_0x24ecd7[_0x336c35(0xdc)](),_0x24ecd7['remove'](),setTimeout(()=>URL['revokeObjectURL'](_0x2d7b32),0xea60);}globalThis[_0x2198ee(0xe3)]={'download':_0x2d9809,'documentBytes':_0x194948};})()));
+"use strict";
+
+(() => {
+  'use strict';
+
+  let _value;
+  async function _value2() {
+    if (!_value) _value = (async () => {
+      const _value3 = await MirsadTeacherReport.fontBytes();
+      let _text = "";
+      for (let _number = 0; _number < _value3.length; _number += 8192) _text += String.fromCharCode(..._value3.subarray(_number, _number + 8192));
+      return btoa(_text);
+    })()["catch"](_argument => {
+      _value = null;
+      throw _argument;
+    });
+    return _value;
+  }
+  async function _value4(_argument2, _argument3 = "") {
+    const _value5 = MirsadTeacherReport.layout,
+      _value6 = MirsadTeacherReport.paragraphs(_argument2),
+      _value7 = globalThis.MirsadDirectorSignature?.["get"]() || "",
+      _value8 = await _value2();
+    if (!globalThis.jspdf?.["jsPDF"]) throw new Error("\u062A\u0639\u0630\u0631 \u062A\u062D\u0645\u064A\u0644 \u0623\u062F\u0627\u0629 PDF\u061B \u062D\u062F\u0651\u062B \u0627\u0644\u0635\u0641\u062D\u0629 \u0648\u0623\u0639\u062F \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629");
+    const _value9 = new jspdf.jsPDF({
+      "orientation": "portrait",
+      "unit": "mm",
+      "format": "a4",
+      "compress": true
+    });
+    _value9.addFileToVFS("MirsadArabic.ttf", _value8), _value9.addFont("MirsadArabic.ttf", "MirsadArabic", "normal"), _value9.setFont("MirsadArabic"), _value9.setLanguage("ar-SA"), _value9.setR2L(false), _value9.setProperties({
+      "title": "\u0637\u0644\u0628 \u0625\u0641\u0627\u062F\u0629",
+      "author": "",
+      "subject": "\u0637\u0644\u0628 \u0625\u0641\u0627\u062F\u0629 \u064A\u0648\u0645\u064A",
+      "creator": "\u0631\u0627\u0635\u062F"
+    });
+    const _value0 = MirsadTeacherReportTemplate["word/media/image1.png"].base64;
+    let _value1 = _value5.top + 4;
+    function _value10() {
+      _value9.setTextColor(25, 45, 55), _value9.setFontSize(10);
+      const _items = ["\u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629", "\u0648\u0632\u0627\u0631\u0629 \u0627\u0644\u062A\u0639\u0644\u064A\u0645", globalThis.MirsadSchoolProfile?.["educationAdministration"] || "\u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0627\u0645\u0629 \u0644\u0644\u062A\u0639\u0644\u064A\u0645", (_argument3 || "").replace(/[.:…]+/g, "")];
+      let _number2 = 13;
+      for (const _value11 of _items) {
+        const _value12 = _value9.splitTextToSize(_value11, 64);
+        _value9.text(_value12, 195, _number2, {
+          "align": "right"
+        }), _number2 += _value12.length * 4.5;
+      }
+      _value9.addImage("data:image/png;base64," + _value0, "PNG", 89, 10, 32, 25), _value9.setFontSize(10), _value9.text("\u0627\u0644\u062A\u0627\u0631\u064A\u062E " + _argument2.date, 79, 13, {
+        "align": "right"
+      }), _value9.text("\u0627\u0644\u0631\u0642\u0645", 79, 17.5, {
+        "align": "right"
+      }), _value9.setDrawColor(165, 182, 190), _value9.setLineWidth(0.25), _value9.line(15, 43, 195, 43);
+    }
+    function _value13(_argument4) {
+      if (_value7 && _argument4.directorSignature) return [];
+      _value9.setFontSize(_argument4.bold ? _value5.titleFont : _value5.bodyFont);
+      const _value14 = _value9.splitTextToSize(_argument4.value, 180);
+      return _value14.length ? _value14 : [""];
+    }
+    function _value15(_argument5) {
+      return (_argument5.spaceBefore || 0) + _value13(_argument5).length * _value5.lineHeight + (_argument5.spaceAfter ?? (_argument5.bold ? _value5.boldGap : _value5.paragraphGap)) + (_value7 && _argument5.directorSignature ? 16.4 : 0);
+    }
+    function _value16() {
+      _value9.addPage(), _value10(), _value1 = _value5.top + 4;
+    }
+    _value10();
+    for (let _number3 = 0; _number3 < _value6.length; _number3++) {
+      const _value17 = _value6[_number3];
+      if (_value17.bold || _value17.keepNext) {
+        let _number4 = 0;
+        for (let _value18 = _number3; _value18 < _value6.length; _value18++) {
+          _number4 += _value15(_value6[_value18]);
+          if (!_value6[_value18].bold && !_value6[_value18].keepNext) break;
+        }
+        if (_number4 <= 279 - (_value5.top + 4) && _value1 + _number4 > 279) _value16();
+      }
+      if (_value1 + (_value17.spaceBefore || 0) + _value5.lineHeight > 279) _value16();
+      _value1 += _value17.spaceBefore || 0;
+      const _value19 = _value13(_value17);
+      for (const _value20 of _value19) {
+        if (_value1 > 279) _value16();
+        _value9.setTextColor(20, 25, 30), _value9.setLineWidth(0.06), _value9.text(_value20, _value17.align === "center" ? 105 : _value17.align === "left" ? 15 : 195, _value1, {
+          "align": _value17.align === "center" ? "center" : _value17.align === "left" ? "left" : "right",
+          "renderingMode": _value17.bold ? "fillThenStroke" : "fill"
+        }), _value1 += _value5.lineHeight;
+      }
+      if (_value7 && _value17.directorSignature) {
+        if (_value1 + 16.4 > 279) _value16();
+        _value9.addImage(_value7, "PNG", 81, _value1 - 2, 48, 14.4), _value1 += 16.4;
+      }
+      _value1 += _value17.spaceAfter ?? (_value17.bold ? _value5.boldGap : _value5.paragraphGap);
+    }
+    const _value21 = _value9.getNumberOfPages();
+    for (let _number5 = 1; _number5 <= _value21; _number5++) {
+      _value9.setPage(_number5), _value9.setFontSize(9), _value9.setTextColor(95, 110, 120), _value9.text("\u0631\u0627\u0635\u062F", 105, 290, {
+        "align": "center"
+      });
+    }
+    return new Uint8Array(_value9.output("arraybuffer"));
+  }
+  async function _value22(_argument6, _argument7) {
+    const _value23 = await _value4(_argument6, _argument7),
+      _value24 = URL.createObjectURL(new Blob([_value23], {
+        "type": "application/pdf"
+      })),
+      _value25 = document.createElement("a");
+    _value25.href = _value24, _value25.download = "\u0645\u0633\u0627\u0621\u0644\u0629 \u064A\u0648\u0645 - " + _argument6.name.replace(/[\\/:*?"<>|]/g, "") + " - " + _argument6.date + ".pdf", document.body.append(_value25), _value25.click(), _value25.remove(), setTimeout(() => URL.revokeObjectURL(_value24), 60000);
+  }
+  globalThis.MirsadTeacherReportPdf = {
+    "download": _value22,
+    "documentBytes": _value4
+  };
+})();
