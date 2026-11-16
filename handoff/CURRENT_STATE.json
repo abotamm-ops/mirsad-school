@@ -86,7 +86,8 @@
     "threeDeviceProposal": "canceled"
   },
   "sourceSnapshotCommit": "ac6345b",
-  "preparedSchoolRelease": "2.9.53",
+  "preparedSchoolRelease": "2.9.54",
   "preparedOwnerService": "2.9.53",
-  "deploymentInstructions": "multisite/POLICY-2.9.53.md"
+  "deploymentInstructions": "multisite/POLICY-2.9.53.md",
+  "startupFix": "Native probe no longer waits for historical disk mirror; visible startup phases. Backend 2.9.53 unchanged."
 }

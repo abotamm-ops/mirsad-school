@@ -29,6 +29,11 @@ const backup=path.join(dir,'local-backup.js');let text=fs.readFileSync(backup,'u
 if(!pattern.test(text))throw Error('Stable native backup scope changed');
 text=text.replace(pattern," async function school(){const id=await MirsadMulti.localId();if(!/^[a-f0-9-]{36}$/.test(id))throw Error('حمّل جدول المدرسة لتحديد مجلدها المحلي');return id}");fs.writeFileSync(backup,text);
 text=text.replace('const id=await school(),date=MirsadMonitorModel.day(new Date(record.scannedAt||Date.now()))','const id=record.localSchoolId||await school(),date=MirsadMonitorModel.day(new Date(record.scannedAt||Date.now()))');fs.writeFileSync(backup,text);
+// A native probe confirms readiness. Pending historical disk writes must not gate Start.
+const oldProbe="await status('مساعد الحفظ المحلي متصل: '+r.path,false,r.path);await flush();return {ok:true,...await info()}";
+if(!text.includes(oldProbe))throw Error('Stable native probe changed; review startup patch');
+text=text.replace(oldProbe,"await status('مساعد الحفظ المحلي متصل: '+r.path,false,r.path);void flush();return {ok:true,...await info()}");
+fs.writeFileSync(backup,text);
 console.log('Scoped cloud jobs and local snapshot folders to each school');
 
 const video=path.join(dir,'video/controller.js');let media=fs.readFileSync(video,'utf8');
