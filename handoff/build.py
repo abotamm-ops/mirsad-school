@@ -1,6 +1,6 @@
 """Build a private owner handoff; publish only the encrypted outer archive."""
 from pathlib import Path
-import base64,hashlib,json,secrets,shutil,subprocess,zipfile
+import base64,hashlib,json,secrets,shutil,subprocess,zipfile,sys
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 root=Path(__file__).resolve().parents[1]
 work=Path('/tmp/rased-project-handoff');stage=work/'Rased-Project'
@@ -62,6 +62,27 @@ with zipfile.ZipFile(plain) as z:
  assert 'Rased-Project/BACKEND/owner-2.9.44.gs' in z.namelist()
  assert 'Rased-Project/EXTENSIONS/schools-2.9.52/manifest.json' in z.namelist()
  assert 'Rased-Project/EXTENSIONS/personal-0.6.109/manifest.json' in z.namelist()
+if '--plain' in sys.argv:
+ outputs=[]
+ with zipfile.ZipFile(plain) as original:
+  groups=[[],[]];sizes=[0,0]
+  for info in sorted(original.infolist(),key=lambda i:i.compress_size,reverse=True):
+   index=sizes.index(min(sizes));groups[index].append(info);sizes[index]+=info.compress_size
+  seen=set()
+  for index,group in enumerate(groups,1):
+   output=root/f'schools/downloads/Rased-Complete-2026-11-16-v4-Part-{index}.zip'
+   with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as target:
+    for info in sorted(group,key=lambda i:i.filename):
+     target.writestr(info.filename,original.read(info.filename));seen.add(info.filename)
+   with zipfile.ZipFile(output) as verify:
+    assert verify.testzip() is None
+    assert all(not (i.flag_bits & 1) for i in verify.infolist())
+   assert output.stat().st_size < 30_000_000
+   output.with_suffix('.sha256.txt').write_text(hashlib.sha256(output.read_bytes()).hexdigest()+'  '+output.name+'\n')
+   outputs.append({'path':str(output),'bytes':output.stat().st_size})
+  assert seen==set(original.namelist())
+ print(json.dumps({'files':len(seen),'outputs':outputs},ensure_ascii=False))
+ sys.exit(0)
 key=secrets.token_bytes(32);opening=base64.urlsafe_b64encode(key).decode().rstrip('=');nonce=secrets.token_bytes(12)
 cipher=AESGCM(key).encrypt(nonce,plain.read_bytes(),None)
 assert AESGCM(key).decrypt(nonce,cipher,None)==plain.read_bytes()

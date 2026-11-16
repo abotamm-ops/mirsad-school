@@ -75,5 +75,15 @@
   "schoolCredit": "إعداد / سامي جراد الماجد",
   "protectionBusyRead": "retry only protectedDayState busy reads, max3 attempts, no write retry and no bypass; actual generated reader tested",
   "schoolQuickVideo": "open Rased first, explicit independent capture target, true readiness checkbox, optional Chrome-permission fallback/skip, then table and monitoring; live meeting UI validated before/during recording",
-  "quickStartPlacement": "above steps, explanation above red/green button; red manual guide above step1; original start-here prompt removed"
+  "quickStartPlacement": "above steps, explanation above red/green button; red manual guide above step1; original start-here prompt removed",
+  "finalPolicyStatus": "agreed, not implemented; explicit pre-implementation backup requested",
+  "finalPolicy": {
+    "devices": "unlimited activated devices per email",
+    "running": "one device monitoring per email globally, regardless of school",
+    "switch": "explicit confirmation, archive previous school in real folders, clean active workspace for new school",
+    "interface": "one current school, separate folder-based archive",
+    "activation": "show policy visibly",
+    "threeDeviceProposal": "canceled"
+  },
+  "sourceSnapshotCommit": "ac6345b"
 }

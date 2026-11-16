@@ -1,3 +1,5 @@
+IMPORTANT: Read NEXT_REQUIREMENTS.md FIRST. This backup predates implementation of the final unlimited-devices/one-global-run/clean-school-switch policy. The3-device proposal is canceled. Do not treat prepared service44 as that final policy.
+
 > Current snapshot: 2026-11-16. Read LATEST_SESSION.md FIRST; it overrides older deployment/version notes below. Recording-completion fix is still pending.
 
 # Rased / Mirsad project: start here
