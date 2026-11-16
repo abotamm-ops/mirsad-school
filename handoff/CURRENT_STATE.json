@@ -7,7 +7,7 @@
   "schoolStoreId": "ihdfpkkkagcaknbjljmbffpbblpcplpa",
   "legacySchoolExtensionId": "ologpgneejnippbdhboiaaijpgkejcck",
   "ownerServicePrepared": "2.9.44",
-  "ownerServiceLiveDeployment": "2.9.40 verified earlier in conversation; 2.9.44 not deployed",
+  "ownerServiceLiveDeployment": "2.9.40 independently verified by public service-version request on 2026-11-16; 2.9.44 not deployed",
   "nativeSchoolSupport": "3.4.7",
   "nativeSupportLocalProbe": "owner confirmed success on Windows from installed legacy school extension",
   "nativeStoreOriginEndToEnd": "not field-tested from store-installed extension",
@@ -62,10 +62,10 @@
     "schoolBindingClientTests": 2,
     "keepAwakeTests": 4
   },
-  "schoolManualExtensionPrepared": "2.9.49",
+  "schoolManualExtensionPrepared": "2.9.50",
   "latestPublishedCommit": "ec9cfd3",
   "workingTreeIncluded": true,
   "recordingCompletionFix": "implemented and automated-tested in personal109 and school47; Windows/Teams field test remains",
   "multiSchoolStatus": "integrated with video fix in47; requires coordinated Google service44 deployment; not deployed to Google from this workspace",
-  "schoolQuickStart": "current visible panel values; daily normalizes today; manual date retained; missing source imported after page refresh, then starts; explicit import decision preserved"
+  "schoolQuickStart": "teacher directory only; website opens automatically and is not a load/start authentication prerequisite; legacy40 and multi44 feature negotiation; current panel and selected date preserved"
 }
