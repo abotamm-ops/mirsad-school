@@ -1,0 +1,2 @@
+/* Retry only a read that the server explicitly rejected as busy. Never retry a write. */
+var MirsadProtectionRead=async function(read,onWait=async()=>{},wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))){for(let attempt=0;;attempt++){try{return await read()}catch(error){const busy=error?.code==='service-busy'||/الخدمة مشغولة/.test(String(error?.message||error));if(!busy||attempt>=2)throw error;await onWait('الخدمة مشغولة مؤقتًا؛ جارٍ إعادة فحص حماية الجدول تلقائيًا…');await wait((attempt+1)*700)}}};

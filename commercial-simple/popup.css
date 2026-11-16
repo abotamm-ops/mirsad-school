@@ -93,3 +93,11 @@ button:active:not(:disabled){transform:translateY(1px);filter:brightness(.9)}but
 #step5 #quickStart{padding:3px 5px;margin:0;font-size:11px;line-height:16px;background:#087e74}
 #step5 #start,#step5:has(#runButtons:not([hidden])) #start{grid-column:2;grid-row:2;width:100%;margin:0;padding:5px}
 #step5 #runButtons{grid-column:3;grid-row:2}
+
+#steps{grid-template-rows:minmax(0,1.55fr) minmax(0,1fr) 72px}
+#steps>#step1,#steps>#step2{padding-top:5px!important;padding-bottom:5px!important}
+#step5 .quick-start-description{font-size:9px;line-height:12px;margin:0 0 2px;text-align:center;color:#183c4b;font-weight:bold}
+#step5 .quick-start-notice{font-size:8px;line-height:11px}
+
+#steps>#step2{padding-top:3px!important;padding-bottom:3px!important}
+#steps>#step4{min-height:112px;padding-top:3px!important;padding-bottom:3px!important}

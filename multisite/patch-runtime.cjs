@@ -12,6 +12,16 @@ replace(/const _value149 = _value147.filter\(/,'const _mirsadAllowed=[];for(cons
 // Count only jobs belonging to the selected school, even while paused.
 replace(/async function _value121\(\) \{/,'async function _value121() {\n    const _mirsadJobs=[];for(const job of await _value1())if(await MirsadMulti.jobInSite(job))_mirsadJobs.push(job);');
 replace(/new Set\(\(await _value1\(\)\)\.filter\(_argument55/,'new Set(_mirsadJobs.filter(_argument55');
+// A busy read is transient, not evidence that the installed protection API is outdated.
+const protectionStart=code.indexOf('  async function _value31() {'),protectionEnd=code.indexOf('  async function _value34(',protectionStart);
+if(protectionStart<0||protectionEnd<0)throw Error('Stable protection reader changed');
+code=code.slice(0,protectionStart)+`  async function _value31() {
+ const writer=(await chrome.storage.local.get(_text))[_text]?.key;
+ let value;try{value=await MirsadProtectionRead(()=>_value11("protectedDayState",{},writer),message=>_value10(message))}catch(error){throw new Error("تعذر التحقق من حماية الجدول؛ لم يتغير الجدول. "+String(error?.message||error))}
+ if(value.protection!=="explicit-reset-only-v1")throw new Error("الخدمة لا تؤكد حماية الجدول؛ لم يتغير الجدول. راجع إصدار خدمة قوقل.");
+ return value;
+ }
+`+code.slice(protectionEnd);
 code=tagRecords(code,file);new(require('node:vm').Script)(code);fs.writeFileSync(file,code);
 const background=path.join(dir,'background.js');let worker=babel.babelTransform(fs.readFileSync(background,'utf8'),background,false,[[path.resolve(__dirname,'../chrome-store/readable-plugin.cjs'),{}]],[]).code;
 worker=tagRecords(worker,background);const append=/async function appendDailyReport\((\w+)\) \{/;if(!append.test(worker))throw Error('Stable daily report writer changed');worker=worker.replace(append,'async function appendDailyReport($1) {if(await MirsadMulti.appendLateDaily($1))return;');fs.writeFileSync(background,worker);
