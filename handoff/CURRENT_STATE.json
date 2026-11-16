@@ -1,6 +1,6 @@
 {
   "snapshotDateRiyadh": "2026-11-15",
-  "personalExtension": "0.6.105",
+  "personalExtension": "0.6.106",
   "schoolManualExtension": "2.9.42",
   "schoolStoreSubmittedVersion": "2.9.31",
   "schoolStoreReviewStatus": "submitted; decision not reported",
@@ -32,7 +32,8 @@
     "customer confirms current Madrasati SchoolId change directly; persistent notice, preserved history and fresh import required",
     "owner reset username resets binding and revokes sessions while preserving email/PIN/subscription/archive",
     "Chrome display keep-awake during active/scheduled monitoring; release on pause/stop/logout; visible manual power-setting instructions",
-    "personal 0.6.105 adds Chrome display keep-awake and visible power warning, based on stable personal 0.6.104 with other runtime/native assets byte-identical"
+    "personal 0.6.105 adds Chrome display keep-awake and visible power warning, based on stable personal 0.6.104 with other runtime/native assets byte-identical",
+    "personal 0.6.106 shortens the power notice to one plain line; keeps 0.6.105 wake protection unchanged"
   ],
   "deferred": [
     "offer deadline not chosen; keep offer disabled",
