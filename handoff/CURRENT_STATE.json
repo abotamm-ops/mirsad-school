@@ -62,10 +62,10 @@
     "schoolBindingClientTests": 2,
     "keepAwakeTests": 4
   },
-  "schoolManualExtensionPrepared": "2.9.48",
+  "schoolManualExtensionPrepared": "2.9.49",
   "latestPublishedCommit": "ec9cfd3",
   "workingTreeIncluded": true,
   "recordingCompletionFix": "implemented and automated-tested in personal109 and school47; Windows/Teams field test remains",
   "multiSchoolStatus": "integrated with video fix in47; requires coordinated Google service44 deployment; not deployed to Google from this workspace",
-  "schoolQuickStart": "implemented: current visible timing/date/mode, daily today, refresh both pages before full import; server remains44"
+  "schoolQuickStart": "current visible panel values; daily normalizes today; manual date retained; missing source imported after page refresh, then starts; explicit import decision preserved"
 }

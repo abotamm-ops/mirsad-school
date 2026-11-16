@@ -20,7 +20,7 @@ for p in (root/'handoff').glob('*'):
  if p.is_file():shutil.copy2(p,stage/p.name)
 shutil.copy2(root/'handoff/AI_HANDOFF.md',stage/'AGENTS.md')
 releases=[
- 'schools/downloads/Mirsad-Schools-2.9.48-Setup.zip',
+ 'schools/downloads/Mirsad-Schools-2.9.49-Setup.zip',
  'schools/downloads/Mirsad-Teams-0.6.109-Video-Trial.zip',
  'schools/downloads/Rased-Schools-Store-Support-3.4.7.zip',
  'schools/downloads/Rased-Schools-2.9.31-Chrome-Store.zip',
@@ -29,9 +29,9 @@ releases=[
 (stage/'RELEASES').mkdir(exist_ok=True)
 for name in releases:shutil.copy2(root/name,stage/'RELEASES'/Path(name).name)
 # Stable archive dependencies needed by the existing build scripts.
-for name in ['Mirsad-Schools-2.6.21-Video-Trial.zip','Rased-Schools-Store-Support-3.4.7.zip','Mirsad-Teams-0.6.107-Video-Trial.zip','Mirsad-Teams-0.6.108-Video-Trial.zip','Mirsad-Schools-2.9.43-Setup.zip','Mirsad-Schools-2.9.48-Setup.zip','Mirsad-Teams-0.6.81.6.zip','Mirsad-Schools-2.3.3.7.zip']:
+for name in ['Mirsad-Schools-2.6.21-Video-Trial.zip','Rased-Schools-Store-Support-3.4.7.zip','Mirsad-Teams-0.6.107-Video-Trial.zip','Mirsad-Teams-0.6.108-Video-Trial.zip','Mirsad-Schools-2.9.43-Setup.zip','Mirsad-Schools-2.9.49-Setup.zip','Mirsad-Teams-0.6.81.6.zip','Mirsad-Schools-2.3.3.7.zip']:
  dest=stage/'SOURCE/schools/downloads'/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/'schools/downloads'/name,dest)
-for release,edition in [(releases[0],'schools-2.9.48'),(releases[1],'personal-0.6.109'),('schools/downloads/Mirsad-Schools-2.9.43-Setup.zip','schools-2.9.43')]:
+for release,edition in [(releases[0],'schools-2.9.49'),(releases[1],'personal-0.6.109'),('schools/downloads/Mirsad-Schools-2.9.43-Setup.zip','schools-2.9.43')]:
  dest=stage/'EXTENSIONS'/edition
  if dest.exists():shutil.rmtree(dest)
  with zipfile.ZipFile(root/release) as z:
@@ -60,7 +60,7 @@ with zipfile.ZipFile(plain,'w',zipfile.ZIP_DEFLATED) as z:
 with zipfile.ZipFile(plain) as z:
  assert z.testzip() is None
  assert 'Rased-Project/BACKEND/owner-2.9.44.gs' in z.namelist()
- assert 'Rased-Project/EXTENSIONS/schools-2.9.48/manifest.json' in z.namelist()
+ assert 'Rased-Project/EXTENSIONS/schools-2.9.49/manifest.json' in z.namelist()
  assert 'Rased-Project/EXTENSIONS/personal-0.6.109/manifest.json' in z.namelist()
 key=secrets.token_bytes(32);opening=base64.urlsafe_b64encode(key).decode().rstrip('=');nonce=secrets.token_bytes(12)
 cipher=AESGCM(key).encrypt(nonce,plain.read_bytes(),None)
