@@ -1,3 +1,5 @@
+> Current snapshot: 2026-11-16. Read LATEST_SESSION.md FIRST; it overrides older deployment/version notes below. Recording-completion fix is still pending.
+
 # خريطة المشروع
 
 | المسار داخل الحزمة | الاستخدام |
@@ -13,8 +15,8 @@
 | SOURCE/schools/guardian-session/ | مساعد استعادة جلسة Chrome |
 | SOURCE/chrome-store/ | فك تشويش مصدر المتجر، اختبارات وملاحظات تجهيز النشر |
 | SOURCE/tests/ | اختبارات منطق الخدمة والمتصفح والفيديو والخطابات |
-| EXTENSIONS/personal-0.6.104/ | ملفات الإضافة الشخصية الحالية، منفصلة عن تجربة التقويم القديمة |
-| EXTENSIONS/schools-2.9.37/ | ملفات إضافة المدارس الحالية للتثبيت اليدوي |
+| EXTENSIONS/personal-0.6.108/ | ملفات الإضافة الشخصية الحالية، منفصلة عن تجربة التقويم القديمة |
+| EXTENSIONS/schools-2.9.45/ | ملفات إضافة المدارس الحالية للتثبيت اليدوي |
 | RELEASES/ | الحزم الحالية المثبتة الإصدارات |
 | BACKEND/ | كود خدمة المالك الكامل؛ خاص بالمالك، لا ينشر علنًا |
 | FILES.sha256 | بصمات للتحقق من ملفات التسليم |

@@ -1,3 +1,5 @@
+> Current snapshot: 2026-11-16. Read LATEST_SESSION.md FIRST; it overrides older deployment/version notes below. Recording-completion fix is still pending.
+
 # حالة متطلبات المدارس — بعد تجهيز 2.9.37 / 2.9.38
 
 ## نُفذ واختُبر آليًا

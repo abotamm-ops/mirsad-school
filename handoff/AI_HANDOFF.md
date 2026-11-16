@@ -1,3 +1,5 @@
+> Current snapshot: 2026-11-16. Read LATEST_SESSION.md FIRST; it overrides older deployment/version notes below. Recording-completion fix is still pending.
+
 # Rased / Mirsad project: start here
 
 Read CURRENT_STATE.json, PROJECT_MAP.md and PENDING_REQUIREMENTS.md before editing. This snapshot contains both source and current release artifacts; it is an owner handoff, not a customer installer.
@@ -5,7 +7,7 @@ Read CURRENT_STATE.json, PROJECT_MAP.md and PENDING_REQUIREMENTS.md before editi
 ## Product and owner preferences
 The owner communicates in Saudi Arabic, wants short concrete guidance, and values immediate UI feedback. Keep the school popup compact and wide (780x600), without document scrolling. Preserve current account, timetable and attendance on upgrade. Do not ask users to uninstall their extension. Avoid changes to live monitoring during working hours.
 
-Treat personal and commercial school editions independently. In particular, SOURCE/teams-probe is an older calendar pilot; it is NOT the current personal runtime. The personal runtime is extracted under EXTENSIONS/personal-0.6.104. The school runtime under EXTENSIONS/schools-2.9.37 is generated from commercial-simple plus the stable school base archive.
+Treat personal and commercial school editions independently. In particular, SOURCE/teams-probe is an older calendar pilot; it is NOT the current personal runtime. The personal runtime is extracted under EXTENSIONS/personal-0.6.108. The school runtime under EXTENSIONS/schools-2.9.45 is generated from commercial-simple plus the stable school base archive.
 
 ## Stable design
 Five school steps: open teacher directory and Rased; load timetable; lesson timing; cycle timing; start monitoring. Inactive cycle fields disabled. Green means ready; blue means utility or optional action. Duration gaps measured after previous cycle finishes. Stop/pause must not restart a run. Late results cannot recreate canceled work.

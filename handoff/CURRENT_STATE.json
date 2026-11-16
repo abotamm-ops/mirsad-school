@@ -1,13 +1,13 @@
 {
-  "snapshotDateRiyadh": "2026-11-15",
-  "personalExtension": "0.6.107",
+  "snapshotDateRiyadh": "2026-11-16",
+  "personalExtension": "0.6.108",
   "schoolManualExtension": "2.9.43",
   "schoolStoreSubmittedVersion": "2.9.31",
   "schoolStoreReviewStatus": "submitted; decision not reported",
   "schoolStoreId": "ihdfpkkkagcaknbjljmbffpbblpcplpa",
   "legacySchoolExtensionId": "ologpgneejnippbdhboiaaijpgkejcck",
-  "ownerServicePrepared": "2.9.40",
-  "ownerServiceLiveDeployment": "not verified; owner supplied matching 2.9.32 source as current reference",
+  "ownerServicePrepared": "2.9.44",
+  "ownerServiceLiveDeployment": "2.9.40 verified earlier in conversation; 2.9.44 not deployed",
   "nativeSchoolSupport": "3.4.7",
   "nativeSupportLocalProbe": "owner confirmed success on Windows from installed legacy school extension",
   "nativeStoreOriginEndToEnd": "not field-tested from store-installed extension",
@@ -29,18 +29,20 @@
     "explicit terms consent with versioned acceptance record",
     "server-bound 15-minute price quote",
     "Teams entry skips fixed landing waits when Join is ready (2.9.39+)",
-    "customer confirms current Madrasati SchoolId change directly; persistent notice, preserved history and fresh import required",
-    "owner reset username resets binding and revokes sessions while preserving email/PIN/subscription/archive",
     "Chrome display keep-awake during active/scheduled monitoring; release on pause/stop/logout; visible manual power-setting instructions",
     "personal 0.6.105 adds Chrome display keep-awake and visible power warning, based on stable personal 0.6.104 with other runtime/native assets byte-identical",
     "personal 0.6.106 shortens the power notice to one plain line; keeps 0.6.105 wake protection unchanged",
-    "Removed sleep/screen notices from personal 0.6.107 and school 2.9.43 UI at owner request; automatic keep-awake remains enabled"
+    "Removed sleep/screen notices from personal 0.6.107 and school 2.9.43 UI at owner request; automatic keep-awake remains enabled",
+    "personal website labelled recording button instead of small square; pushed ec9cfd3; Render deployment not confirmed",
+    "prepared multi-school per email with separate archives, single device and single active school enforced by backend44/client45; not deployed"
   ],
   "deferred": [
     "offer deadline not chosen; keep offer disabled",
     "owner provider identity/support email and legal review before enabling payment",
     "live deployment and one-school end-to-end field test",
-    "attendance heuristic changes based on Teams section positions"
+    "attendance heuristic changes based on Teams section positions",
+    "recording waits for ALL cycle checks including deferred teachers, starts immediately; not implemented",
+    "final first-upgrade context and cross-account logout/login cache review for multisite"
   ],
   "activationOfDeferredWork": "owner wants payment/notice flow ready before applying blocks, after schools try Rased",
   "preparedButDisabledByDefault": [
@@ -60,5 +62,10 @@
     "schoolBindingServiceTests": 5,
     "schoolBindingClientTests": 2,
     "keepAwakeTests": 4
-  }
+  },
+  "schoolManualExtensionPrepared": "2.9.45",
+  "latestPublishedCommit": "ec9cfd3",
+  "workingTreeIncluded": true,
+  "recordingCompletionFix": "requested in BOTH editions; not implemented; see LATEST_SESSION.md",
+  "multiSchoolStatus": "implemented and fixture-tested locally; final lifecycle review and coordinated deployment pending"
 }

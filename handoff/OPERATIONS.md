@@ -1,3 +1,5 @@
+> Current snapshot: 2026-11-16. Read LATEST_SESSION.md FIRST; it overrides older deployment/version notes below. Recording-completion fix is still pending.
+
 # البناء والاختبار والتشغيل
 
 ## نسخة المدارس
