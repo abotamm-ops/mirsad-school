@@ -4,10 +4,10 @@ const dir=process.argv[2],file=path.join(dir,'drive-sync.js');
 function tagRecords(source,filename){return babel.babelTransform(source,filename,false,[[path.resolve(__dirname,'tag-records-plugin.cjs'),{}]],[]).code}
 let code=babel.babelTransform(fs.readFileSync(file,'utf8'),file,false,[[path.resolve(__dirname,'../chrome-store/readable-plugin.cjs'),{}]],[]).code;
 function replace(pattern,value){if(!pattern.test(code))throw Error('Stable runtime changed; review school-scope patch: '+pattern);code=code.replace(pattern,value)}
-replace(/("writerKey": _value133,\n)/,'$1        "siteId": _argument62.siteId || _value132.snapshot?.siteId || (await MirsadMulti.context())?.legacySiteId,\n');
+replace(/("writerKey": _value133,\n)/,'$1        "workspaceId": _argument62.localSchoolId || (await MirsadMulti.context())?.site?.localId,\n        "siteId": _argument62.siteId || _value132.snapshot?.siteId || (await MirsadMulti.context())?.legacySiteId,\n');
 replace(/"scheduleSettings": _value22\(\),\n        "queuedAt"/,'"scheduleSettings": _argument62.multiScheduleSettings || _value22(),\n        "queuedAt"');
 replace(/async function _value130\(_argument61, _argument62, _argument63\) \{/,'async function _value130(_argument61, _argument62, _argument63) {if(_argument62.accountId&&_argument62.accountId!==(await MirsadMulti.context())?.account)throw Error("تغير حساب الرصد؛ بقيت النتيجة في أرشيفها المحلي");');
-replace(/("record": _value150.record,\n)/,'$1          "siteId": _value150.siteId || (await MirsadMulti.context())?.legacySiteId,\n');
+replace(/("record": _value150.record,\n)/,'$1          "workspaceId": _value150.workspaceId,\n          "siteId": _value150.siteId || (await MirsadMulti.context())?.legacySiteId,\n');
 replace(/const _value149 = _value147.filter\(/,'const _mirsadAllowed=[];for(const job of _value147)if(await MirsadMulti.jobAllowed(job))_mirsadAllowed.push(job);\n    const _value149 = _mirsadAllowed.filter(');
 // Count only jobs belonging to the selected school, even while paused.
 replace(/async function _value121\(\) \{/,'async function _value121() {\n    const _mirsadJobs=[];for(const job of await _value1())if(await MirsadMulti.jobInSite(job))_mirsadJobs.push(job);');

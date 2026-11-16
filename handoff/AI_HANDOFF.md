@@ -1,3 +1,6 @@
+# Latest implementation update — 2.9.53
+The v4 backup predates implementation. Current sources implement unlimited device registrations, one global monitoring lease per email, explicit school-switch Archive/Delete/Cancel, and fresh workspace generations. Read multisite/POLICY-2.9.53.md. Apps Script has NOT been deployed; keep the live/prepared distinction. Historical notes below may describe the pre-implementation snapshot. Personal109 remains unchanged.
+
 IMPORTANT: Read NEXT_REQUIREMENTS.md FIRST. This backup predates implementation of the final unlimited-devices/one-global-run/clean-school-switch policy. The3-device proposal is canceled. Do not treat prepared service44 as that final policy.
 
 > Current snapshot: 2026-11-16. Read LATEST_SESSION.md FIRST; it overrides older deployment/version notes below. Recording-completion fix is still pending.
