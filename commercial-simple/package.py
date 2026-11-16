@@ -1,8 +1,8 @@
 from pathlib import Path
 import zipfile,json,base64,secrets,hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.47-Setup.zip'
-readme='''راصد المدارس 2.9.47 — حزمة الإعداد المبسط
+root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.48-Setup.zip'
+readme='''راصد المدارس 2.9.48 — حزمة الإعداد المبسط
 1. استخرج الحزمة كاملة إلى مجلد ثابت على جهاز Windows.
 2. شغّل «تجهيز راصد.vbs» مرة واحدة لتسجيل مكوّن الحفظ المحلي وفتح المساعد، دون نافذة أوامر سوداء. إذا كان VBScript معطلًا في جهاز المؤسسة، استخدم ملف «تحديث حفظ الفيديو.cmd» الموجود داخل مجلد مكوّن الحفظ المحلي. سيظل تثبيت الإضافة نفسه يدويًا حتى نشرها في متجر كروم.
 3. افتح chrome://extensions أو edge://extensions، فعّل وضع المطور، ثم «تحميل إضافة غير محزمة» وحدد مجلد «الإضافة». إذا كانت مثبتة سابقًا استبدل ملفات نفس المجلد وأعد تحميلها؛ لا تحذفها حفاظًا على بياناتها.
@@ -13,6 +13,7 @@ readme='''راصد المدارس 2.9.47 — حزمة الإعداد المبس�
 8. «تحديث النواقص — مستحسن» مفعّل افتراضيًا. يتوقف تحميل الصباح عند اكتمال الروابط، ثم يتبع التحديث بين الدورات وبعد الدورة الأخيرة إعداد الخدمة.
 9. عند استبدال جدول موجود: حفظ السابق وتحميل الجديد، أو حذفه واستبداله، أو إلغاء. نسخ اليوم قابلة للاسترجاع بنتائجها وصورها؛ الأيام الأقدم تُراجع في أرشيف الموقع.
 10. الموقع للعرض والمشاهدة. ضبط التسجيل والتوقيت والتحديث داخل الإضافة. إعداد الفيديو اختياري بجانب فتح مدرستي وراصد ويتطلب تهيئة كروم محليًا.
+التشغيل السريع: افتح مدرستي على بيانات المعلمين، ثم اضغط التشغيل السريع لتطبيق أرقام اللوحة وتاريخ الجدول. في كل صباح يكون تاريخ المصدر يوم التشغيل ويجهز الجدول تلقائيًا. عند تحميل أي جدول، تُحدّث صفحة بيانات المعلمين ومرصاد أولًا ثم يبدأ التحميل بعد جاهزيتهما. لا يُستبدل جدول ينتظر قرارك بصمت.
 ترتيب الواجهة: 1 فتح مدرستي وراصد، 2 تحميل الجدول، 3 ضبط الحصص، 4 ضبط الدورات، 5 بدء الرصد. تتحول كل خطوة للأخضر عند جاهزيتها.
 طريقة الاستخدام: https://mirsad-school.onrender.com/schools/guide.html
 زر الواتساب يجهز رسالة بالرابط واليوزر والرقم السري؛ أرسلها للمخولين فقط. تغيير الرقم من الحساب يلغي جلسات الموقع القديمة.
@@ -52,7 +53,7 @@ with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
 (work/'README.ar.txt').write_text(readme)
 import sys
 if '--extensions-only' in sys.argv:
- (root/'schools/downloads/Mirsad-Schools-2.9.47-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+ (root/'schools/downloads/Mirsad-Schools-2.9.48-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
  print('Packaged extension-only layout update; owner script unchanged.')
  raise SystemExit(0)
 linkfile=work/'OWNER-2.9.44-LINK.txt'
@@ -67,5 +68,5 @@ for ext in ['html','preview.js']:
  dest=site/(name+('.html' if ext=='html' else '-preview.js'))
  dest.write_text(original.read_text().replace('2.6.20','2.9.44').replace('مرصاد','راصد'))
 linkfile.write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
-(root/'schools/downloads/Mirsad-Schools-2.9.47-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+(root/'schools/downloads/Mirsad-Schools-2.9.48-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
 print('Packaged customer bundle and encrypted owner script; owner opening key retained locally.')

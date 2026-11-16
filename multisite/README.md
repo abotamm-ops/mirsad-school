@@ -21,3 +21,9 @@ Build client: `python3 commercial-simple/build.py --extensions-only`, then `pyth
 Run `node --test multisite/service.test.cjs multisite/client.test.cjs commercial-simple/cycle-runtime.test.cjs`, the controller/daily/keep-awake tests, and video core/controller/UI tests. Set `MIRSAD_VIDEO_TEST_ROOT=/tmp/mirsad-commercial/extension/video` to test the generated school's video controller. Run `node commercial-simple/browser.test.cjs` and `node commerce/browser.test.cjs` for the real web UI with fixture services.
 
 These are automated fixtures and browser tests, not a Windows/Teams field recording or live deployment confirmation. Test a real clip's sound, picture, save, and next cycle before general rollout.
+
+## Schools 2.9.48 quick start
+
+The compact popup adds a quick-start button with a visible instruction to open Madrasati's teacher directory first. It captures the complete visible timing values, enabled cycle gaps, source date and mode, validates and saves them, then calls the existing start path. Manual mode rejects an unloaded source date. Daily mode keeps the displayed date on today's Riyadh date and arms the normal daily planner; the planner collects the actual operating day's table. Duplicate clicks are rejected; stop/pause cancels a pending quick start. Daily arming remains enabled during the final start phase.
+
+Every full `MirsadSimple.collect` first reloads the directory and dashboard tabs, waits for both reload completion events, and verifies their readiness again before selecting the school's space and collecting fresh teacher data. Page reload/authentication failures never fall back to a cached import. Loading is serialized with starting and mutation controls. Existing import-confirmation decisions remain explicit. The user opens the teacher directory; no automated navigation helper or cached SchoolId substitution is added. Backend44 is unchanged.
