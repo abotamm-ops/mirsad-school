@@ -1,7 +1,7 @@
 {
   "snapshotDateRiyadh": "2026-11-15",
   "personalExtension": "0.6.104",
-  "schoolManualExtension": "2.9.41",
+  "schoolManualExtension": "2.9.42",
   "schoolStoreSubmittedVersion": "2.9.31",
   "schoolStoreReviewStatus": "submitted; decision not reported",
   "schoolStoreId": "ihdfpkkkagcaknbjljmbffpbblpcplpa",
@@ -30,7 +30,8 @@
     "server-bound 15-minute price quote",
     "Teams entry skips fixed landing waits when Join is ready (2.9.39+)",
     "customer confirms current Madrasati SchoolId change directly; persistent notice, preserved history and fresh import required",
-    "owner reset username resets binding and revokes sessions while preserving email/PIN/subscription/archive"
+    "owner reset username resets binding and revokes sessions while preserving email/PIN/subscription/archive",
+    "Chrome display keep-awake during active/scheduled monitoring; release on pause/stop/logout; visible manual power-setting instructions"
   ],
   "deferred": [
     "offer deadline not chosen; keep offer disabled",
@@ -54,6 +55,7 @@
     "liveBankVerification": "not implemented; intentionally provisional activation",
     "liveGoogleScriptDeployment": "not performed from this workspace",
     "schoolBindingServiceTests": 5,
-    "schoolBindingClientTests": 2
+    "schoolBindingClientTests": 2,
+    "keepAwakeTests": 4
   }
 }

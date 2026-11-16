@@ -1,8 +1,8 @@
 from pathlib import Path
 import zipfile,json,base64,secrets,hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.41-Setup.zip'
-readme='''راصد المدارس 2.9.41 — حزمة الإعداد المبسط
+root=Path(__file__).resolve().parents[1];work=Path('/tmp/mirsad-commercial');out=root/'schools/downloads/Mirsad-Schools-2.9.42-Setup.zip'
+readme='''راصد المدارس 2.9.42 — حزمة الإعداد المبسط
 1. استخرج الحزمة كاملة إلى مجلد ثابت على جهاز Windows.
 2. شغّل «تجهيز راصد.vbs» مرة واحدة لتسجيل مكوّن الحفظ المحلي وفتح المساعد، دون نافذة أوامر سوداء. إذا كان VBScript معطلًا في جهاز المؤسسة، استخدم ملف «تحديث حفظ الفيديو.cmd» الموجود داخل مجلد مكوّن الحفظ المحلي. سيظل تثبيت الإضافة نفسه يدويًا حتى نشرها في متجر كروم.
 3. افتح chrome://extensions أو edge://extensions، فعّل وضع المطور، ثم «تحميل إضافة غير محزمة» وحدد مجلد «الإضافة». إذا كانت مثبتة سابقًا استبدل ملفات نفس المجلد وأعد تحميلها؛ لا تحذفها حفاظًا على بياناتها.
@@ -18,6 +18,7 @@ readme='''راصد المدارس 2.9.41 — حزمة الإعداد المبس�
 زر الواتساب يجهز رسالة بالرابط واليوزر والرقم السري؛ أرسلها للمخولين فقط. تغيير الرقم من الحساب يلغي جلسات الموقع القديمة.
 11. رسائل المالك تظهر داخل الإضافة عند فتحها بعد المزامنة. صفحة الاشتراك ورفع الفاتورة متاحة من الحساب ومن حالة توقف الاشتراك. رفع الفاتورة والتفعيل الفوري يحتاج خدمة المالك 2.9.40 وفتح الدفع منها؛ يكون مغلقًا افتراضيًا. لا ترسل سكربت المالك للمدارس.
 12. إذا لوحظ تغيّر معرّف المدرسة يظهر تنبيه داخل الإضافة. أكّد «نعم، هذه مدرستي» لتحديث الربط مباشرة ثم حمّل الجدول الجديد. تحفظ النسخة السابقة في الأرشيف. لا يلزم تغيير البريد أو الاشتراك.
+13. راصد يمنع السكون التلقائي وإطفاء الشاشة أثناء الرصد أو انتظار الموعد المجدول، ويحرر المنع عند الإيقاف أو الإيقاف المؤقت أو تسجيل الخروج. للاحتياط اضبط السكون وإيقاف الشاشة على «أبدًا» أثناء الشحن، ولا تغلق غطاء الجهاز أو تدخل السكون يدويًا.
 هذه حزمة المسار المبسط. اختُبرت الواجهة والجدولة والخدمة آليًا. جرّب مدرسة واحدة ميدانيًا وتأكد من الرصد والحفظ والفيديو قبل التوزيع الواسع. ميزة الفواتير والتفعيل الجديدة تحتاج تجربة فعلية بعد نشر خدمة المالك.
 '''
 launcher='''Option Explicit
@@ -51,7 +52,7 @@ with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
 (work/'README.ar.txt').write_text(readme)
 import sys
 if '--extensions-only' in sys.argv:
- (root/'schools/downloads/Mirsad-Schools-2.9.41-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+ (root/'schools/downloads/Mirsad-Schools-2.9.42-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
  print('Packaged extension-only layout update; owner script unchanged.')
  raise SystemExit(0)
 linkfile=work/'OWNER-2.9.40-LINK.txt'
@@ -66,5 +67,5 @@ for ext in ['html','preview.js']:
  dest=site/(name+('.html' if ext=='html' else '-preview.js'))
  dest.write_text(original.read_text().replace('2.6.20','2.9.40').replace('مرصاد','راصد'))
 linkfile.write_text('https://mirsad-school.onrender.com/schools/'+name+'.html#'+base64.urlsafe_b64encode(key).decode().rstrip('=')+'\n')
-(root/'schools/downloads/Mirsad-Schools-2.9.41-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
+(root/'schools/downloads/Mirsad-Schools-2.9.42-CHECKSUMS.txt').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  '+out.name+'\n')
 print('Packaged customer bundle and encrypted owner script; owner opening key retained locally.')
