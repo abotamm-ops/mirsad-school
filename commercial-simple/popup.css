@@ -82,6 +82,5 @@ button:active:not(:disabled){transform:translateY(1px);filter:brightness(.9)}but
 #ownerAnnouncementDialog{max-width:600px;width:calc(100% - 40px);max-height:480px;overflow:auto;border:2px solid #1767ae}#ownerAnnouncementDialog[data-tone=warning]{border-color:#c58b1d}#ownerAnnouncementDialog p{font-size:14px;line-height:1.8}.billing-link{display:block;margin:6px 0;padding:7px;background:#e5f0fa;color:#1767ae;border-radius:6px;text-align:center;font-weight:bold}
 #actionProgress{pointer-events:none}
 
-#beforeLoadNotice strong{font-size:11px;line-height:1.6;color:#8d271d}
 
 #step2{overflow:auto}
