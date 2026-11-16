@@ -10,13 +10,15 @@ with zipfile.ZipFile(root/'schools/downloads/Mirsad-Schools-2.6.21-Video-Trial.z
    p=ext/n.removeprefix('الإضافة/');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(z.read(n))
 p=ext/'auto-links.js';t=p.read_text().replace("async function morningWindow(){","async function morningWindow(){const preference=(await chrome.storage.local.get('mirsadSimpleSettings')).mirsadSimpleSettings;if(preference?.refresh===false)return morningStop('تحميل الصباح متوقف حسب اختيارك في الإضافة.');");p.write_text(t)
 subprocess.run(['node',str(src/'patch-entry-delay.cjs'),str(ext/'content.js')],check=True)
+for name in ['core.js','controller.js']:shutil.copy2(root/'video'/name,ext/'video'/name)
+subprocess.run(['node',str(root/'multisite/patch-runtime.cjs'),str(ext)],check=True)
 (ext/'simple').mkdir()
 for f in src.glob('*.js'):
- if f.name.endswith('.test.js'):continue
+ if f.name.endswith('.test.js') or f.name=='binding.js':continue
  shutil.copy2(f,ext/'simple'/f.name)
 for name in ['popup.html','popup.css','demo.html']:shutil.copy2(src/name,ext/name)
-p=ext/'background.js';p.write_text(p.read_text()+"\nimportScripts('commercial-auth.js','simple/binding.js','simple/cycle-runtime.js','simple/controller.js','simple/daily.js','simple/keep-awake.js');\n")
-p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.43';m['permissions']=list(dict.fromkeys(m.get('permissions',[])+['power']));m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
+p=ext/'background.js';p.write_text("importScripts('simple/multisite.js');\n"+p.read_text()+"\nimportScripts('commercial-auth.js','simple/cycle-runtime.js','simple/controller.js','simple/daily.js','simple/keep-awake.js');MirsadMulti.install();\n")
+p=ext/'manifest.json';m=json.loads(p.read_text());m['version']='2.9.47';m['permissions']=list(dict.fromkeys(m.get('permissions',[])+['power']));m['name']='راصد — المدارس';m['short_name']='راصد';m['description']='خمس خطوات لرصد المدرسة مع تفعيل البريد والحفظ المحلي والجدول اليومي';m['content_scripts'].append({'matches':['https://mirsad-school.onrender.com/schools/automatic-monitoring.html*'],'js':['simple/site-handoff.js'],'run_at':'document_start'});p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
 # Rebrand displayed Arabic text only; protocol IDs, keys and storage paths remain stable.
 for asset in ext.rglob('*'):
  if asset.is_file() and asset.suffix in {'.js','.html','.json'}:
@@ -47,6 +49,6 @@ s=s.replace('// END MIRSAD SCHOOLS COMPLETE SCRIPT 2.6.20','')+'\n'+(src/'backen
 import runpy
 s=runpy.run_path(str(root/'commerce/build.py'))['transform'](s)
 (work/'owner-2.9.38.gs').write_text(s)
-s=runpy.run_path(str(root/'binding/build.py'))['transform'](s)
-(work/'owner-2.9.40.gs').write_text(s)
+s=runpy.run_path(str(root/'multisite/build.py'))['transform'](s)
+(work/'owner-2.9.44.gs').write_text(s)
 print('Built commercial extension and owner script locally')

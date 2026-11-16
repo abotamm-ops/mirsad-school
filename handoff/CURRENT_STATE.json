@@ -1,6 +1,6 @@
 {
   "snapshotDateRiyadh": "2026-11-16",
-  "personalExtension": "0.6.108",
+  "personalExtension": "0.6.109",
   "schoolManualExtension": "2.9.43",
   "schoolStoreSubmittedVersion": "2.9.31",
   "schoolStoreReviewStatus": "submitted; decision not reported",
@@ -41,8 +41,7 @@
     "owner provider identity/support email and legal review before enabling payment",
     "live deployment and one-school end-to-end field test",
     "attendance heuristic changes based on Teams section positions",
-    "recording waits for ALL cycle checks including deferred teachers, starts immediately; not implemented",
-    "final first-upgrade context and cross-account logout/login cache review for multisite"
+    "real Windows/Teams video clip and coordinated client47/service44 deployment"
   ],
   "activationOfDeferredWork": "owner wants payment/notice flow ready before applying blocks, after schools try Rased",
   "preparedButDisabledByDefault": [
@@ -63,9 +62,9 @@
     "schoolBindingClientTests": 2,
     "keepAwakeTests": 4
   },
-  "schoolManualExtensionPrepared": "2.9.45",
+  "schoolManualExtensionPrepared": "2.9.47",
   "latestPublishedCommit": "ec9cfd3",
   "workingTreeIncluded": true,
-  "recordingCompletionFix": "requested in BOTH editions; not implemented; see LATEST_SESSION.md",
-  "multiSchoolStatus": "implemented and fixture-tested locally; final lifecycle review and coordinated deployment pending"
+  "recordingCompletionFix": "implemented and automated-tested in personal109 and school47; Windows/Teams field test remains",
+  "multiSchoolStatus": "integrated with video fix in47; requires coordinated Google service44 deployment; not deployed to Google from this workspace"
 }

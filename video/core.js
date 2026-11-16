@@ -3,7 +3,7 @@ var MirsadVideoCore=(()=>{
  const SAFETY_MS=30000,MIN_CLIP_MS=5000,MAX_CLIP_MS=600000;
  const normalize=s=>String(s||'').normalize('NFKC').replace(/\s+/g,' ').trim();
  function gap(run,now,minBudget=MIN_CLIP_MS,tail=null){
-  if(!run?.running||run.paused||run.testMode||run.backtestMode||run.immediateMode||run.calendarTrial||run.current||run.meetingScan||!Number.isInteger(run.cycle)||run.cycle<1||run.cycle>3)return null;
+  if(!run?.running||run.paused||run.testMode||run.backtestMode||run.immediateMode||run.calendarTrial||run.current||run.meetingScan||run.scanRetry||run.waitingForReconnect||Number.isInteger(run.tabId)||(run.probeTabIds||[]).length||!Array.isArray(run.periodItems)||!run.periodItems.length||!Number.isInteger(run.index)||run.index<run.periodItems.length||!Number.isInteger(run.cycle)||run.cycle<1||run.cycle>3)return null;
   if(run.waitingForCycle2&&run.cycle===3)return null;const final= !run.waitingForCycle2;if(final&&(!tail||tail.startedAt!==run.startedAt||(tail.controlEpoch||0)!==(run.controlEpoch||0)||tail.period!==run.period||tail.cycle!==run.cycle||!run.periodItems?.length||run.index<run.periodItems.length))return null;const boundary=final?tail.endAt:run.nextCycleAt;if(!Number.isFinite(boundary))return null;const deadline=boundary-SAFETY_MS,budget=deadline-now;
   if(budget<minBudget||budget>12*60*60*1000)return null;
   return {period:Number(run.period),afterCycle:run.cycle,nextCycleAt:boundary,boundary:final?'lessonEnd':'nextCycle',deadline,budget,key:[run.startedAt,run.controlEpoch||0,run.period,run.cycle,boundary].join('|')};
