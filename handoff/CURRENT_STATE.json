@@ -86,12 +86,12 @@
     "threeDeviceProposal": "canceled"
   },
   "sourceSnapshotCommit": "ac6345b",
-  "preparedSchoolRelease": "2.9.55",
+  "preparedSchoolRelease": "2.9.56",
   "preparedOwnerService": "2.9.53",
   "deploymentInstructions": "multisite/POLICY-2.9.53.md",
-  "startupFix": "55 uses saved scoped timetable before viewer tabs, awaits daily initial attempt, verifies persisted run, removes stale retry blockers and retains confirmed writer verification cache; fixture/browser-tested, owner field confirmation pending",
+  "startupFix": "56 uses the already server-confirmed scoped imported timetable for startup; requires matching account/site/visit/day/source/revision and no pending reset/import. Keeps subscription, lease and server write validation.93 regression and54 video tests plus browser passed; field confirmation pending.",
   "handoffDate": "2026-11-17",
   "userReportedDeployment": "Public commercialServiceVersion returned2.9.53 with unlimitedRecorderDevices and singleMonitoringSession on2026-11-17",
   "fieldStatus": "School timetable loaded and visible. Monitoring startup reported stuck on53;54 supplied, no user confirmation of field success yet.",
-  "pendingNextTask": "Owner field test of55. Existing pre-lesson label confirmed correct; pending-label experiment canceled, not included."
+  "pendingNextTask": "Owner field test of56. No pending-label change; that experiment remains canceled."
 }
