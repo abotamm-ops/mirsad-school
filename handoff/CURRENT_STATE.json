@@ -86,10 +86,10 @@
     "threeDeviceProposal": "canceled"
   },
   "sourceSnapshotCommit": "ac6345b",
-  "preparedSchoolRelease": "2.9.57",
+  "preparedSchoolRelease": "2.9.58",
   "preparedOwnerService": "2.9.53",
   "deploymentInstructions": "multisite/POLICY-2.9.53.md",
-  "startupFix": "57 initializes a new run from the persisted control epoch even when mirsadAutoRun is null; stop during initial startup also advances the epoch. Exact56 failure reproduced on nonzero-epoch state; real login-restore and startup/cancellation tests pass.94 regression and54 video tests plus browser regression passed. Owner field confirmation pending.",
+  "startupFix": "57 confirmed working by owner.58 preserves ready steps 1-4 during Quick Start; reuses valid scoped video; bounds directory reads and allows one read-only refresh/retry; compact UI and bottom helper.103 regression +56 video tests pass; field validation of58 pending.",
   "handoffDate": "2026-11-17",
   "userReportedDeployment": "Public commercialServiceVersion returned2.9.53 with unlimitedRecorderDevices and singleMonitoringSession on2026-11-17",
   "fieldStatus": "School timetable loaded and visible. Monitoring startup reported stuck on53;54 supplied, no user confirmation of field success yet.",
