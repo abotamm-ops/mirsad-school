@@ -1,3 +1,6 @@
+# تسليم 17 نوفمبر 2026
+اقرأ LATEST_SESSION.md أولًا: الحالة الحالية مدارس54/خدمة53/شخصية109. طلب الحالة الفارغة قبل الحصة لم يُنفّذ، وتشغيل54 لم يؤكده المستخدم ميدانيًا. الملاحظات التاريخية التالية قد تكون أقدم.
+
 # Latest implementation update — 2.9.53
 The v4 backup predates implementation. Current sources implement unlimited device registrations, one global monitoring lease per email, explicit school-switch Archive/Delete/Cancel, and fresh workspace generations. Read multisite/POLICY-2.9.53.md. Apps Script has NOT been deployed; keep the live/prepared distinction. Historical notes below may describe the pre-implementation snapshot. Personal109 remains unchanged.
 

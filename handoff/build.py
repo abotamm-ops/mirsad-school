@@ -20,7 +20,7 @@ for p in (root/'handoff').glob('*'):
  if p.is_file():shutil.copy2(p,stage/p.name)
 shutil.copy2(root/'handoff/AI_HANDOFF.md',stage/'AGENTS.md')
 releases=[
- 'schools/downloads/Mirsad-Schools-2.9.52-Setup.zip',
+ 'schools/downloads/Mirsad-Schools-2.9.54-Setup.zip',
  'schools/downloads/Mirsad-Teams-0.6.109-Video-Trial.zip',
  'schools/downloads/Rased-Schools-Store-Support-3.4.7.zip',
  'schools/downloads/Rased-Schools-2.9.31-Chrome-Store.zip',
@@ -29,9 +29,9 @@ releases=[
 (stage/'RELEASES').mkdir(exist_ok=True)
 for name in releases:shutil.copy2(root/name,stage/'RELEASES'/Path(name).name)
 # Stable archive dependencies needed by the existing build scripts.
-for name in ['Mirsad-Schools-2.6.21-Video-Trial.zip','Rased-Schools-Store-Support-3.4.7.zip','Mirsad-Teams-0.6.107-Video-Trial.zip','Mirsad-Teams-0.6.108-Video-Trial.zip','Mirsad-Schools-2.9.43-Setup.zip','Mirsad-Schools-2.9.52-Setup.zip','Mirsad-Teams-0.6.81.6.zip','Mirsad-Schools-2.3.3.7.zip']:
+for name in ['Mirsad-Schools-2.6.21-Video-Trial.zip','Rased-Schools-Store-Support-3.4.7.zip','Mirsad-Teams-0.6.107-Video-Trial.zip','Mirsad-Teams-0.6.108-Video-Trial.zip','Mirsad-Schools-2.9.43-Setup.zip','Mirsad-Schools-2.9.54-Setup.zip','Mirsad-Teams-0.6.81.6.zip','Mirsad-Schools-2.3.3.7.zip']:
  dest=stage/'SOURCE/schools/downloads'/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(root/'schools/downloads'/name,dest)
-for release,edition in [(releases[0],'schools-2.9.52'),(releases[1],'personal-0.6.109'),('schools/downloads/Mirsad-Schools-2.9.43-Setup.zip','schools-2.9.43')]:
+for release,edition in [(releases[0],'schools-2.9.54'),(releases[1],'personal-0.6.109'),('schools/downloads/Mirsad-Schools-2.9.43-Setup.zip','schools-2.9.43')]:
  dest=stage/'EXTENSIONS'/edition
  if dest.exists():shutil.rmtree(dest)
  with zipfile.ZipFile(root/release) as z:
@@ -40,27 +40,29 @@ for release,edition in [(releases[0],'schools-2.9.52'),(releases[1],'personal-0.
    rel=Path(name.removeprefix('الإضافة/'));assert '..' not in rel.parts
    p=dest/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(z.read(name))
 (stage/'BACKEND').mkdir(exist_ok=True)
-for version in ['2.9.21','2.9.32','2.9.34','2.9.38','2.9.40','2.9.44']:
+for version in ['2.9.21','2.9.32','2.9.34','2.9.38','2.9.40','2.9.44','2.9.53']:
  source=Path('/tmp/mirsad-commercial')/f'owner-{version}.gs'
  assert source.exists(),'Supply the private owner service snapshot locally; never commit plaintext.'
  shutil.copy2(source,stage/'BACKEND'/source.name)
 # The private edition service's protected viewer is included without its key.
 for p in (root/'schools').glob('private-video-script-0.6.103*'):
  dest=stage/'RELEASES/private-service-protected'/p.name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,dest)
+for p in (root/'schools').glob('owner-script-2.9.53*'):
+ dest=stage/'RELEASES/owner-service-2.9.53'/p.name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,dest)
 head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
 (stage/'SNAPSHOT.json').write_text(json.dumps({'sourceCommit':head,'format':2,'workingTreeIncluded':True,'latestSession':'LATEST_SESSION.md','includesGitHistory':False,'includesLivePropertyExports':False,'ownerPrivateSourceIncluded':True},indent=2)+'\n')
 manifest=[]
 for p in sorted(stage.rglob('*')):
  if p.is_file() and p.name!='FILES.sha256':manifest.append(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.relative_to(stage).as_posix())
 (stage/'FILES.sha256').write_text('\n'.join(manifest)+'\n')
-plain=work/'Rased-Project-2026-11-16.zip'
+plain=work/'Rased-Project-2026-11-17.zip'
 with zipfile.ZipFile(plain,'w',zipfile.ZIP_DEFLATED) as z:
  for p in sorted(stage.rglob('*')):
   if p.is_file():z.write(p,'Rased-Project/'+p.relative_to(stage).as_posix())
 with zipfile.ZipFile(plain) as z:
  assert z.testzip() is None
  assert 'Rased-Project/BACKEND/owner-2.9.44.gs' in z.namelist()
- assert 'Rased-Project/EXTENSIONS/schools-2.9.52/manifest.json' in z.namelist()
+ assert 'Rased-Project/EXTENSIONS/schools-2.9.54/manifest.json' in z.namelist()
  assert 'Rased-Project/EXTENSIONS/personal-0.6.109/manifest.json' in z.namelist()
 if '--plain' in sys.argv:
  outputs=[]
@@ -70,7 +72,7 @@ if '--plain' in sys.argv:
    index=sizes.index(min(sizes));groups[index].append(info);sizes[index]+=info.compress_size
   seen=set()
   for index,group in enumerate(groups,1):
-   output=root/f'schools/downloads/Rased-Complete-2026-11-16-v4-Part-{index}.zip'
+   output=root/f'schools/downloads/Rased-Complete-2026-11-17-v5-Part-{index}.zip'
    with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as target:
     for info in sorted(group,key=lambda i:i.filename):
      target.writestr(info.filename,original.read(info.filename));seen.add(info.filename)

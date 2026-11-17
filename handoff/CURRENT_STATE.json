@@ -89,5 +89,9 @@
   "preparedSchoolRelease": "2.9.54",
   "preparedOwnerService": "2.9.53",
   "deploymentInstructions": "multisite/POLICY-2.9.53.md",
-  "startupFix": "Native probe no longer waits for historical disk mirror; visible startup phases. Backend 2.9.53 unchanged."
+  "startupFix": "Native probe no longer waits for historical disk mirror; visible startup phases. Backend 2.9.53 unchanged.",
+  "handoffDate": "2026-11-17",
+  "userReportedDeployment": "User says owner script updated; actual published version not independently verified",
+  "fieldStatus": "School timetable loaded and visible. Monitoring startup reported stuck on53;54 supplied, no user confirmation of field success yet.",
+  "pendingNextTask": "Before scheduled lesson start, teacher status on Rased must be completely blank; no absence/presence/pending label. Not implemented or fully audited yet."
 }
