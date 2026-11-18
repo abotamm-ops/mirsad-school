@@ -14,7 +14,7 @@
   for (let _0x4e9e07 = 0; _0x4e9e07 < _0x516989['rounds']['length']; _0x4e9e07++) {
     const _0x3a6ff6 = _0x516989['rounds'][_0x4e9e07], _0xb726da = text('p', 'الدورة ' + (_0x4e9e07 + 1) + ' \u2014 ' + (_0x3a6ff6['pending'] ? 'بانتظار الرصد' : stateLabel[_0x3a6ff6['status']] || 'غير محسوم'));
     if (_0x3a6ff6['absenceReason'] === 'no-link')
-      _0xb726da['append'](text('small', ' \xB7 لعدم توفر رابط'));
+      _0xb726da['append'](text('small', ' \xB7 لعدم توفر رابط\u060C دون صورة غياب'));
     _0xb726da['className'] = 'round-result ' + (_0x3a6ff6['pending'] ? 'pending' : _0x3a6ff6['status']);
     if (_0x3a6ff6['scannedAt'])
       _0xb726da['append'](text('small', ' \xB7 ' + dateText(_0x3a6ff6['scannedAt'])));
@@ -28,7 +28,7 @@
   if (_0x516989['override'])
     _0x3cd466['append'](text('p', 'عُدّلت الحالة يدويًا في ' + dateText(_0x516989['override']['at']) + (_0x516989['override']['note'] ? ' \u2014 ' + _0x516989['override']['note'] : '')));
   if (_0x516989['inferred'])
-    _0x3cd466['append'](text('p', _0x516989['noLinkAbsence'] ? 'لم يُحسم الحضور لعدم توفر رابط Teams. يمكنك إضافة الرابط أو تعديل الحالة يدويًا.' : 'انتهت الحصة دون وصول نتيجة رصد.'));
+    _0x3cd466['append'](text('p', _0x516989['noLinkAbsence'] ? 'احتُسب الغياب لدخول وقت الحصة دون توفر رابط تيمز. يمكنك إضافة الرابط أو تعديل الحالة يدويًا.' : 'احتُسب الغياب بعد انتهاء الحصة لعدم وصول أي نتيجة رصد.'));
   {
     const _0x60f74a = document['createElement']('form');
     _0x60f74a['className'] = 'edit-lesson-form';
