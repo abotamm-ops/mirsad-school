@@ -12,10 +12,18 @@
  const rememberLabel=document.createElement('label');rememberLabel.className='website-remember';const remember=document.createElement('input');remember.id='websiteRemember';remember.type='checkbox';remember.checked=true;rememberLabel.append(remember,document.createTextNode('حفظ الدخول على هذا الجهاز'));
  const submit=document.createElement('button');submit.type='submit';submit.textContent='دخول';const help=document.createElement('p');help.textContent='الرقم تضبطه أو تغيّره من «الحساب» داخل إضافة راصد.';form.append(userLabel,pinLabel,rememberLabel,submit,help);form.hidden=true;box.append(heading,status,form,retry);panel.append(box);document.body.append(panel);
  function loginView(message=''){document.documentElement.classList.add('website-login-required');document.documentElement.classList.remove('mirsad-admin-ready');delete document.documentElement.dataset.mirsadSchoolId;panel.hidden=false;form.hidden=false;retry.hidden=true;heading.textContent='ادخل اليوزر والرقم السري';status.textContent=message}
- function fail(message){panel.hidden=false;heading.textContent='تعذر فتح حساب المدرسة الآن';status.textContent=message;retry.hidden=false;form.hidden=false}
+ function fail(message){panel.hidden=false;heading.textContent='تعذر فتح حساب المدرسة الآن';status.textContent=message;retry.hidden=false;form.hidden=true}
  function deadline(promise){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('تأخر رد الخدمة. أعد المحاولة.')),25000)})]).finally(()=>clearTimeout(timer))}
  async function authenticate(){const request=++generation,key=currentKey();retry.hidden=true;if(!key){loginView();return}heading.textContent='جارٍ فتح حسابك…';status.textContent='نتحقق من الدخول المحفوظ على جهازك.';panel.hidden=localStorage.getItem('mirsad-simple-view')==='true';
-  try{const value=await deadline(C.api('adminLogin'));if(request!==generation||currentKey()!==key)return;
+  try{let value;
+   for(let attempt=0;;attempt++){
+    try{value=await deadline(C.api('adminLogin'));break}
+    catch(error){
+     if(error.code!=='service-busy'||attempt===2)throw error;
+     await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)));
+     if(request!==generation||currentKey()!==key)return;
+    }
+   }if(request!==generation||currentKey()!==key)return;
    document.documentElement.classList.remove('website-login-required');C.saveSchool(value.school);localStorage.setItem('mirsad-simple-view','true');document.documentElement.dataset.mirsadReadOnly='true';document.documentElement.dataset.mirsadSchoolId=value.school.id;document.documentElement.dataset.mirsadSiteId=value.siteId||value.school.siteId||'';
    (localStorage.getItem(C.websiteSessionKey||C.sessionKey)?localStorage:sessionStorage).setItem('mirsad-schools-admin-session-v2',key);document.documentElement.classList.add('mirsad-admin-ready');panel.hidden=true;form.hidden=true;
    if(!authenticated){authenticated=true;resolveReady();window.dispatchEvent(new Event('mirsad-admin-login'));void C.api('commercialWebsiteActivity').catch(()=>{});activityTimer=setInterval(()=>{if(!document.hidden)void C.api('commercialWebsiteActivity').catch(()=>{})},60000)}

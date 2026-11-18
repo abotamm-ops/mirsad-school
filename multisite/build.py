@@ -44,4 +44,8 @@ def transform(s):
  return runpy.run_path(str(root/'multisite/devices.py'))['transform'](s)
 if __name__=='__main__':
  base=runpy.run_path(str(root/'commerce/build.py'))['transform']((work/'owner-2.9.21.gs').read_text())
- (work/'owner-2.9.53.gs').write_text(transform(base));print('Prepared service 2.9.53 privately; not deployed')
+ service=transform(base)
+ (work/'owner-2.9.53.gs').write_text(service)
+ website_session=runpy.run_path(str(root/'multisite/website_session.py'))['transform']
+ (work/'owner-2.9.64.gs').write_text(website_session(service))
+ print('Prepared service 2.9.64 privately; not deployed')
