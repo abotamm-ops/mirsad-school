@@ -14,23 +14,27 @@
  function loginView(message=''){document.documentElement.classList.add('website-login-required');document.documentElement.classList.remove('mirsad-admin-ready');delete document.documentElement.dataset.mirsadSchoolId;panel.hidden=false;form.hidden=false;retry.hidden=true;heading.textContent='ادخل اليوزر والرقم السري';status.textContent=message}
  function fail(message){panel.hidden=false;heading.textContent='تعذر فتح حساب المدرسة الآن';status.textContent=message;retry.hidden=false;form.hidden=true}
  function deadline(promise){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('تأخر رد الخدمة. أعد المحاولة.')),25000)})]).finally(()=>clearTimeout(timer))}
+ async function retryBusy(call,stillCurrent=()=>true,onBusy=()=>{}){
+  for(let attempt=0;;attempt++){
+   try{return await deadline(call())}
+   catch(error){
+    if(error.code!=='service-busy'||attempt===2||!stillCurrent())throw error;
+    onBusy();
+    await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)));
+    if(!stillCurrent())throw error;
+   }
+  }
+ }
  async function authenticate(){const request=++generation,key=currentKey();retry.hidden=true;if(!key){loginView();return}heading.textContent='جارٍ فتح حسابك…';status.textContent='نتحقق من الدخول المحفوظ على جهازك.';panel.hidden=localStorage.getItem('mirsad-simple-view')==='true';
-  try{let value;
-   for(let attempt=0;;attempt++){
-    try{value=await deadline(C.api('adminLogin'));break}
-    catch(error){
-     if(error.code!=='service-busy'||attempt===2)throw error;
-     await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)));
-     if(request!==generation||currentKey()!==key)return;
-    }
-   }if(request!==generation||currentKey()!==key)return;
+  try{const value=await retryBusy(()=>C.api('adminLogin'),()=>request===generation&&currentKey()===key);
+   if(request!==generation||currentKey()!==key)return;
    document.documentElement.classList.remove('website-login-required');C.saveSchool(value.school);localStorage.setItem('mirsad-simple-view','true');document.documentElement.dataset.mirsadReadOnly='true';document.documentElement.dataset.mirsadSchoolId=value.school.id;document.documentElement.dataset.mirsadSiteId=value.siteId||value.school.siteId||'';
    (localStorage.getItem(C.websiteSessionKey||C.sessionKey)?localStorage:sessionStorage).setItem('mirsad-schools-admin-session-v2',key);document.documentElement.classList.add('mirsad-admin-ready');panel.hidden=true;form.hidden=true;
    if(!authenticated){authenticated=true;resolveReady();window.dispatchEvent(new Event('mirsad-admin-login'));void C.api('commercialWebsiteActivity').catch(()=>{});activityTimer=setInterval(()=>{if(!document.hidden)void C.api('commercialWebsiteActivity').catch(()=>{})},60000)}
    if(!document.querySelector('.mirsad-admin-logout')){const logout=document.createElement('button');logout.type='button';logout.className='mirsad-admin-logout';logout.textContent='تسجيل الخروج';logout.onclick=async()=>{logout.disabled=true;try{await C.api('commercialWebsiteLogout')}catch(e){if(!['invalid-session','school-disabled'].includes(e.code)){status.textContent=e.message;logout.disabled=false;return}}if(C.clearSession)C.clearSession();else localStorage.removeItem(C.sessionKey);expireSession();};document.body.append(logout)}
   }catch(error){if(request!==generation)return;if(['invalid-session','device-revoked','website-login-required'].includes(error.code)){if(C.clearSession)C.clearSession();else localStorage.removeItem(C.sessionKey);loginView('ادخل اليوزر والرقم السري للموقع.')}else fail(error.message)}
  }
- form.onsubmit=async e=>{e.preventDefault();if(submit.disabled)return;submit.disabled=true;status.textContent='جارٍ تسجيل الدخول…';try{const r=await deadline(C.api('commercialWebsitePinLogin',{key:'',email:user.value.trim(),pin:pin.value,remember:remember.checked}));if(C.storeSession)C.storeSession(r.key,remember.checked);else localStorage.setItem(C.sessionKey,r.key);pin.value='';await authenticate()}catch(e){status.textContent=e.message}finally{submit.disabled=false}};
+ form.onsubmit=async e=>{e.preventDefault();if(submit.disabled)return;submit.disabled=true;status.textContent='جارٍ تسجيل الدخول…';try{const credentials={key:'',email:user.value.trim(),pin:pin.value,remember:remember.checked};const r=await retryBusy(()=>C.api('commercialWebsitePinLogin',credentials),()=>submit.disabled,()=>{status.textContent='الخدمة مشغولة؛ نعيد محاولة الدخول تلقائيًا…'});if(C.storeSession)C.storeSession(r.key,credentials.remember);else localStorage.setItem(C.sessionKey,r.key);pin.value='';await authenticate()}catch(e){status.textContent=e.message}finally{submit.disabled=false}};
  function expireSession(key){if(key&&key!==currentKey())return;generation++;authenticated=false;if(activityTimer){clearInterval(activityTimer);activityTimer=null}if(C.clearSession)C.clearSession();else localStorage.removeItem(C.sessionKey);document.querySelector('.mirsad-admin-logout')?.remove();loginView('ادخل اليوزر والرقم السري للموقع.');submit.disabled=false}
  window.addEventListener('mirsad-website-auth-expired',event=>{if(event.detail?.key)expireSession(event.detail.key)});retry.onclick=()=>void authenticate();window.addEventListener('storage',event=>{if(event.key!==(C.websiteSessionKey||C.sessionKey))return;if(!currentKey()){generation++;authenticated=false;if(activityTimer){clearInterval(activityTimer);activityTimer=null}loginView()}else void authenticate()});window.addEventListener('pageshow',event=>{if(event.persisted)void authenticate()});void authenticate();
 })();
