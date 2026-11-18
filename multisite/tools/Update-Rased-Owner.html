@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'">
+<title>تحديث خدمة راصد للمالك</title>
+<style>
+body{font:16px/1.7 system-ui,sans-serif;background:#edf3f6;color:#183c4b;margin:0;padding:24px}
+main{max-width:680px;margin:24px auto;background:white;padding:24px;border-radius:12px}
+label,input,textarea{display:block;margin-bottom:10px}textarea{box-sizing:border-box;width:100%;font:14px monospace}
+button,a[download]{font:inherit;color:#fff;background:#087c57;border:0;border-radius:6px;padding:8px 14px;display:inline-block}
+a[hidden]{display:none}code{direction:ltr;display:inline-block}#status{min-height:1.7em}
+</style>
+</head>
+<body><main>
+<h1>تحديث خدمة راصد إلى 2.9.76</h1>
+<p>اختر ملف خدمة المالك الكامل <code>2.9.53</code> أو <code>2.9.64</code>، أو الصق الكود من محرر Apps Script. تتم المعالجة على جهازك.</p>
+<label for="owner-file">ملف كود المالك</label>
+<input id="owner-file" type="file" accept=".gs,.txt,.js">
+<label for="owner-text">أو الصق الكود الكامل هنا</label>
+<textarea id="owner-text" dir="ltr" rows="6" spellcheck="false"></textarea>
+<button id="prepare" type="button">جهّز الملف</button>
+<p id="status" role="status"></p>
+<a id="download" download="owner-2.9.76.txt" hidden>تنزيل ملف الكود الجاهز</a>
+</main><script>
+'use strict';
+const marker = '// END MIRSAD SCHOOLS COMPLETE SCRIPT ';
+const get = id => document.getElementById(id);
+let downloadUrl;
+
+function upgrade(input) {
+  let source = input.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trimEnd() + '\n';
+  if (!source.startsWith('// Generated: do not edit.') ||
+      !source.includes('function doPost(e)') || source.split('\n').length < 1400) {
+    throw Error('الكود ناقص أو ليس ملف خدمة المالك. انسخ كل محتوى الرمز.gs في مشروع مرصاد المدارس.');
+  }
+  function replace(before, after) {
+    const start = source.indexOf(before);
+    if (start < 0 || source.indexOf(before, start + before.length) >= 0) {
+      throw Error('هذه النسخة مختلفة عن نسخة خدمة المالك المتوقعة. استخدم الملف الكامل المنشور عندك.');
+    }
+    source = source.slice(0, start) + after + source.slice(start + before.length);
+  }
+  if (source.endsWith(marker + '2.9.76\n')) return source;
+  if (source.endsWith(marker + '2.9.53\n')) {
+    replace(
+      'entry.until=now()+86400000;save(r);return {key,readOnly:entry.readOnly,school:publicSchool(s)}',
+      "entry.recorderWebsite=input.purpose==='website';entry.until=now()+(entry.recorderWebsite?365:1)*86400000;\n" +
+      '    if(entry.recorderWebsite)s.sessions=s.sessions.filter(x=>!x.recorderWebsite||!same(x.writerHash,entry.writerHash)||x===entry);\n' +
+      '    save(r);return {key,readOnly:entry.readOnly,recorderWebsite:entry.recorderWebsite,school:publicSchool(s)}'
+    );
+    replace('v.school.simpleSetup&&!entry?.websitePin',
+      'v.school.simpleSetup&&!entry?.websitePin&&!(entry?.recorderWebsite===true&&entry.readOnly===true&&entry.writerHash)');
+    replace("version:'2.9.53',unlimitedRecorderDevices", "version:'2.9.64',recorderWebsiteSession:true,unlimitedRecorderDevices");
+    replace(marker + '2.9.53', marker + '2.9.64');
+  }
+  if (!source.endsWith(marker + '2.9.64\n')) {
+    throw Error('الأداة تحتاج الكود الكامل لخدمة المالك 2.9.53 أو 2.9.64.');
+  }
+  const archives = "archives:(s.archives||[]).filter(x=>!x.deletedAt).map";
+  const start = source.indexOf(archives);
+  const end = start >= 0 ? source.indexOf('}},', start) : -1;
+  if (end < 0) throw Error('تعذّر تحديد موضع إعداد أرشيف المدارس في الكود.');
+  source = source.slice(0, start) + 'archives:[]' + source.slice(end);
+  replace("[...s.campuses,...(s.archives||[])].find(x=>!x.deletedAt&&same(x.viewerToken||'',key))",
+    "s.campuses.find(x=>!x.deletedAt&&same(x.viewerToken||'',key))");
+  replace('school.campuses?.find(x=>x.id===(id||school.activeSiteId))||(school.archives||[]).find(x=>!x.deletedAt&&x.archiveId===id)',
+    'school.campuses?.find(x=>x.id===(id||school.activeSiteId))');
+  replace("version:'2.9.64',recorderWebsiteSession:true", "version:'2.9.76',privateSchoolArchives:true,recorderWebsiteSession:true");
+  replace(marker + '2.9.64', marker + '2.9.76');
+  return source;
+}
+
+get('prepare').onclick = async () => {
+  const button = get('prepare'), link = get('download'), status = get('status');
+  button.disabled = true;
+  link.hidden = true;
+  if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+  try {
+    const pasted = get('owner-text').value;
+    const file = get('owner-file').files[0];
+    const input = pasted.trim() ? pasted : file ? await file.text() : '';
+    const code = upgrade(input);
+    downloadUrl = URL.createObjectURL(new Blob([code], {type:'text/plain;charset=utf-8'}));
+    link.href = downloadUrl;
+    link.hidden = false;
+    status.textContent = 'ملف 2.9.76 جاهز للتنزيل.';
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+</script></body></html>
