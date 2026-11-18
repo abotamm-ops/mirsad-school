@@ -30,10 +30,14 @@ const get = id => document.getElementById(id);
 let downloadUrl;
 
 function upgrade(input) {
-  let source = input.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trimEnd() + '\n';
-  if (!source.startsWith('// Generated: do not edit.') ||
-      !source.includes('function doPost(e)') || source.split('\n').length < 1400) {
-    throw Error('الكود ناقص أو ليس ملف خدمة المالك. انسخ كل محتوى الرمز.gs في مشروع مرصاد المدارس.');
+  let source = input.replace(/\r\n?/g, '\n').trim() + '\n';
+  const missing = [];
+  if (!/\bvar\s+MirsadPasswords\s*=/.test(source)) missing.push('بداية الملف');
+  if (!/\bfunction\s+createSchoolRegistry\s*\(/.test(source)) missing.push('سجل المدارس');
+  if (!/\bfunction\s+doPost\s*\(\s*e\s*\)/.test(source)) missing.push('معالج الطلبات');
+  if (!/\bfunction\s+commercialVideoRoot_\s*\(/.test(source)) missing.push('قسم حفظ الفيديو');
+  if (missing.length) {
+    throw Error('النسخة الملصقة ينقصها: ' + missing.join('، ') + '. ارجع إلى الرمز.gs واضغط داخل الكود ثم Ctrl+A وCtrl+C.');
   }
   function replace(before, after) {
     const start = source.indexOf(before);
