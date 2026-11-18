@@ -47,5 +47,8 @@ if __name__=='__main__':
  service=transform(base)
  (work/'owner-2.9.53.gs').write_text(service)
  website_session=runpy.run_path(str(root/'multisite/website_session.py'))['transform']
- (work/'owner-2.9.64.gs').write_text(website_session(service))
- print('Prepared service 2.9.64 privately; not deployed')
+ website_service=website_session(service)
+ (work/'owner-2.9.64.gs').write_text(website_service)
+ private_archives=runpy.run_path(str(root/'multisite/private_archives.py'))['transform']
+ (work/'owner-2.9.76.gs').write_text(private_archives(website_service))
+ print('Prepared service 2.9.76 privately; not deployed')
