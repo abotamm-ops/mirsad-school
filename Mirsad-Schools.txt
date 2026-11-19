@@ -439,7 +439,10 @@ function doPost(e){var result,lock=LockService.getScriptLock();try{var p=JSON.pa
   if(root.getSharingAccess()!==DriveApp.Access.PRIVATE)throw new Error('مجلد حفظ المدارس غير خاص');
   return ContentService.createTextOutput(JSON.stringify({ok:true,schoolBuild:'personal-schools-v1'})).setMimeType(ContentService.MimeType.JSON);
  }
- if(p.action==='schoolSiteSession'){
+ if(['schoolAccountInfo','schoolAccountCode','schoolAccountActivate','schoolSettingsRead','schoolAnnouncementSave'].includes(p.action)){
+  lock.waitLock(30000);
+  result={ok:true,...schoolAccountRequest_(p,PropertiesService.getScriptProperties())};
+ }else if(p.action==='schoolSiteSession'){
   lock.waitLock(30000);
   var siteProps=PropertiesService.getScriptProperties(), writer=siteProps.getProperty('MONITOR_API_KEY');
   if(!writer||writer.length<32||!monitorEqual_(p.key,writer))throw new Error('رمز ربط المدارس غير صالح');
@@ -878,7 +881,7 @@ function schoolExportChunk_(p,pending){
 }
 
 function doGet(){
-  return HtmlService.createHtmlOutput("<!doctype html>\n<html lang=\"ar\" dir=\"rtl\">\n<head>\n<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<base target=\"_top\">\n<title>مرصاد المدارس</title>\n<style>\nbody{font:16px system-ui,sans-serif;background:#edf4f5;color:#143440;margin:0}main{max-width:48rem;margin:2rem auto;padding:1rem}h1{margin:0 0 1rem}form,section{padding:1rem;background:#fff;border-radius:.75rem;margin-top:1rem}input,button{font:inherit;margin:.3rem;padding:.55rem}button{background:#087466;color:white;border:0;border-radius:.4rem;cursor:pointer}ul{padding:0;list-style:none}li{background:#fee9eb;color:#88122b;padding:.6rem;margin:.25rem 0;border-radius:.4rem}#status{min-height:1.5rem}button:disabled{opacity:.65}\n</style>\n</head>\n<body><main>\n<h1>مرصاد المدارس</h1>\n<p id=\"status\" role=\"status\"></p>\n<form id=\"login\" hidden>\n<label for=\"pin\">الرقم السري</label>\n<input id=\"pin\" inputmode=\"numeric\" pattern=\"[0-9]{4}\" maxlength=\"4\" type=\"password\" required autocomplete=\"current-password\">\n<button>دخول</button>\n</form>\n<section id=\"summary\" hidden>\n<p id=\"date\"></p><p id=\"counts\"></p>\n<h2>المتغيبون</h2><ul id=\"absent\"></ul>\n<button id=\"refresh\" type=\"button\">تحديث</button>\n<button id=\"logout\" type=\"button\">تسجيل الخروج</button>\n</section>\n</main>\n<script>\nconst form=document.getElementById('login'),summary=document.getElementById('summary'),status=document.getElementById('status');\nlet session='', loading=false;\nfunction saved(value){\n  try{if(value)localStorage.setItem('mirsad-school-session',value);else localStorage.removeItem('mirsad-school-session')}catch{}\n}\nfunction rpc(action,input){\n  return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).schoolSiteCallback(action,input));\n}\nfunction render(model){\n  form.hidden=true;\n  summary.hidden=false;\n  document.getElementById('date').textContent=model.date;\n  document.getElementById('counts').textContent=model.lessons+' حصة · '+model.records.length+' نتيجة';\n  const list=document.getElementById('absent');\n  list.replaceChildren();\n  for(const entry of model.records.filter(item=>item.status==='absent'||item.status==='no-link')){\n    const li=document.createElement('li');\n    li.textContent=(entry.name||'معلم')+' · الحصة '+entry.period+' · الدورة '+entry.cycle+(entry.status==='no-link'?' · لا يوجد رابط Teams':' · غائب');\n    list.append(li);\n  }\n  if(!list.childElementCount){const text=document.createElement('p');text.textContent='لا توجد حالات غياب مسجلة.';list.append(text)}\n}\nasync function refresh(){\n  if(loading||!session||document.hidden)return;\n  loading=true;\n  try{\n    const model=await rpc('day',{session});\n    if(model.login){session='';saved('');summary.hidden=true;form.hidden=false;status.textContent='أدخل الرقم السري';return}\n    if(!model.ok)throw Error(model.error);\n    render(model);\n    status.textContent='';\n  }catch(error){\n    status.textContent=error.message||'تعذر تحديث الرصد';\n    if(summary.hidden)form.hidden=false;\n  }finally{loading=false}\n}\nform.addEventListener('submit',async event=>{\n  event.preventDefault();\n  const button=form.querySelector('button');button.disabled=true;\n  try{\n    const result=await rpc('login',{pin:document.getElementById('pin').value});\n    if(!result.ok)throw Error(result.error);\n    form.reset();session=result.session;saved(session);await refresh();\n  }catch(error){status.textContent=error.message||'تعذر تسجيل الدخول'}\n  finally{button.disabled=false}\n});\ndocument.getElementById('refresh').addEventListener('click',refresh);\ndocument.getElementById('logout').addEventListener('click',async()=>{\n  await rpc('logout',{session}).catch(()=>{});\n  session='';saved('');summary.hidden=true;form.hidden=false;status.textContent='';\n});\ngoogle.script.url.getLocation(location=>{\n  const token=new URLSearchParams(location.hash||'').get('session');\n  if(/^[a-f0-9-]{72}$/i.test(token||'')){session=token;saved(session);google.script.history.replace({}, {}, '')}\n  else try{session=localStorage.getItem('mirsad-school-session')||''}catch{}\n  if(session)refresh();else form.hidden=false;\n});\nsetInterval(refresh,30000);\ndocument.addEventListener('visibilitychange',refresh);\n</script>\n</body>\n</html>\n").setTitle('مرصاد المدارس');
+  return HtmlService.createHtmlOutput("<!doctype html>\n<html lang=\"ar\" dir=\"rtl\">\n<head>\n<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<base target=\"_top\">\n<title>مرصاد المدارس</title>\n<style>\nbody{font:16px system-ui,sans-serif;background:#edf4f5;color:#143440;margin:0}main{max-width:48rem;margin:2rem auto;padding:1rem}h1{margin:0 0 1rem}form,section{padding:1rem;background:#fff;border-radius:.75rem;margin-top:1rem}input,button{font:inherit;margin:.3rem;padding:.55rem}button{background:#087466;color:white;border:0;border-radius:.4rem;cursor:pointer}ul{padding:0;list-style:none}li{background:#fee9eb;color:#88122b;padding:.6rem;margin:.25rem 0;border-radius:.4rem}#status{min-height:1.5rem}button:disabled{opacity:.65}\n</style>\n</head>\n<body><main>\n<h1>مرصاد المدارس</h1>\n<p id=\"status\" role=\"status\"></p>\n<form id=\"login\" hidden>\n<label for=\"email\">بريد المدرسة</label><input id=\"email\" type=\"email\" autocomplete=\"username\">\n<label for=\"pin\">الرقم السري</label>\n<input id=\"pin\" inputmode=\"numeric\" pattern=\"[0-9]{4}\" maxlength=\"4\" type=\"password\" required autocomplete=\"current-password\">\n<button>دخول</button>\n</form>\n<section id=\"summary\" hidden>\n<p id=\"date\"></p><p id=\"counts\"></p>\n<h2>المتغيبون</h2><ul id=\"absent\"></ul>\n<button id=\"announcements\" type=\"button\">الإعلانات</button><p id=\"announcement-text\" role=\"status\" style=\"white-space:pre-wrap\"></p>\n<button id=\"refresh\" type=\"button\">تحديث</button>\n<button id=\"logout\" type=\"button\">تسجيل الخروج</button>\n</section>\n</main>\n<script>\nconst form=document.getElementById('login'),summary=document.getElementById('summary'),status=document.getElementById('status');\nlet session='', loading=false;\nfunction saved(value){\n  try{if(value)localStorage.setItem('mirsad-school-session',value);else localStorage.removeItem('mirsad-school-session')}catch{}\n}\nfunction rpc(action,input){\n  return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).schoolSiteCallback(action,input));\n}\nfunction render(model){\n  form.hidden=true;\n  summary.hidden=false;\n  document.getElementById('date').textContent=model.date;\n  document.getElementById('counts').textContent=model.lessons+' حصة · '+model.records.length+' نتيجة';\n  const list=document.getElementById('absent');\n  list.replaceChildren();\n  for(const entry of model.records.filter(item=>item.status==='absent'||item.status==='no-link')){\n    const li=document.createElement('li');\n    li.textContent=(entry.name||'معلم')+' · الحصة '+entry.period+' · الدورة '+entry.cycle+(entry.status==='no-link'?' · لا يوجد رابط Teams':' · غائب');\n    list.append(li);\n  }\n  if(!list.childElementCount){const text=document.createElement('p');text.textContent='لا توجد حالات غياب مسجلة.';list.append(text)}\n}\nasync function refresh(){\n  if(loading||!session||document.hidden)return;\n  loading=true;\n  try{\n    const model=await rpc('day',{session});\n    if(model.login){session='';saved('');summary.hidden=true;form.hidden=false;status.textContent='أدخل الرقم السري';return}\n    if(!model.ok)throw Error(model.error);\n    render(model);\n    status.textContent='';\n  }catch(error){\n    status.textContent=error.message||'تعذر تحديث الرصد';\n    if(summary.hidden)form.hidden=false;\n  }finally{loading=false}\n}\nform.addEventListener('submit',async event=>{\n  event.preventDefault();\n  const button=form.querySelector('button');button.disabled=true;\n  try{\n    const result=await rpc('login',{email:document.getElementById('email').value,pin:document.getElementById('pin').value});\n    if(!result.ok)throw Error(result.error);\n    form.reset();session=result.session;saved(session);await refresh();\n  }catch(error){status.textContent=error.message||'تعذر تسجيل الدخول'}\n  finally{button.disabled=false}\n});\ndocument.getElementById('announcements').addEventListener('click',async({currentTarget})=>{\n  currentTarget.disabled=true;\n  const text=document.getElementById('announcement-text');\n  try{\n    const result=await rpc('announcement',{session});\n    if(!result.ok)throw Error(result.error||'حدّث تسجيل الدخول');\n    text.textContent=result.announcement?[result.announcement.title,result.announcement.body].filter(Boolean).join('\\n'):'لا توجد إعلانات.';\n  }catch(error){text.textContent=error.message}\n  finally{currentTarget.disabled=false}\n});\ndocument.getElementById('refresh').addEventListener('click',refresh);\ndocument.getElementById('logout').addEventListener('click',async()=>{\n  await rpc('logout',{session}).catch(()=>{});\n  session='';saved('');summary.hidden=true;form.hidden=false;status.textContent='';\n});\ngoogle.script.url.getLocation(location=>{\n  const token=new URLSearchParams(location.hash||'').get('session');\n  if(/^[a-f0-9-]{72}$/i.test(token||'')){session=token;saved(session);google.script.history.replace({}, {}, '')}\n  else try{session=localStorage.getItem('mirsad-school-session')||''}catch{}\n  if(session)refresh();else form.hidden=false;\n});\nsetInterval(refresh,30000);\ndocument.addEventListener('visibilitychange',refresh);\n</script>\n</body>\n</html>\n").setTitle('مرصاد المدارس');
 }
 
 function schoolSiteMint_(props){
@@ -905,7 +908,11 @@ function schoolSiteCallback(action,input){
       if(state.count>=6)return {ok:false,error:'انتظر دقيقة ثم أعد المحاولة'};
       var pin=String(input.pin||'');
       var expected=props.getProperty('MONITOR_SITE_PASSWORD');
-      if(!/^\d{4}$/.test(pin)||!expected||!monitorEqual_(pin,expected)){
+      var school=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ACTIVE')||'null');
+      var account=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ACCOUNT')||'null');
+      var signInEmail=String(input.email||'').trim().toLowerCase();
+      if((account&&account.scope!==(school?.schoolId||'initial'))||
+         (account&&account.email!==signInEmail)||!/^\d{4}$/.test(pin)||!expected||!monitorEqual_(pin,expected)){
         state.count++;
         props.setProperty('MIRSAD_SITE_LOGIN_LIMIT',JSON.stringify(state));
         return {ok:false,error:'الرقم السري غير صحيح أو لم يُضبط بعد'};
@@ -916,10 +923,14 @@ function schoolSiteCallback(action,input){
     if(!/^[a-f0-9-]{72}$/i.test(input.session||''))return {ok:false,login:true};
     var key='MIRSAD_SITE_SESSION_'+schoolSiteHash_(input.session);
     if(action==='logout'){props.deleteProperty(key);return {ok:true}}
-    if(action!=='day')return {ok:false,error:'طلب عرض غير مدعوم'};
+    if(!['day','announcement'].includes(action))return {ok:false,error:'طلب عرض غير مدعوم'};
     var session=JSON.parse(props.getProperty(key)||'null'),active=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ACTIVE')||'null');
     if(!session||session.until<=now||session.generation!==(active?.generation||null))return {ok:false,login:true};
     if(props.getProperty('MIRSAD_SCHOOL_CHANGE'))return {ok:false,error:'تبديل المدرسة جارٍ'};
+    if(action==='announcement'){
+      var announcement=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ANNOUNCEMENT')||'null');
+      return {ok:true,announcement:announcement?.scope===(active?.schoolId||'initial')?announcement:null};
+    }
     var rootId=props.getProperty('MIRSAD_SCHOOL_DRIVE_ROOT'),date=monitorToday_();
     if(!rootId)return {ok:true,date,lessons:0,records:[]};
     var root=DriveApp.getFolderById(rootId);
@@ -930,4 +941,58 @@ function schoolSiteCallback(action,input){
       return {name:record.teacherName,period:record.period,cycle:record.cycle,status:record.status};
     })};
   }finally{lock.releaseLock()}
+}
+
+function schoolAccountRequest_(p,props) {
+  var writer=props.getProperty('MONITOR_API_KEY');
+  if(!writer||writer.length<32||!monitorEqual_(p.key,writer))throw new Error('أكمل ربط الإضافة أولًا');
+  var active=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ACTIVE')||'null');
+  if(active&&p.schoolGeneration!==active.generation)throw new Error('تغيرت المدرسة. حدّث الربط أولًا');
+  if(props.getProperty('MIRSAD_SCHOOL_CHANGE'))throw new Error('أكمل تبديل المدرسة أولًا');
+  var account=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ACCOUNT')||'null');
+  var scope=active?.schoolId||'initial';
+  if(p.action==='schoolAccountInfo')return {email:account?.scope===scope?account.email:null};
+  if(p.action==='schoolSettingsRead'||p.action==='schoolAnnouncementSave'){
+    var announcement=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ANNOUNCEMENT')||'null');
+    if(p.action==='schoolAnnouncementSave'){
+      var title=String(p.title||'').trim(),body=String(p.body||'').trim();
+      if(title.length>120||body.length>3000||(!body&&title))throw Error('راجع عنوان الإعلان ونصه');
+      announcement=body?{scope:scope,title:title,body:body}:null;
+      if(announcement)props.setProperty('MIRSAD_SCHOOL_ANNOUNCEMENT',JSON.stringify(announcement));
+      else props.deleteProperty('MIRSAD_SCHOOL_ANNOUNCEMENT');
+      return {announcement:announcement};
+    }
+    var rootId=props.getProperty('MIRSAD_SCHOOL_DRIVE_ROOT'),date=monitorToday_();
+    var folder=rootId?monitorScheduleFolder_(DriveApp.getFolderById(rootId),date,false):null;
+    var data=folder?monitorRead_(monitorFile_(folder,'attendance.json'),null):null;
+    return {date:date,announcement:announcement?.scope===scope?announcement:null,lessons:(data?.snapshot?.lessons||[]).map(function(lesson){
+      return {name:lesson.teacherName,period:lesson.period,calendarUrl:lesson.calendarUrl||null};
+    })};
+  }
+  var email=String(p.email||'').trim().toLowerCase(),now=Date.now();
+  if(email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(email)||email.split('@').length!==2)throw new Error('أدخل بريد المدرسة الصحيح');
+  if(account?.scope===scope&&account.email!==email)throw new Error('هذا الموقع مفعّل ببريد مدرسة آخر');
+  var saved=JSON.parse(props.getProperty('MIRSAD_SCHOOL_ACTIVATION')||'null');
+  if(p.action==='schoolAccountCode'){
+    if(saved&&now-saved.at<60000)throw new Error('انتظر دقيقة قبل طلب رسالة ثانية');
+    if(MailApp.getRemainingDailyQuota()<1)throw new Error('بلغت خدمة البريد حد الإرسال اليوم');
+    var hex=Utilities.getUuid().replace(/-/g,'').slice(0,8);
+    var code=String(100000+(parseInt(hex,16)%900000));
+    props.setProperty('MIRSAD_SCHOOL_ACTIVATION',JSON.stringify({email:email,scope:scope,hash:schoolSiteHash_(code+'|'+writer),at:now,tries:0}));
+    try{MailApp.sendEmail(email,'تفعيل مرصاد المدارس','رمز تفعيل مرصاد: '+code+'\nصالح لمدة عشر دقائق. أدخله في قسم الحساب بالإضافه.')}
+    catch(error){props.deleteProperty('MIRSAD_SCHOOL_ACTIVATION');throw error}
+    return {sent:true};
+  }
+  var code=String(p.code||''),pin=String(p.pin||'');
+  if(!/^\d{4}$/.test(pin))throw new Error('اختر رقمًا سريًا من أربعة أرقام');
+  if(!saved||saved.email!==email||saved.scope!==scope||now-saved.at>=600000||saved.tries>=5)throw new Error('اطلب رمز تفعيل جديدًا');
+  if(!/^\d{6}$/.test(code)||!monitorEqual_(saved.hash,schoolSiteHash_(code+'|'+writer))){
+    saved.tries++;
+    props.setProperty('MIRSAD_SCHOOL_ACTIVATION',JSON.stringify(saved));
+    throw new Error('رمز التفعيل غير صحيح');
+  }
+  props.setProperties({MIRSAD_SCHOOL_ACCOUNT:JSON.stringify({email:email,scope:scope}),MONITOR_SITE_PASSWORD:pin});
+  props.deleteProperty('MIRSAD_SCHOOL_ACTIVATION');
+  Object.keys(props.getProperties()).filter(function(key){return key.startsWith('MIRSAD_SITE_SESSION_')}).forEach(function(key){props.deleteProperty(key)});
+  return {email:email,activated:true};
 }
