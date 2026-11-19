@@ -13,7 +13,7 @@
   const id=list.activeSiteId||list.sites[0].id;
   const url=new URL(location.href);
   const requested=url.searchParams.get('siteId');
-  if(requested&&requested!==id){url.searchParams.set('siteId',id);location.replace(url.href);return}
+  if(requested&&!requested.startsWith('archive-')&&requested!==id){url.searchParams.set('siteId',id);location.replace(url.href);return}
   sessionStorage.setItem(key(),id);document.documentElement.dataset.mirsadSiteId=id;
   if(!document.getElementById('mirsad-school-selector')){
    const box=document.createElement('div');box.id='mirsad-school-selector';box.style.cssText='padding:8px 16px;font:14px Tahoma,Arial;background:#edf7f5';
