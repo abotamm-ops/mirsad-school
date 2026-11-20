@@ -15,13 +15,13 @@
         event.data?.source !== 'mirsad-monitor-extension' || event.data?.type !== 'localAttendance') return;
     const payload = event.data.payload;
     if (!scoped(payload)) return;
-    preview = payload.snapshot ? { ...payload, receivedAt: Date.now() } : null;
+    preview = payload.snapshot && Array.isArray(payload.records) ? payload : null;
     window.dispatchEvent(new Event('mirsad-local-attendance-changed'));
   });
 
   function live(model, confirmed, now = new Date()) {
     const local = preview;
-    if (!scoped(local) || now.getTime() - local.receivedAt > 20000 ||
+    if (!scoped(local) ||
         local.snapshot?.date !== model.day(now)) return model.live(confirmed, { now });
     const previous = confirmed?.snapshot;
     if (previous && (previous.scheduleRevision !== local.snapshot.scheduleRevision ||

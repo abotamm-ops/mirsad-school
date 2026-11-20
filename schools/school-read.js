@@ -3,7 +3,7 @@
   'use strict';
   const inFlight = new Map(), recent = new Map(), generations = new Map();
   const timeoutMs = 35000, reuseMs = 1200;
-  const otherReads = new Set(['dates', 'teacherLink', 'getTimetableSource', 'resetState', 'scheduleVersions', 'adminLogin', 'commercialWebsiteActivity', 'commercialEvidence']);
+  const otherReads = new Set(['dates', 'teacherLink', 'getTimetableSource', 'resetState', 'scheduleVersions', 'adminLogin', 'commercialWebsiteActivity', 'commercialEvidence', 'commercialLiveStatus', 'commercialSchoolSpaces', 'commercialServiceVersion', 'teachersLive', 'getAutoLinksControl', 'videoStatus', 'commercialCustomerPortal', 'commercialSchoolSettings']);
   const stable = value => JSON.stringify(Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))));
   function invalidate(url) {
     generations.set(url, (generations.get(url) || 0) + 1);
@@ -36,7 +36,6 @@
       promise = (async () => {
         const response = await fetch(url, {...init, signal: AbortSignal.timeout(timeoutMs)});
         const bytes = await response.arrayBuffer();
-        if ((generations.get(url) || 0) !== generation) throw new Error('تغيرت بيانات الرصد أثناء القراءة؛ جارٍ إعادة التحديث');
         const complete = new Response(bytes, {status: response.status, statusText: response.statusText, headers: response.headers});
         if (complete.ok) {
           const value = await complete.clone().json();
