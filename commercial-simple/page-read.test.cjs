@@ -1,0 +1,4 @@
+const {test}=require('node:test'),a=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+function fixture(){let timeout;const c=vm.createContext({setTimeout:fn=>(timeout=fn,1),clearTimeout(){}});vm.runInContext(fs.readFileSync('commercial-simple/page-read.js','utf8'),c);return {read:c.MirsadPageRead,expire:()=>timeout()}}
+test('responsive page read returns its actual response',async()=>{const f=fixture();a.deepEqual(await f.read(async()=>({ok:true})),{ok:true})});
+test('an unresponsive read has a bounded failure; a late response performs no retry or write',async()=>{const f=fixture();let release,calls=0;const pending=f.read(()=>{calls++;return new Promise(r=>release=r)});const rejected=a.rejects(pending,e=>e.mirsadReadFailure===true);await Promise.resolve();f.expire();await rejected;release({ok:true});a.equal(calls,1)});

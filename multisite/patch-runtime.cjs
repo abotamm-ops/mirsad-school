@@ -22,6 +22,13 @@ code=code.slice(0,protectionStart)+`  async function _value31() {
  return value;
  }
 `+code.slice(protectionEnd);
+// A confirmed import is already the scoped server timetable. Do not put
+// redundant Drive reads in front of each start; record writes still validate
+// the immutable schedule revision and the current server monitoring lease.
+replace(/async function _value41\(_argument22 = false\) \{/,`async function _value41(_argument22 = false) {
+ const loaded=await MirsadLoadedTimetable.get();if(loaded){await _value35();return loaded;}`);
+replace(/async function _value46\(\) \{/,`async function _value46() {
+ const loaded=await MirsadLoadedTimetable.get();if(loaded){await _value35();return loaded;}`);
 code=tagRecords(code,file);new(require('node:vm').Script)(code);fs.writeFileSync(file,code);
 const background=path.join(dir,'background.js');let worker=babel.babelTransform(fs.readFileSync(background,'utf8'),background,false,[[path.resolve(__dirname,'../chrome-store/readable-plugin.cjs'),{}]],[]).code;
 worker=tagRecords(worker,background);const append=/async function appendDailyReport\((\w+)\) \{/;if(!append.test(worker))throw Error('Stable daily report writer changed');worker=worker.replace(append,'async function appendDailyReport($1) {if(await MirsadMulti.appendLateDaily($1))return;');fs.writeFileSync(background,worker);

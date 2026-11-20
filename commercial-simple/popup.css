@@ -67,7 +67,7 @@ header #siteCredentials{width:185px;max-width:185px}#siteCredentials>div{display
 
 #step4 .cycle-fields label.cycle-disabled{background:#e4e8ed;color:#87939e;border-radius:5px;padding:2px;opacity:.65}#step4 .cycle-fields label.cycle-disabled input{background:#dbe1e7;color:#87939e;cursor:not-allowed;border-color:#ccd3dc}
 
-#actionProgress{position:fixed;left:16px;right:16px;bottom:26px;z-index:100000;padding:10px 13px;background:#edf6ff;border:1px solid #8ab9dc;border-radius:9px;box-shadow:0 4px 18px #12374625;color:#164b75}dialog #actionProgress{position:static;margin:8px 0;box-shadow:none}#actionProgress progress{width:100%;height:9px;accent-color:#1767ae}#actionProgress p{font-size:12px;line-height:1.6;margin:5px 0 0}#actionProgress.failed{background:#fff0f2;color:#a32339;border-color:#d9919d}#actionProgress.finished{background:#edf8f3;color:#08734f;border-color:#88bea4}#sourceProgress{width:100%;height:5px;accent-color:#1767ae;margin:0}#step5 h2{position:relative}#step5 #helperDownload{position:absolute;left:0;top:-2px;width:auto;padding:2px 6px;margin:0;font-size:9px;line-height:12px;color:#1767ae;background:#e4eef8;pointer-events:auto}#helperDownload small{display:block;font-size:8px;opacity:1;color:#47667f}#step1 .directory-notice{font-size:10px;line-height:1.5;padding:4px 6px}#steps{grid-template-rows:minmax(0,1.55fr) minmax(0,1fr) 58px}#step3 #timing>.grid{grid-template-columns:repeat(3,minmax(0,1fr))}#step3 #timing label:first-child{grid-column:auto}
+#actionProgress{position:fixed;left:16px;right:16px;bottom:26px;z-index:100000;padding:10px 13px;background:#edf6ff;border:1px solid #8ab9dc;border-radius:9px;box-shadow:0 4px 18px #12374625;color:#164b75}dialog #actionProgress{position:static;margin:8px 0;box-shadow:none}#actionProgress progress{width:100%;height:9px;accent-color:#1767ae}#actionProgress p{font-size:12px;line-height:1.6;margin:5px 0 0}#actionProgress.failed{background:#fff0f2;color:#a32339;border-color:#d9919d}#actionProgress.finished{background:#edf8f3;color:#08734f;border-color:#88bea4}#sourceProgress{width:100%;height:5px;accent-color:#1767ae;margin:0}#step5 h2{position:relative}#helperDownload small{display:block;font-size:8px;opacity:1;color:#47667f}#step1 .directory-notice{font-size:10px;line-height:1.5;padding:4px 6px}#steps{grid-template-rows:minmax(0,1.55fr) minmax(0,1fr) 58px}#step3 #timing>.grid{grid-template-columns:repeat(3,minmax(0,1fr))}#step3 #timing label:first-child{grid-column:auto}
 
 button:active:not(:disabled){transform:translateY(1px);filter:brightness(.9)}button:disabled{cursor:wait}
 
@@ -124,3 +124,16 @@ button:active:not(:disabled){transform:translateY(1px);filter:brightness(.9)}but
 #step5 #start,#step5:has(#runButtons:not([hidden])) #start{grid-column:1/-1;grid-row:2;width:270px;justify-self:center}
 #step5:has(#runButtons:not([hidden])) #start{grid-column:1;width:100%}
 #step5 #runButtons{grid-column:2;grid-row:2}
+
+/* Optional helper download belongs in the bottom footer, outside monitoring controls. */
+footer{display:flex;align-items:center;justify-content:space-between;gap:5px;flex:0 0 25px;padding:2px 8px}
+footer #helperDownload{position:static;flex:none;width:auto;margin:0;padding:2px 7px;font-size:9px;line-height:14px;color:#1767ae;background:#e4eef8}
+footer #helperDownload small{display:inline;font-size:8px;color:#47667f}
+
+/* Feedback has its own bottom row; it never floats over Stop. */
+body>#actionProgress{position:static;flex:none;margin:2px 10px;padding:4px 8px;box-shadow:none;max-height:66px;overflow:auto}
+body>#actionProgress progress{height:4px}
+body>#actionProgress p{font-size:10px;line-height:14px;margin:2px 0}
+#steps>#step3{min-height:100px;padding-top:3px!important;padding-bottom:3px!important}
+body:has(>#actionProgress:not([hidden])) #message{display:none}
+#steps{grid-template-rows:minmax(0,1.4fr) minmax(112px,1fr) 50px}

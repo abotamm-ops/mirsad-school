@@ -86,12 +86,12 @@
     "threeDeviceProposal": "canceled"
   },
   "sourceSnapshotCommit": "ac6345b",
-  "preparedSchoolRelease": "2.9.54",
+  "preparedSchoolRelease": "2.9.58",
   "preparedOwnerService": "2.9.53",
   "deploymentInstructions": "multisite/POLICY-2.9.53.md",
-  "startupFix": "Native probe no longer waits for historical disk mirror; visible startup phases. Backend 2.9.53 unchanged.",
+  "startupFix": "57 confirmed working by owner.58 preserves ready steps 1-4 during Quick Start; reuses valid scoped video; bounds directory reads and allows one read-only refresh/retry; compact UI and bottom helper.103 regression +56 video tests pass; field validation of58 pending.",
   "handoffDate": "2026-11-17",
-  "userReportedDeployment": "User says owner script updated; actual published version not independently verified",
+  "userReportedDeployment": "Public commercialServiceVersion returned2.9.53 with unlimitedRecorderDevices and singleMonitoringSession on2026-11-17",
   "fieldStatus": "School timetable loaded and visible. Monitoring startup reported stuck on53;54 supplied, no user confirmation of field success yet.",
-  "pendingNextTask": "Before scheduled lesson start, teacher status on Rased must be completely blank; no absence/presence/pending label. Not implemented or fully audited yet."
+  "pendingNextTask": "Owner field test of57; preserve all existing data. Pre-lesson label unchanged."
 }
