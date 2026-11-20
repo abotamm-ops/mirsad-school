@@ -3,3 +3,9 @@
 .is-signal-lost .live-badge,.is-signal-lost .live-broadcast path,.is-signal-lost .live-absence-heading b,.is-signal-lost .live-absence-heading h3{animation:none!important}
 
 .mirsad-heartbeat[data-mode=delayed]{background:#fff8e6;border-color:#d7a83e;color:#785709}.mirsad-heartbeat[data-mode=delayed] .heartbeat-dot{background:#d7a83e}
+
+#mirsadLiveHeader[hidden]{display:none}
+#mirsadLiveHeader{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;margin:6px;border-radius:24px;background:#edf2f4;color:#314b58;font-size:13px;white-space:nowrap}
+#mirsadLiveHeader .heartbeat-dot{width:9px;height:9px;background:#8b9ea7}
+#mirsadLiveHeader[data-live=true]{background:#e9fbf1;color:#125d3b}
+#mirsadLiveHeader[data-live=true] .heartbeat-dot{background:#0a9b5a;animation:mirsadBeat 1.2s ease-in-out infinite}
